@@ -1,6 +1,13 @@
 /** Web port updates, newest first. Add both languages here; original game notes remain in assets/patch_notes. */
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
+    date: '2026_10_09',
+    eng: `[gold][b]Main menu[/b][/gold]
+• Temporarily hidden the notice about the game being taken offline soon.`,
+    zhs: `[gold][b]主菜单[/b][/gold]
+• 暂时隐藏游戏近期下线提示。`,
+  },
+  {
     date: '2026_10_08',
     eng: `[gold][b]Main menu[/b][/gold]
 • Added a prominent notice that the game will be taken offline soon due to copyright issues, reminding players to manage their progress.
