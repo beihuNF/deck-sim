@@ -184,6 +184,46 @@ export function loadShader(src: string): Promise<GodotShader | null> {
   }
   return p;
 }
+
+/** 游戏中高频、核心特效与材质着色器集合，启动时在 GPU 上预编译以彻底杜绝首次触发掉帧 */
+export const CORE_SHADERS = [
+  'shaders/hsv.gdshader',
+  'shaders/colorize_addblend.gdshader',
+  'shaders/button_pulse.gdshader',
+  'shaders/relic.gdshader',
+  'shaders/power_flash_vfx.gdshader',
+  'shaders/dissolve.gdshader',
+  'shaders/radial_blur.gdshader',
+  'shaders/scrolling_smoke.gdshader',
+  'shaders/vfx/cards/vfx_card_transform.gdshader',
+  'shaders/vfx/ui/card/exhaust/vfx_card_exhaust_dissolve_shader.gdshader',
+  'shaders/vfx/ui/card/exhaust/vfx_card_exhaust_quick_erosion_shader.gdshader',
+  'shaders/vfx/ui/card/remove/vfx_card_remove_erosion_shader.gdshader',
+  'shaders/vfx/ui/vfx_ui_low_hp_border_shader.gdshader',
+  'shaders/vfx/fire/fire_shader_1.gdshader',
+  'shaders/vfx/common/vfx_poof_shader.gdshader',
+  'shaders/vfx/common/vfx_projectile_flipbook_shader.gdshader',
+  'shaders/vfx/common/vfx_screen_chromatic_aberration_shader.gdshader',
+  'images/vfx/simple_noise_flat_shader.gdshader',
+  'images/vfx/simple_noise_add_shader.gdshader',
+  'images/vfx/slash_shader_flat.gdshader',
+];
+
+export async function prewarmShaders(
+  onProgress?: (current: number, total: number, name: string) => void,
+): Promise<{ compiled: number; total: number }> {
+  let compiled = 0;
+  for (let i = 0; i < CORE_SHADERS.length; i++) {
+    const s = CORE_SHADERS[i];
+    const name = s.split('/').pop()?.replace('.gdshader', '') || s;
+    try {
+      const res = await loadShader(s);
+      if (res) compiled++;
+    } catch {}
+    onProgress?.(i + 1, CORE_SHADERS.length, name);
+  }
+  return { compiled, total: CORE_SHADERS.length };
+}
 /** The plain pass-through shader (texture × vertex colour). */
 export const plainShader: GodotShader = translate('shader_type canvas_item;')!;
 

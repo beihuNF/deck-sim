@@ -143,6 +143,11 @@ const APP: Record<string, Record<string, string>> = {
     zhs: '在暂停菜单中显示“快速SL”按钮，可原地重新加载当前房间，无需返回主菜单。',
     zht: '在暫停選單中顯示「快速SL」按鈕，可原地重新載入目前房間，無需返回主選單。',
   },
+  bootInitializingGpu: { eng: 'Initializing GPU Acceleration…', zhs: '正在启动 GPU 硬件加速管线…', zht: '正在啟動 GPU 硬體加速管線…' },
+  bootPrewarmingShaders: { eng: 'Compiling Shader Cache…', zhs: '正在编译着色器缓存 (Shader Cache)…', zht: '正在編譯著色器快取 (Shader Cache)…' },
+  bootPreloadingAssets: { eng: 'Prewarming GPU Textures & Scene Assets…', zhs: '正在预热 GPU 纹理与场景资源…', zht: '正在預熱 GPU 紋理與場景資源…' },
+  bootMountingSave: { eng: 'Loading Save Data & Game Rules…', zhs: '正在加载存档与游戏规则…', zht: '正在載入存檔與遊戲規則…' },
+  bootReady: { eng: 'Ready!', zhs: '准备就绪！', zht: '準備就緒！' },
 };
 export function appText(k: keyof typeof APP, language?: string): string {
   const lang = language ?? (() => { try { return G.LocManager.Instance.Language; } catch { return 'eng'; } })();

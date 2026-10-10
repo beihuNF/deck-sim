@@ -23,8 +23,11 @@ import { Tip } from './ui/tooltip';
 import { openPauseMenu, toggleCardsView, closeCardsView } from './ui/pause';
 import { ftueActive } from './ui/ftue';
 import { InspectLayer, inspectActive } from './ui/cards-view';
-import { loadShader } from './render/canvas';
-import { fullScreenScene } from './render/scene';
+import { loadShader, prewarmShaders } from './render/canvas';
+import { fullScreenScene, loadScene } from './render/scene';
+import { getApp, gpuDetails } from './render/stage';
+import { BootScreen } from './ui/boot-screen';
+import { updateBootProgress } from './render/boot-status';
 import { Backdrop } from './ui/backdrop';
 import { CardLibrary, RelicCollection, PotionLab } from './ui/compendium';
 import { Stats } from './ui/stats';
@@ -145,7 +148,7 @@ function App() {
     <>
       <div class="viewport">
         <div class="stage-root">
-          {ui.screen === 'boot' && <div class="boot">Loading…</div>}
+          {ui.screen === 'boot' && <BootScreen />}
           {ui.screen === 'menu' && <MainMenu />}
           {ui.screen === 'run' && <RunScreen />}
           <ScreenView s={ui.screen} />
@@ -175,10 +178,71 @@ async function boot() {
   // tables must be fetched before init; the last chosen language is mirrored outside the (not yet loaded) SettingsSave,
   // and until one is chosen the device's language applies
   const lang = new URLSearchParams(location.search).get('lang') ?? safeGet('sts2web.lang') ?? G.platformLanguage(navigator.languages);
+
+  updateBootProgress({
+    progress: 10,
+    title: appText('bootInitializingGpu', lang),
+    detail: 'WebGL 2.0 (High-Performance GPU)',
+  });
+
+  // 并行启动 GPU 渲染管线
+  const gpuInitPromise = getApp().then(() => {
+    const gpuName = gpuDetails?.renderer || 'WebGL 2.0';
+    const gpuMode = gpuDetails?.isSoftware ? 'CPU Rasterizer' : 'Hardware Accelerated';
+    updateBootProgress({
+      gpuInfo: `GPU: ${gpuName} (${gpuMode})`,
+    });
+  }).catch(() => {});
+
   await swClaimed;
-  await Promise.all([loadAssetIndex(), preloadLocalization(lang === 'eng' ? ['eng'] : ['eng', lang]), sceneIndex().then(addListedFiles), loadAudioIndex()]);
+  updateBootProgress({
+    progress: 20,
+    detail: 'Loading Assets & Localization Tables…',
+  });
+
+  await Promise.all([
+    gpuInitPromise,
+    loadAssetIndex(),
+    preloadLocalization(lang === 'eng' ? ['eng'] : ['eng', lang]),
+    sceneIndex().then(addListedFiles),
+    loadAudioIndex(),
+  ]);
+
   $.setGodotLogSink((level: string, msg: string) => (level === 'error' ? console.error(msg) : level === 'warn' ? console.warn(msg) : undefined));
   installBridge();
+
+  // 着色器缓存预热 (Prewarm Shader Cache)
+  updateBootProgress({
+    progress: 35,
+    title: appText('bootPrewarmingShaders', lang),
+    detail: 'Compiling GPU Shaders…',
+  });
+
+  await prewarmShaders((cur, total, name) => {
+    const p = 35 + Math.round((cur / total) * 40);
+    updateBootProgress({
+      progress: p,
+      title: appText('bootPrewarmingShaders', lang),
+      detail: `${name} (${cur}/${total})`,
+    });
+  });
+
+  // GPU 纹理与核心场景预热
+  updateBootProgress({
+    progress: 80,
+    title: appText('bootPreloadingAssets', lang),
+    detail: 'Menu Background & Scene Visuals',
+  });
+
+  try { await loadScene('scenes/backgrounds/mainmenu/main_menu_background'); } catch {}
+
+  // 挂载存档并初始化规则层
+  updateBootProgress({
+    progress: 90,
+    title: appText('bootMountingSave', lang),
+    detail: 'Mounting IndexedDB Virtual File System…',
+  });
+
   let warned = false;
   $.setStorageErrorHandler((path: string, err: unknown) => {
     console.error('save write failed', path, err);
@@ -204,6 +268,14 @@ async function boot() {
   G.SaveManager.Instance.SettingsSave.Language = lang;
   G.LocManager.Instance.SetLanguage(lang);
   document.documentElement.dataset.lang = lang; // style.css: FontManager's per-language font substitution
+
+  updateBootProgress({
+    progress: 100,
+    title: appText('bootReady', lang),
+    detail: 'Launching…',
+  });
+
+  await new Promise((r) => setTimeout(r, 120));
   await transitionView.FadeOut(); // NGame.LaunchMainMenu: after the logo animation, before the menu fades in
   ui.screen = 'menu';
   invalidate();
