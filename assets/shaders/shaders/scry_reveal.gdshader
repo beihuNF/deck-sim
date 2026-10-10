@@ -67,7 +67,7 @@ void fragment() {
     vec4 ModularCol = COLOR / original_col;
 
 	// ---- GRID STUFF -----
-	
+
 	// Calculate the alpha of the current grid position.
 	vec2 gridposf = getGridPos(UV);
 	vec2 gridpos = floor(gridposf);
@@ -78,10 +78,10 @@ void fragment() {
 	float toAlpha = validIndex ? gridFadeParams[index].y : 0.0;
 	float timediff = time - lastTimeChange;
 	float alpha = lastTimeChange == 0.0 ? 1.0 : mix(fromAlpha, toAlpha, clamp(timediff / 0.5, 0, 1));
-	
+
 	// Calculate the border value based on the neighboring grid alphas.
 	float border = 0.0;
-	
+
 	for (int x = -1; x <= 1; x++)
 	{
 		for (int y = -1; y <= 1; y++)
@@ -99,28 +99,28 @@ void fragment() {
 			border = max(border, smoothstep(borderwidth, borderwidth - 0.03, borderdist) * abs(alpha - alpha_n));
 		}
 	}
-	
+
 	// ------- NOISE STUFF --------
-	
+
 	vec2 fromCenter = UV - 0.5;
 	float dist = length(fromCenter);
-	
+
 	// Sample the noises using polar coordinates
 	vec2 polar1 = vec2(dist * 2.0, (atan(fromCenter.y, fromCenter.x) + PI) / (PI * 2.0));
 	float noiseSample1 = texture(noiseTex1, (polar1 + vec2(0, TIME * 0.0065))).r;
 	noiseSample1 = pow(noiseSample1, 0.8);
-	
+
 	vec2 polar2 = vec2(dist * 0.5, (atan(fromCenter.y, fromCenter.x) + PI) / (PI * 2.0));
 	float noiseSample2 = texture(noiseTex2, (polar2 + vec2(0, TIME * 0.0011))).r;
 	noiseSample2 = pow(noiseSample2 + 0.4, 1.0);
-	
+
 	// Blend the two samples together to get a little variance
 	float noiseSample = noiseSample1 * noiseSample2 * 2.0;
-	
+
 	// Begin rendering circles
 	vec3 col = colors[0];
 	float lastmask;
-	
+
 	for (int i = 0; i < circles; i++)
 	{
 		vec4 curData = circleData[i];
@@ -128,7 +128,7 @@ void fragment() {
 		float mask = mix(1.0, noiseSample, pow(circle, curData.z)) * (1.0 - circle);
 		float aaFactor = fwidth(mask);
 		mask = aaStep(curData.w, mask);
-		
+
 		// If this is the outer circle, we want this circle to clip tightly around the outside border
 		// of the grid. For us, the "outside border" is every cell with manhattan distance 3 from a
 		// corner of the grid.
@@ -138,11 +138,11 @@ void fragment() {
 			vec2 normcoord = halfgrid - abs(halfgrid - gridpos);
 			mask = (normcoord.x + normcoord.y) < 3.0 || !validIndex ? 0.0 : mask;
 		}
-		
+
 		lastmask = mask;
 		col = mix(colors[i+1], col, mask);
 	}
-	
+
 	// If we are on the inside of the ball, then instead we want to clip tightly into the border.
 	if (outerCircle < 0)
 	{

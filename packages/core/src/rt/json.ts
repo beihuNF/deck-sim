@@ -62,6 +62,16 @@ export function toJson(v: any): any {
 /** Serialize an object graph of transpiled classes to JSON-safe data, tagging class instances with their full name. */
 interface JsonMember { k: string; conv?: string }
 const jsonMemberCache = new WeakMap<object, JsonMember[] | null>();
+const retainedMembers = new WeakMap<object, Set<string>>();
+/** Keep removed DTO members when reading and writing a shipped web save. */
+export function retainSaveMember(o: object, name: string) {
+  let names = retainedMembers.get(o);
+  if (!names) retainedMembers.set(o, names = new Set());
+  names.add(name);
+}
+/** Hooks run after restoring a DTO; both direct restore() and application reads use this path. */
+export const saveReadCompatibility: Record<string, (o: any, raw: any) => void> = {};
+export const WEB_SAVE_VERSION = 2;
 /** Members System.Text.Json would write ([JsonPropertyName]/[JsonInclude]) and their [JsonConverter]; null when the class declares none. */
 function jsonMembers(C: any): JsonMember[] | null {
   if (typeof C !== 'function') return null;
@@ -116,6 +126,7 @@ export function snapshot(root: any): any {
     if (v === null || v === undefined) return null;
     const t = typeof v;
     if (t === 'number') return Number.isFinite(v) ? v : { $n: String(v) };
+    if (t === 'bigint') return { $i64: String(v) };
     if (t === 'string' || t === 'boolean') return v;
     if (t === 'function') return v.$fullName ? { $type: v.$fullName } : null;
     if (--budget < 0) throw new Error(`snapshot: graph too large at ${path}`);
@@ -129,7 +140,9 @@ export function snapshot(root: any): any {
       const o: any = {};
       if (C?.$fullName && types.get(C.$fullName) === C) o.$t = C.$fullName;
       const members = jsonMembers(C);
-      for (const k of members ? members.map((m) => m.k) : Object.keys(v)) {
+      const keys = new Set(members ? members.map((m) => m.k) : Object.keys(v));
+      for (const k of retainedMembers.get(v) ?? []) keys.add(k);
+      for (const k of keys) {
         let x = v[k];
         if (typeof x === 'function' && !x.$fullName) continue;
         const conv = members && memberConverter(C, k);
@@ -141,7 +154,9 @@ export function snapshot(root: any): any {
       stack.delete(v);
     }
   };
-  return walk(root, '$');
+  const out = walk(root, '$');
+  if (out?.$t) out.$webSaveVersion = WEB_SAVE_VERSION;
+  return out;
 }
 /** Set a restored member: get-only auto-properties are written through their `$_Name` backing field. */
 function assignMember(o: any, k: string, v: any) {
@@ -159,6 +174,7 @@ export function restore(raw: any): any {
   if (typeof raw !== 'object') return raw;
   if (Array.isArray(raw)) return raw.map(restore);
   if ('$n' in raw) return Number(raw.$n);
+  if ('$i64' in raw) return BigInt(raw.$i64);
   if ('$type' in raw) return types.get(raw.$type) ?? null;
   if ('$d' in raw) { const d = new Dictionary(); for (const [k, x] of raw.$d) d.set_Item(restore(k), restore(x)); return d; }
   if ('$h' in raw) return new HashSet(raw.$h.map(restore));
@@ -175,10 +191,13 @@ export function restore(raw: any): any {
   }
   o ??= {};
   for (const [k, x] of Object.entries(raw)) {
-    if (k === '$t') continue;
+    if (k === '$t' || k === '$webSaveVersion') continue;
     const conv = C && memberConverter(C, k);
     assignMember(o, k, conv ? conv.read(restore(x)) : restore(x));
+    if (!k.startsWith('$T_') && !jsonMembers(C)?.some((m) => m.k === k)) retainSaveMember(o, k);
   }
+  if (raw.$t && !C) o.$t = raw.$t;
+  if (C) saveReadCompatibility[raw.$t]?.(o, raw);
   return o;
 }
 

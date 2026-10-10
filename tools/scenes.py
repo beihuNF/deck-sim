@@ -436,10 +436,16 @@ def shader_ref(mat):
 
 def shader_code(src):
     """A shader's source: inline code, a .gdshader file, or a .tres Shader / VisualShader's (generated) code."""
-    if SHADERS.get(src): return SHADERS[src]
     path = os.path.join(REF, src)
-    if src.endswith('.gdshader'): return open(path, encoding='utf-8').read() if os.path.exists(path) else ''
-    return load_tres(src).get('code', '')
+    code = SHADERS.get(src) or (open(path, encoding='utf-8').read() if src.endswith('.gdshader') and os.path.exists(path) else load_tres(src).get('code', ''))
+    def expand(text, parents):
+        def include(match):
+            rel = match.group(1).removeprefix('res://')
+            if rel in parents: raise ValueError(f'cyclic shader include: {rel}')
+            with open(os.path.join(REF, rel), encoding='utf-8') as f:
+                return expand(f.read(), parents | {rel})
+        return re.sub(r'#include\s+"([^"]+)"', include, text)
+    return expand(code, {src})
 
 
 SPINE_BLENDS = ('normal', 'additive', 'multiply', 'screen')  # spine BlendMode order
@@ -543,7 +549,7 @@ def export_shaders():
         if not code: continue
         out = os.path.join('assets/shaders', re.sub(r'\.(tres|gdshader)$', '.gdshader', src))
         os.makedirs(os.path.dirname(out), exist_ok=True)
-        open(out, 'w', encoding='utf-8').write(code)
+        open(out, 'w', encoding='utf-8').write('\n'.join(line.rstrip() for line in code.splitlines()) + '\n')
 
 
 def unwrap(v):

@@ -232,7 +232,12 @@ export function extract(G: any, lang: Lang, i18n: string): { cats: Category[]; p
     const typeLabel = ({ Buff: ui.buff, Debuff: ui.debuff } as Record<string, string>)[type] ?? ui.none;
     const stackLabel = ({ Counter: ui.counter, Single: ui.single } as Record<string, string>)[G.$.enumStr(G.PowerStackType, p.StackType)] ?? ui.none;
     // PowerModel.DumbHoverTip: the description with the icon variables, outside combat
-    const text = fmt(id, () => { const d = p.Description; p.AddDumbVariablesToDescription(d); return d; }, () => table('powers')[id + '.description']);
+    const text = fmt(id, () => {
+      const d = p.Description;
+      p.AddDumbVariablesToDescription(d);
+      if (id === 'SOULBOUND_POWER') d.Add$String_String('ApplierName', lang === 'zhs' ? '施加者' : 'the applier');
+      return d;
+    }, () => table('powers')[id + '.description']);
     return {
       slug: slug(id), title: title(p, 'powers'), img: asset(p.BigIconPath), imgKind: 'icon',
       facets: { type: [[type, typeLabel]] }, sub: typeLabel, text,
@@ -341,7 +346,18 @@ export function extract(G: any, lang: Lang, i18n: string): { cats: Category[]; p
     const id = ev.Id.Entry;
     const m = ev.ToMutable();
     // NEventLayout adds the event's dynamic vars to every description and option text
-    const text = (key: string) => fmt(key, () => { const ls = G.LocString.GetIfExists('events', key); m.DynamicVars.AddTo(ls); return ls; }, () => evTable[key]);
+    const text = (key: string) => fmt(key, () => {
+      const ls = G.LocString.GetIfExists('events', key);
+      m.DynamicVars.AddTo(ls);
+      ls.Add$String_Boolean('IsMultiplayer', false);
+      // Choices and character-dependent prose cannot be determined outside a run. Keep readable variable labels
+      // rather than dropping them from static pages; numeric event variables still come from the original model.
+      const context = lang === 'zhs'
+        ? { AromaPrinciple: '（角色的核心原则）', Monologue: '（角色的独白）', RelicName: '选中的遗物', Potion: '选中的药水', Rarity: '对应稀有度', Type: '对应类型', pronounObject: '自己', pronounSubject: '你的倒影' }
+        : { AromaPrinciple: '(the character’s core principle)', Monologue: '(the character’s monologue)', RelicName: 'the chosen relic', Potion: 'the chosen potion', Rarity: 'matching-rarity', Type: 'matching-type', pronounObject: 'them', pronounSubject: 'your reflection' };
+      for (const [name, value] of Object.entries(context)) if (evTable[key]?.includes(`{${name}`)) ls.Add$String_String(name, value);
+      return ls;
+    }, () => evTable[key]);
     const pages = new Map<string, { desc?: string; options: Map<string, { title?: string; desc?: string }> }>();
     for (const [k, , pageKey, option, field] of evKeys.get(id) ?? []) {
       const page = pages.get(pageKey) ?? { options: new Map() };

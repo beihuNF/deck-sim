@@ -6,7 +6,7 @@ import { $ } from '../game';
 import { invalidate } from '../store';
 import { QuadBatch, plainShader } from './canvas';
 import { loadScene, followParticles, sceneTexture, playSpriteVfx, particleItem } from './scene';
-import { TrailVfx, ShuffleFlyVfx, ExhaustVfx, CardSmithVfx } from '../cardnodes';
+import { TrailVfx, ShuffleFlyVfx, CardSmithVfx } from '../cardnodes';
 import { fullView, view } from '../view';
 import { renderResolution } from './quality';
 
@@ -290,7 +290,6 @@ export class CardFxCanvas {
       if (e.node.$freed) pendingFx.splice(i, 1);
       else if (this.owns(e.node)) { pendingFx.splice(i, 1); e.draw(this.slotted(e.node) ? this.slotOf(e.node) : this.root); }
     }
-    if (this.key === 'combat') for (const e of ExhaustVfx.pending.splice(0)) void playSpriteVfx(this.root, 'vfx/cards/exhaust_vfx', e.x, e.y);
     // NCardSmithVfx.PlaySubParticles: SparkN's three emitters, at the VFX node (its scale applied to the offsets)
     for (let i = CardSmithVfx.pending.length - 1; i >= 0; i--) {
       const e = CardSmithVfx.pending[i];

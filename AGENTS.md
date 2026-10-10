@@ -75,7 +75,7 @@ CHROME=<路径> node tools/e2e/continue.mjs /tmp/cont              # 保存并�
 
 ## 架构
 
-规则层不是手写的，而是把原作（v0.98.3）反编译出的 C# 用 Roslyn 转译器整体转成 TypeScript；手写部分是让它跑起来的运行时，以及接在它下面的表现层。
+规则层不是手写的，而是把原作（v0.111.0 public-beta）反编译出的 C# 用 Roslyn 转译器整体转成 TypeScript；手写部分是让它跑起来的运行时，以及接在它下面的表现层。
 
 ```
 游戏安装包

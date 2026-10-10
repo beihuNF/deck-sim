@@ -5,7 +5,7 @@ Output layout (all paths mirror the original res:// paths):
   assets/images/...        WebP textures, `@0.5x` suffix = pixel/logical scale (Pixi convention)
   assets/atlases/*.json    repacked spritesheets (Pixi JSON hash format) + WebP pages
   assets/animations/...    Spine 4.2 .skel + .atlas + WebP pages
-  assets/fonts/*.woff2     subset fonts (only glyphs used by the 14 localizations)
+  assets/fonts/*.woff2     subset fonts (only glyphs used by the 16 localizations)
   assets/i18n/<lang>/*.json
   assets/manifest.json
   ref/godot/...            scenes/shaders/materials/tpsheets (text) for the rewrite
@@ -17,8 +17,10 @@ import zstandard
 from fontTools import subset
 from fontTools.ttLib import TTFont
 
-PCK_DEFAULT = "/Applications/SlayTheSpire2.app/Contents/Game/SlayTheSpire2.app/Contents/Resources/Slay the Spire 2.pck"
-DLL_DEFAULT = "/Applications/SlayTheSpire2.app/Contents/Game/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64/sts2.dll"
+_installed = "/Applications/SlayTheSpire2.app/Contents/Game/SlayTheSpire2.app/Contents/Resources"
+GAME_RESOURCES = os.environ.get('STS2_GAME_RESOURCES', _installed if os.path.isdir(_installed) else os.path.expanduser('~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources'))
+PCK_DEFAULT = os.path.join(GAME_RESOURCES, 'Slay the Spire 2.pck')
+DLL_DEFAULT = os.path.join(GAME_RESOURCES, 'data_sts2_macos_arm64/sts2.dll')
 SCALE = 0.5            # global downscale for anything >= MIN_SCALE_SIDE
 MIN_SCALE_SIDE = 128   # tiny icons stay 1:1
 FULL_RES = ('images/atlases/card_atlas.', 'animations/characters/', 'animations/character_select/')  # drawn at about source size: halving reads as blur
@@ -29,7 +31,7 @@ WEBP_Q = 75            # with method 6: ~16% smaller than q80/m4 at ~1 dB PSNR
 WEBP_METHOD = 6
 ATLAS_Q = {'card_atlas': 55}  # full-res painted art: q55 is visually the same as q75 at 82% of the bytes
 ATLAS_PAD = 2
-REF_EXT = {'.tscn', '.tres', '.gdshader', '.tpsheet', '.cfg', '.gdextension', '.import'}
+REF_EXT = {'.tscn', '.tres', '.gdshader', '.gdshaderinc', '.tpsheet', '.cfg', '.gdextension', '.import'}
 
 # ---------------------------------------------------------------- PCK
 class Pck:
@@ -244,6 +246,11 @@ def main():
     # font subsets cover every character any localization table uses (also for `--only fonts` runs)
     chars = set(); loc_files = pck.paths(lambda p: p.startswith('localization/') and p.endswith('.json'))
     for p in loc_files: chars.update(json.dumps(json.loads(pck.read(p).decode('utf-8')), ensure_ascii=False))
+    # Retired models in existing saves still use the frozen localization excerpts.
+    legacy = os.path.join(os.path.dirname(__file__), '../assets/legacy-v0.98.3/index.json')
+    if os.path.isfile(legacy):
+        with open(legacy, encoding='utf-8') as f:
+            chars.update(json.dumps(json.load(f)['i18n'], ensure_ascii=False))
     if want('i18n'):
         n = 0
         for p in loc_files:

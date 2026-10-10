@@ -1,67 +1,45 @@
 louse_progenitor@0.5x.webp
-size:1834,1787
+size:904,1008
 filter:Linear,Linear
-scale:0.6
+scale:0.258
 back fur
-bounds:2,2,696,751
-offsets:0,0,700,751
-rotate:90
+bounds:536,343,300,323
+offsets:0,0,301,323
 back leg bottom
-bounds:1600,1554,231,232
-offsets:1,0,232,233
-rotate:90
-front fur
-bounds:791,694,607,706
-rotate:90
-front leg
-bounds:472,1456,232,234
-rotate:90
-front leg 2
-bounds:448,1729,56,62
-rotate:90
-front leg 2 copy
-bounds:384,1731,54,62
-offsets:1,0,55,62
-rotate:90
-front leg bottom
-bounds:236,1495,232,234
-rotate:90
-front leg copy
-bounds:2,1533,231,232
-offsets:1,0,232,233
-rotate:90
-large antennae bottom 1
-bounds:1288,1615,170,310
-rotate:90
-large antennae bottom 2
-bounds:2,1766,380,19
-meddile leg
-bounds:853,1690,95,271
-offsets:1,0,96,271
-rotate:90
-meddile leg bottom
-bounds:580,1690,95,271
-offsets:1,0,96,271
-rotate:90
-middle fur
-bounds:2,700,601,787
-rotate:90
-middle leg 2
-bounds:512,1728,66,57
-offsets:0,0,67,57
-shadow
-bounds:2,1303,1475,151
-offsets:2,1,1478,153
-smal antennae top 1
-bounds:1126,1655,130,160
-rotate:90
-
-louse_progenitor_2@0.5x.webp
-size:1858,1492
-filter:Linear,Linear
-scale:0.6
+bounds:281,64,100,100
 bod
-bounds:1084,2,1488,772
+bounds:2,674,640,332
+front fur
+bounds:536,38,261,303
+front leg
+bounds:179,63,100,101
+front leg 2
+bounds:2,2,24,27
+front leg 2 copy
+bounds:77,34,23,27
+front leg bottom
+bounds:77,63,100,101
+front leg copy
+bounds:799,122,100,100
+large antennae bottom 1
+bounds:2,31,73,133
+large antennae bottom 2
+bounds:838,502,164,8
 rotate:90
+meddile leg
+bounds:799,224,41,117
+meddile leg bottom
+bounds:848,549,41,117
+middle fur
+bounds:644,668,258,338
+middle leg 2
+bounds:441,135,29,25
+rotate:90
+shadow
+bounds:468,38,634,66
+offsets:2,0,636,66
+rotate:90
+smal antennae top 1
+bounds:383,95,56,69
 web
-bounds:2,313,1080,1177
+bounds:2,166,464,506

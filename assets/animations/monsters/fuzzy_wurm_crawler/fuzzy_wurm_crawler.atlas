@@ -1,58 +1,60 @@
 fuzzy_wurm_crawler@0.5x.webp
-size:414,268
+size:720,268
 filter:Linear,Linear
-scale:0.35
+scale:0.465
 acid shine
-bounds:248,108,20,6
-rotate:90
+bounds:493,168,26,7
 acid wad
-bounds:371,15,46,23
-offsets:1,0,63,23
-rotate:90
+bounds:152,15,60,31
+offsets:1,0,83,31
 bod
-bounds:257,137,90,70
+bounds:339,10,120,93
 feather bottom 1
-bounds:378,148,40,21
-rotate:90
+bounds:214,18,53,28
 feather bottom 2
-bounds:396,13,48,15
+bounds:666,2,63,20
 rotate:90
 feather top 1
-bounds:319,21,50,40
-feather top 2
-bounds:349,124,83,27
+bounds:281,17,67,53
 rotate:90
+feather top 2
+bounds:169,48,110,36
 fur 1
-bounds:2,126,124,99
+bounds:2,81,165,131
 fur 2
-bounds:128,130,127,95
+bounds:169,86,168,126
 fur 3
-bounds:2,57,139,67
+bounds:347,177,184,89
 fur 3 annex
-bounds:181,15,60,35
+bounds:671,186,80,47
+rotate:90
 furt 2 twip
-bounds:378,190,50,21
+bounds:554,5,67,28
 rotate:90
 hair flail
-bounds:262,209,57,112
+bounds:2,4,75,148
+offsets:1,0,76,148
 rotate:90
 hair tuft
-bounds:2,2,114,53
+bounds:339,105,152,70
 loaded_acid
-bounds:376,242,36,24
+bounds:683,137,47,32
+rotate:90
 mouth
-bounds:257,68,81,67
+bounds:493,74,107,88
 mouth back
-bounds:340,63,71,59
+bounds:602,67,95,79
+rotate:90
 shadow
-bounds:2,227,258,39
+bounds:2,214,343,52
 teeth
-bounds:248,15,69,51
+bounds:461,4,91,68
 teeth2
-bounds:118,2,61,48
-offsets:0,0,61,49
+bounds:584,2,80,63
+offsets:0,0,80,66
 vapor ring
-bounds:143,52,103,76
-offsets:1,1,105,79
+bounds:533,164,136,102
+offsets:2,1,140,105
 whisker
-bounds:319,15,21,4
+bounds:339,184,28,6
+rotate:90

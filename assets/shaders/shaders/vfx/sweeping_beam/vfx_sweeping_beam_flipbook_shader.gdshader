@@ -1,4 +1,19 @@
 shader_type canvas_item;
+render_mode blend_mix;
+
+vec2 flipbook(vec2 uv, vec2 size, float progress)
+{
+	float h_frames = float(size.x);
+	float v_frames = float(size.y);
+	float particle_total_frames = float(size.x * size.y);
+	float particle_frame = floor(progress);
+	particle_frame = mod(particle_frame, particle_total_frames);
+
+	vec2 return_uv = uv/vec2(h_frames, v_frames);
+	return_uv += vec2(mod(particle_frame, h_frames) / h_frames, floor((particle_frame + 0.5) / h_frames) / v_frames);
+
+	return return_uv;
+}
 
 uniform vec2 pivot_offset;
 
@@ -19,17 +34,6 @@ varying vec3 world_pos_3d;
 
 varying float lifetime;
 varying vec4 vertex_color;
-
-vec2 flipbook(vec2 uv, vec2 size, float progress) {
-	progress = floor( mod(progress, (size.x * size.y)) );
-	vec2 frame_size = vec2(1.0, 1.0) / vec2(size.x, size.y);
-	vec2 frame = fract(uv / size) + frame_size;
-
-	frame.x += ( (progress / size.x) - frame_size.x * floor(progress/size.x) * size.x ) - frame_size.x;
-	frame.y += (frame_size.y * floor(progress/size.x) ) - frame_size.y ;
-
-	return frame;
-}
 
 void vertex() {
 	float rot_y_rad = radians(rot_y_deg);
@@ -55,8 +59,8 @@ void vertex() {
 
 	vertex_color = COLOR;
 	lifetime = INSTANCE_CUSTOM.y/INSTANCE_CUSTOM.w;
-	
-	// Apply perspective transformation to vertex position 
+
+	// Apply perspective transformation to vertex position
 	VERTEX += (UV - 0.5) / TEXTURE_PIXEL_SIZE * perspective_scale * (1.0 - inset);
 	VERTEX += pivot_offset * (1.0/TEXTURE_PIXEL_SIZE);
 }
@@ -74,14 +78,14 @@ void fragment() {
 
 	float flipbook_progress = texture(flipbook_curve, vec2(lifetime)).r;
 	vec2 flipbook_uv = flipbook(projected_uv, flipbook_size, frame_count * flipbook_progress * 0.99);
-	
+
 	float mask = texture(mask_texture, projected_uv).r;
-	
+
 	vec4 flipbook_tex = texture(TEXTURE, flipbook_uv);
-	
+
 	vec4 lut_tex = texture(lut, flipbook_tex.rr);
 	vec4 color_sub = lut_tex * vertex_color;
 	color_sub.a *= flipbook_tex.a * mask;
-	
+
 	COLOR = color_sub;
 }

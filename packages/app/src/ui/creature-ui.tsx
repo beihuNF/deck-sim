@@ -120,7 +120,7 @@ function HealthBar({ c, bx, bw, outline }: { c: any; bx: number; bw: number; out
   const r = 24 - safe(() => c.Monster?.HpBarSizeReduction ?? 0, 0);
   const x = bx - r / 2, w = bw + r, maxFg = w - 10;
   const hp = c.CurrentHp, max = Math.max(1, c.MaxHp);
-  const infinite = safe(() => !!c.ShowsInfiniteHp, false);
+  const infinite = safe(() => G.HpDisplayExtensions.IsInfinite(c.HpDisplay), false);
   const fg = (n: number) => (c.MaxHp <= 0 ? 0 : Math.max((n / max) * maxFg, hp > 0 ? 12 : 0));
   const powers = list(c.Powers);
   const poison = powers.find((p: any) => p instanceof G.PoisonPower);
@@ -140,7 +140,8 @@ function HealthBar({ c, bx, bw, outline }: { c: any; bx: number; bw: number; out
   const mid = middleground(c, maxFg, fg(hp));
   const fgColor = infinite ? [0.773, 0.733, 0.929] : outline ? [0.231, 0.435, 0.639] : [0.945, 0.216, 0.243];
   let [txt, outlineCol] = ['#FFF6E2', '#900000'];
-  if (poisonLethal) [txt, outlineCol] = ['#76FF40', '#074700'];
+  if (infinite) outlineCol = '#34204F';
+  else if (poisonLethal) [txt, outlineCol] = ['#76FF40', '#074700'];
   else if (doomLethal) [txt, outlineCol] = ['#FB8DFF', '#2D1263'];
   else if (outline) outlineCol = '#1B3045';
   const fillSrc = `url(${imageUrl('images/ui/combat/health_bar_fill.png')})`;
@@ -157,8 +158,8 @@ function HealthBar({ c, bx, bw, outline }: { c: any; bx: number; bw: number; out
         {showHp && fill(0, hpRight, fgColor)}
         {doomR > 0 && <DoomFill w={doomR} />}
       </div>
-      {infinite && c.IsAlive && <img class="hp-infinite" src={imageUrl('images/ui/combat/combat_infinity_hp.png') ?? ''} />}
-      {!infinite && (
+      {c.HpDisplay === G.HpDisplay.InfiniteWithoutNumbers && c.IsAlive && <img class="hp-infinite" src={imageUrl('images/ui/combat/combat_infinity_hp.png') ?? ''} />}
+      {(c.IsDead || G.HpDisplayExtensions.ShowsNumbers(c.HpDisplay)) && (
         <div class="hp-label" style={{ color: c.IsDead ? '#FFF6E2' : txt, WebkitTextStrokeColor: c.IsDead ? '#900000' : outlineCol }}>
           {c.IsDead ? safe(() => new G.LocString().$ctor_LocString('gameplay_ui', 'HEALTH_BAR.DEAD').GetRawText(), 'Dead') : `${hp}/${c.MaxHp}`}
         </div>
@@ -295,10 +296,13 @@ function Power({ p, node, x, y }: { p: any; node: CreatureView | null; x: number
   const pulse = !!node?.pulsing.has(p);
   // OnHovered: this power's tips (re-shown on combat-state changes); OnUnhovered hides them
   let tipFn = powerTipFns.get(p);
-  if (!tipFn && node) powerTipFns.set(p, (tipFn = () => node.ShowHoverTips(p.HoverTips)));
+  if (!tipFn && node) powerTipFns.set(p, (tipFn = () => {
+    if (p.Owner?.CombatState) node.ShowHoverTips(p.HoverTips);
+    else node.HideHoverTips();
+  }));
   // a freed NPower no longer refreshes its tips
   useEffect(() => () => { if (tipFn) node?.tipSubs.delete(tipFn); }, []);
-  const showTips = () => { if (!node || !tipFn) return; node.ShowHoverTips(p.HoverTips); node.tipSubs.add(tipFn); };
+  const showTips = () => { if (!node || !tipFn || !p.Owner?.CombatState) return; tipFn(); node.tipSubs.add(tipFn); };
   return (
     <div class="power" style={{ left: `${x}px`, top: `${y}px` }}
       onPointerEnter={showTips}
@@ -387,7 +391,7 @@ export function CreatureOverlay({ c, s, node, fresh, removing }: { c: any; s: Sl
   return (
     <div class={'creature' + (c.IsDead ? ' dead' : '') + (removing ? ' removing' : '') + (view?.IsFocused || hovered.current ? ' focused' : '') + (hovered.current ? ' hp-hover' : '')} data-side={c.IsEnemy ? 'enemy' : 'ally'}
       ref={(e) => { if (view) view.overlay = e; }}
-      style={{ left: `${s.x}px`, top: `${s.y}px`, transform: `scale(${k})` }}>
+      style={{ left: `${s.x}px`, top: `${s.y}px`, transform: `scale(${k})`, visibility: view?.LegacyVisible === false ? 'hidden' : undefined }}>
       <div class="cr-hitbox" style={{ left: `${bx}px`, top: `${by}px`, width: `${bw}px`, height: `${bh}px`, pointerEvents: view?.HitboxOn === false ? 'none' : undefined }}
         onPointerEnter={() => view?.OnFocus?.()} onPointerLeave={() => view?.OnUnfocus?.()}>
         <Reticle on={!!view?.reticle} w={bw} h={bh} />

@@ -3,7 +3,7 @@
 export const A = 'assets/';
 interface Frame { page: string; x: number; y: number; w: number; h: number; sw: number; sh: number; ox: number; oy: number; pw: number; ph: number }
 const frames = new Map<string, Frame>();
-const textures = new Map<string, { out: string; w: number; h: number }>();
+const textures = new Map<string, { out: string; w: number; h: number; ow: number; oh: number }>();
 export let spineIndex: Record<string, any> = {};
 /** Skeletons load from content-hashed js/*.bin copies (vite.config.ts): the CDN in front caches .bin but passes .skel through. */
 const skels = import.meta.glob<string>('../../../assets/**/*.skel', { query: '?url', import: 'default', eager: true });
@@ -13,11 +13,12 @@ export const skelSrc = (p: string) => ({ src: skels['../../../assets/' + p] ?? A
 export async function loadAssetIndex() {
   // Imported, not fetched: it ships as a content-hashed js/ chunk, which the CDN in front caches (it passes .json through).
   const man = JSON.parse((await import('../../../assets/manifest.json?raw')).default);
-  for (const t of man.textures) if (!t.error) textures.set(t.src, { out: t.out, w: t.w, h: t.h });
-  await Promise.all(man.atlases.flatMap((a: any) => Array.from({ length: a.pages }, async (_, i) => {
-    const j = await (await fetch(`${A}atlases/${a.name}-${i}.json`)).json();
+  for (const t of man.textures) if (!t.error) textures.set(t.src, { out: t.out, w: t.w, h: t.h, ow: t.ow ?? t.w, oh: t.oh ?? t.h });
+  await Promise.all([...man.atlases, ...(man.legacyAtlases ?? [])].flatMap((a: any) => Array.from({ length: a.pages }, async (_, i) => {
+    const base = a.base ?? 'atlases';
+    const j = await (await fetch(`${A}${base}/${a.name}-${i}.json`)).json();
     for (const [k, f] of Object.entries<any>(j.frames)) {
-      frames.set(`${a.name}/${k}`, { page: A + 'atlases/' + j.meta.image, x: f.frame.x, y: f.frame.y, w: f.frame.w, h: f.frame.h, sw: f.sourceSize.w, sh: f.sourceSize.h, ox: f.spriteSourceSize.x, oy: f.spriteSourceSize.y, pw: j.meta.size.w, ph: j.meta.size.h });
+      frames.set(`${a.name}/${k}`, { page: A + base + '/' + j.meta.image, x: f.frame.x, y: f.frame.y, w: f.frame.w, h: f.frame.h, sw: f.sourceSize.w, sh: f.sourceSize.h, ox: f.spriteSourceSize.x, oy: f.spriteSourceSize.y, pw: j.meta.size.w, ph: j.meta.size.h });
     }
   })));
   try { spineIndex = await (await fetch(A + 'spine-index.json')).json(); } catch { spineIndex = {}; }
@@ -34,6 +35,11 @@ export function imageUrl(res: string | null | undefined): string | null {
   const p = res.replace(/^res:\/\//, '');
   const t = textures.get(p);
   return t ? A + t.out : null;
+}
+/** Original Sprite2D dimensions, before web asset downscaling. */
+export function imageSourceSize(res: string): [number, number] | null {
+  const t = textures.get(res.replace(/^res:\/\//, ''));
+  return t ? [t.ow, t.oh] : null;
 }
 /** atlases/card_atlas.sprites/ironclad/bash.tres → frame */
 export function atlasFrame(res: string | null | undefined): Frame | null {

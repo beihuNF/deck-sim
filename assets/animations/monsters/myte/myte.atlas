@@ -1,136 +1,139 @@
 myte@0.5x.webp
-size:1953,1032
+size:570,1025
 filter:Linear,Linear
-scale:0.6
+scale:0.319
 bod
-bounds:1319,451,398,356
+bounds:366,811,212,189
 rotate:90
 bottom back leg 1
-bounds:1867,134,78,76
-offsets:2,1,81,77
-bottom back leg 2
-bounds:1852,300,68,108
-bottom back leg 3
-bounds:1102,124,109,327
-bottom front leg 1
-bounds:1399,18,80,86
-offsets:2,0,83,86
+bounds:489,16,42,41
+offsets:1,0,43,41
 rotate:90
+bottom back leg 2
+bounds:530,170,36,57
+bottom back leg 3
+bounds:360,391,58,174
+rotate:90
+bottom front leg 1
+bounds:444,13,43,45
+offsets:1,1,44,46
 bottom front leg 2
-bounds:999,25,82,109
+bounds:46,173,44,58
 bottom front leg 3
-bounds:460,479,89,356
+bounds:363,578,47,189
 rotate:90
 bottom lil leg 1
-bounds:1935,823,16,80
-offsets:1,0,17,80
+bounds:557,980,9,43
 bottom lil leg 2
-bounds:1558,851,43,47
+bounds:543,474,23,25
+rotate:90
 bottom lil leg 3
-bounds:1816,124,49,109
+bounds:92,173,26,58
 carapace 1
-bounds:1677,586,312,256
+bounds:2,2,166,136
 rotate:90
 carapace 2
-bounds:1317,285,242,164
+bounds:274,611,129,87
+rotate:90
 feather 1
-bounds:661,21,100,165
-offsets:0,1,100,167
+bounds:274,742,53,88
+offsets:0,0,53,89
 rotate:90
 feather 2
-bounds:1645,111,122,169
-offsets:1,1,123,170
+bounds:274,861,65,90
+offsets:0,0,65,91
 rotate:90
 feather 3
-bounds:1898,905,50,125
-offsets:0,1,50,127
+bounds:536,380,27,67
 feather 4
-bounds:1628,28,34,143
-offsets:1,1,35,146
-rotate:90
+bounds:547,499,19,77
+offsets:0,0,19,78
 ooze
-bounds:455,37,204,84
+bounds:240,309,108,45
 orifice
-bounds:1507,98,172,136
+bounds:496,77,91,72
 rotate:90
 pincer 1
-bounds:828,18,116,169
+bounds:274,797,62,90
 rotate:90
 pincer 2
-bounds:1561,272,109,177
-offsets:0,0,111,178
+bounds:265,551,58,95
+offsets:0,0,59,95
+rotate:90
 pincer 3
-bounds:1173,2,102,79
-offsets:0,0,103,79
+bounds:2,172,54,42
+offsets:0,0,55,42
 rotate:90
 pincer 4
-bounds:1867,63,69,82
-offsets:0,0,70,82
-rotate:90
+bounds:530,335,37,43
 projectile
-bounds:1672,235,173,178
-offsets:2,0,188,178
+bounds:265,457,92,94
+offsets:1,0,100,94
 rotate:90
 shadow
-bounds:875,851,681,179
-offsets:7,1,701,182
+bounds:2,928,362,95
+offsets:4,1,373,97
 suckwind
-bounds:443,39,483,10
+bounds:557,677,257,5
 rotate:90
 throat
-bounds:1867,212,86,78
-rotate:90
+bounds:444,60,46,41
 top back leg 1
-bounds:1487,12,84,139
-rotate:90
+bounds:287,233,45,74
 top back leg 2
-bounds:1645,64,45,163
+bounds:395,103,24,87
 rotate:90
 top back leg 3
-bounds:1213,106,102,345
-top front leg 1
-bounds:1254,13,85,143
-offsets:0,0,87,143
+bounds:362,522,54,183
 rotate:90
+top front leg 1
+bounds:240,231,45,76
+offsets:0,0,46,76
 top front leg 2
-bounds:1864,420,68,164
+bounds:530,229,36,87
 top front leg 3
-bounds:1558,900,130,338
+bounds:361,451,69,180
 rotate:90
 top lil leg 1
-bounds:1935,741,16,80
-offsets:1,0,17,80
+bounds:557,936,9,42
 top lil leg 2
-bounds:1603,851,43,47
+bounds:543,449,23,25
+rotate:90
 top lil leg 3
-bounds:818,459,49,109
+bounds:120,173,26,58
 toxic_drop
-bounds:2,3,69,28
+bounds:530,318,37,15
 toxic_goo00
-bounds:1083,27,88,95
-offsets:326,243,614,614
+bounds:395,24,47,51
+offsets:174,129,327,327
 toxic_goo01
-bounds:1677,410,185,174
-offsets:284,205,614,614
+bounds:265,356,99,93
+offsets:151,109,327,327
+rotate:90
 toxic_goo02
-bounds:799,136,301,315
-offsets:168,136,614,614
+bounds:360,228,161,168
+offsets:89,72,327,327
+rotate:90
 toxic_goo03
-bounds:455,123,342,354
-offsets:139,121,614,614
+bounds:366,627,182,189
+offsets:74,64,327,327
+rotate:90
 toxic_goo04
-bounds:875,453,396,442
-offsets:104,62,614,614
+bounds:2,233,212,236
+offsets:55,33,327,327
 rotate:90
 toxic_goo05
-bounds:460,570,413,460
-offsets:88,53,614,614
+bounds:148,6,220,245
+offsets:47,28,327,327
+rotate:90
 toxic_goo06
-bounds:2,33,439,489
-offsets:69,38,614,614
+bounds:2,447,234,261
+offsets:37,20,327,327
+rotate:90
 toxic_goo07
-bounds:2,524,456,506
-offsets:59,28,614,614
+bounds:2,683,243,270
+offsets:31,15,327,327
+rotate:90
 wind_ring
-bounds:1317,100,188,183
-offsets:1,1,194,187
+bounds:395,129,99,97
+offsets:1,1,103,100

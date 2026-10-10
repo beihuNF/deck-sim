@@ -1,0 +1,11 @@
+{
+  "query": "unlock=all&seed=BETASAVE3",
+  "char": 3,
+  "files": 10,
+  "floor": 25,
+  "hp": 80,
+  "maxHp": 80,
+  "gold": 417,
+  "deck": 27,
+  "relics": 8
+}

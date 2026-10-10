@@ -1,170 +1,161 @@
 frog_knight@0.5x.webp
-size:1854,652
+size:332,922
 filter:Linear,Linear
-scale:0.4
+scale:0.199
 arm bottom 2
-bounds:1568,334,96,103
+bounds:122,43,48,51
 arm bottom1
-bounds:1271,2,88,106
-offsets:1,1,89,113
+bounds:66,20,37,50
+offsets:7,0,44,56
 rotate:90
 beetle_bottom leg 1 bottom
-bounds:1130,2,139,88
-offsets:0,0,140,90
+bounds:127,156,69,44
+offsets:0,0,69,45
+rotate:90
 beetle_bottom leg 1 foot
-bounds:1434,103,121,78
+bounds:288,152,60,39
+rotate:90
 beetle_bottom leg 1 top
-bounds:1568,252,96,80
+bounds:287,49,48,40
+rotate:90
 beetle_bottom leg 2 bottom
-bounds:1720,17,40,48
-offsets:1,0,41,49
+bounds:310,680,20,24
 beetle_bottom leg 2 foot
-bounds:1666,204,68,94
-rotate:90
+bounds:295,527,34,47
 beetle_bottom leg 2 top
-bounds:1661,125,77,77
+bounds:172,48,38,38
 beetle_bottom leg 3 bottom
-bounds:1541,36,65,56
-offsets:0,0,66,64
-rotate:90
+bounds:212,30,33,28
+offsets:0,0,33,32
 beetle_bottom leg 3 foot
-bounds:530,2,103,63
+bounds:295,474,51,31
+rotate:90
 beetle_bottom leg 3 top
-bounds:1789,268,82,57
+bounds:173,201,41,28
 rotate:90
 beetle_carapace 1
-bounds:348,67,294,164
-beetle_carapace 2
-bounds:1161,92,191,164
-beetle_carapace back
-bounds:1660,15,58,52
-beetle_chest
-bounds:2,41,344,190
-offsets:0,1,344,191
-beetle_head
-bounds:749,180,410,304
-beetle_leg_hole_1
-bounds:1410,258,20,20
-beetle_leg_hole_2
-bounds:1762,2,17,19
-beetle_saddle strap
-bounds:1811,519,32,131
-beetle_top joint 1
-bounds:1727,67,51,56
-offsets:1,0,53,56
-beetle_top joint 2
-bounds:807,3,56,48
-beetle_top joint 3
-bounds:1740,128,74,53
-offsets:0,0,75,53
+bounds:208,358,146,82
 rotate:90
+beetle_carapace 2
+bounds:204,158,95,82
+rotate:90
+beetle_carapace back
+bounds:207,2,29,26
+beetle_chest
+bounds:2,299,171,95
+beetle_head
+bounds:2,396,204,151
+beetle_leg_hole_1
+bounds:295,587,10,10
+beetle_leg_hole_2
+bounds:295,577,8,10
+rotate:90
+beetle_saddle strap
+bounds:310,772,16,65
+beetle_top joint 1
+bounds:281,21,26,28
+rotate:90
+beetle_top joint 2
+bounds:238,2,28,24
+beetle_top joint 3
+bounds:212,60,37,26
 beetle_top leg 1 bottom
-bounds:1354,112,144,78
-offsets:0,0,150,78
+bounds:288,273,71,39
+offsets:0,0,74,39
 rotate:90
 beetle_top leg 1 foot
-bounds:1583,439,127,72
-offsets:0,0,128,72
+bounds:292,408,64,36
+rotate:90
 beetle_top leg 1 top
-bounds:1712,437,98,74
+bounds:2,5,49,37
 beetle_top leg 2 bottom
-bounds:897,4,33,51
-offsets:1,0,34,51
-rotate:90
+bounds:310,653,17,25
 beetle_top leg 2 foot
-bounds:1379,2,42,108
+bounds:309,597,21,54
 beetle_top leg 2 top
-bounds:1762,207,59,90
-rotate:90
+bounds:173,244,29,45
 beetle_top leg 3 bottom
-bounds:1795,138,67,56
-offsets:0,0,67,57
-rotate:90
+bounds:172,18,33,28
 beetle_top leg 3 foot
-bounds:1548,187,103,63
+bounds:175,343,51,31
+rotate:90
 beetle_top leg 3 top
-bounds:1782,352,83,57
+bounds:173,158,41,28
 rotate:90
 bod
-bounds:742,53,125,153
-offsets:0,0,125,154
-rotate:90
+bounds:2,44,62,75
+offsets:0,0,62,76
 closed_eye
-bounds:1762,23,42,37
-rotate:90
+bounds:307,576,21,19
 cloth
-bounds:1423,12,89,116
-rotate:90
+bounds:124,96,44,58
 elbow bottom
-bounds:737,14,37,68
-rotate:90
+bounds:310,736,18,34
 eye
-bounds:1780,85,41,36
+bounds:311,27,20,18
 rotate:90
 side eye
-bounds:1780,85,41,36
+bounds:311,27,20,18
 rotate:90
 hand bottom
-bounds:1666,350,85,114
-offsets:0,14,93,128
-rotate:90
+bounds:288,214,42,57
+offsets:0,7,46,64
 hand bottom top layer
-bounds:1661,69,54,64
+bounds:247,28,27,32
 rotate:90
 head
-bounds:1410,280,204,156
+bounds:208,255,101,78
 rotate:90
 head bottom
-bounds:1039,38,140,89
+bounds:127,227,70,44
 rotate:90
 neck armor
-bounds:644,65,166,96
+bounds:74,108,82,48
 rotate:90
 neck backing
-bounds:366,2,162,63
+bounds:295,839,81,31
+rotate:90
 pupil
-bounds:1812,437,32,22
-offsets:1,0,33,22
+bounds:295,599,16,11
+rotate:90
 reigns
-bounds:1583,513,137,226
+bounds:173,88,68,112
 rotate:90
 reigns_back
-bounds:1130,144,34,24
+bounds:295,638,17,12
 rotate:90
 saddle
-bounds:1161,258,247,226
-offsets:0,0,247,227
+bounds:2,192,123,105
+offsets:0,0,123,113
 shadow
-bounds:749,486,832,164
-offsets:2,1,835,166
+bounds:211,506,414,82
+offsets:1,1,416,83
+rotate:90
 spit drop
-bounds:1541,14,37,20
-offsets:0,0,38,20
+bounds:295,617,19,10
+rotate:90
 tongue
-bounds:2,14,362,25
+bounds:295,657,180,13
+rotate:90
 top arm
-bounds:897,39,140,139
+bounds:2,121,70,69
 top elbow
-bounds:865,20,31,30
-rotate:90
+bounds:311,10,15,15
 top foot
-bounds:635,5,58,100
-rotate:90
+bounds:175,291,29,50
 top hand
-bounds:1666,274,121,74
+bounds:292,346,60,37
+rotate:90
 top knee
-bounds:1812,461,56,39
+bounds:310,706,28,19
 rotate:90
 top leg 1
-bounds:1434,183,112,95
-offsets:0,0,113,95
+bounds:66,59,54,47
+offsets:0,0,56,47
 top leg 2
-bounds:1557,109,76,102
-rotate:90
+bounds:287,99,38,51
 top shoulder
-bounds:1599,43,64,59
-offsets:0,6,65,65
-rotate:90
+bounds:251,57,32,29
+offsets:0,3,32,32
 trident
-bounds:2,233,417,745
-rotate:90
+bounds:2,549,207,371

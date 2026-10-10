@@ -17,6 +17,14 @@
 :root[data-lang='zhs'] b, :root[data-lang='zhs'] b * { font-family: 'StsZhsBold', var(--font) !important; }
 :root[data-lang='zhs'] i, :root[data-lang='zhs'] i * { font-family: 'StsZhsItalic', var(--font) !important; }
 
+/* FontManager's traditional Chinese font set. */
+@font-face { font-family: 'StsZhtRegular'; src: url('/assets/fonts/NotoSansMonoCJKtc-Regular.woff2') format('woff2'); font-weight: 1 1000; }
+@font-face { font-family: 'StsZhtBold'; src: url('/assets/fonts/SourceHanSerifTC-Bold.woff2') format('woff2'); font-weight: 1 1000; }
+@font-face { font-family: 'StsZhtItalic'; src: url('/assets/fonts/SourceHanSerifTC-Medium.woff2') format('woff2'); font-weight: 1 1000; }
+:root[data-lang='zht'] * { font-family: 'StsZhtRegular', var(--font) !important; letter-spacing: 0 !important; font-synthesis: none; }
+:root[data-lang='zht'] b, :root[data-lang='zht'] b * { font-family: 'StsZhtBold', var(--font) !important; }
+:root[data-lang='zht'] i, :root[data-lang='zht'] i * { font-family: 'StsZhtItalic', var(--font) !important; }
+
 :root {
   --scale: 1;
   --turn: 0deg;

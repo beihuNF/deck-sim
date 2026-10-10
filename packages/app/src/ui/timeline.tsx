@@ -673,9 +673,9 @@ function InspectUnder({ v }: { v: Insp }) {
         <div class="tl-story" ref={story}>{v.hasStory ? safe(() => e.StoryTitle, '') : ''}</div>
       </div>
       <div class="tl-mask" ref={mask} style={{ maskImage: `url(${img('images/timeline/epoch_mask.png')})`, WebkitMaskImage: `url(${img('images/timeline/epoch_mask.png')})` }}>
-        <div class="tl-big-portrait" ref={portrait} style={{ backgroundImage: `url(${img(safe(() => e.BigPortraitPath, ''))})` }} />
+        <div class="tl-big-portrait" ref={portrait} style={{ backgroundImage: `url(${img(safe(() => e.ResolvedPortraitPath, ''))})` }} />
         <div class="tl-portrait-flash" ref={flash} />
-        {safe(() => e.IsArtPlaceholder, false) && <div class="tl-placeholder">{loc('timeline', 'PLACEHOLDER_PORTRAIT')}</div>}
+        {safe(() => !e.HasRealPortrait, false) && <div class="tl-placeholder">{loc('timeline', 'PLACEHOLDER_PORTRAIT')}</div>}
       </div>
     </div>
   );

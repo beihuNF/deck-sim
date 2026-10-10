@@ -2,6 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { boot } from './helpers';
 
 describe('GodotFileIo', () => {
+  it('returns null for a missing file and can read an existing file afterwards', () => {
+    const G: any = boot();
+    const io = new G.GodotFileIo();
+    io.SaveDir = 'user://missing-file-test';
+    expect(io.ReadFile('leaderboards.save')).toBeNull();
+    io.WriteFile$String_String('progress.save', '{"runs":3}');
+    expect(io.ReadFile('progress.save')).toBe('{"runs":3}');
+    expect(io.ReadFile('leaderboards.save')).toBeNull();
+    expect(io.ReadFile('progress.save')).toBe('{"runs":3}');
+  });
+
   it('writes through a .tmp that is gone afterwards (sync and async)', async () => {
     const G: any = boot();
     const io = new G.GodotFileIo();

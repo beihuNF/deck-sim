@@ -14,7 +14,7 @@ import { RichText, glyphs } from './richtext';
 import { openModal, closeModal, confirmPopup } from './modal';
 import { logicalRect } from './tooltip';
 import { NGoldArrowButton } from './buttons';
-import { anchored } from '../view';
+import { anchored, view } from '../view';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 export const seenFtue = (id: string) => safe(() => G.SaveManager.Instance.SeenFtue(id), true);
@@ -66,6 +66,13 @@ export function showFtue(id: string, key: string, sneaky?: () => void): Promise<
     if (queue.length === 1) next();
   });
 }
+/** The beta's single-player ascension popup uses the existing web modal and progress flag. */
+N('Ftue.NAscensionSingleplayerFtue').Create = () => {
+  if (!G.TestMode.IsOn && !G.SaveManager.Instance.SeenPopup('ascension_singleplayer_ftue')) {
+    void showFtue('ascension_singleplayer_ftue', 'ASCENSION_SINGLEPLAYER_FTUE');
+  }
+  return null; // showFtue owns its modal; there is no Godot node for NModalContainer to add
+};
 function closeTip() {
   const t = queue.shift();
   closeModal();
@@ -78,8 +85,14 @@ export const ftueActive = () => queue.length > 0;
 /** An FTUE popup: ftue_popup with the header (Kreon Bold 26, gold) and description (Kreon 22, cream), and "Got it!". */
 function FtuePopup({ t }: { t: Tip }) {
   const d = t.def;
-  const [px, py, pw, ph] = t.id === 'map_select_ftue' && t.anchor ? [t.anchor[0] + d.popup[0], t.anchor[1] + d.popup[1], d.popup[2], d.popup[3]]
+  let [px, py, pw, ph] = t.id === 'map_select_ftue' && t.anchor ? [t.anchor[0] + d.popup[0], t.anchor[1] + d.popup[1], d.popup[2], d.popup[3]]
     : [...anchored(d.popup[0], d.popup[1], d.popupTo ?? ''), d.popup[2], d.popup[3]];
+  // A queued map tip may outlive its moving node or the map itself. Keep its
+  // confirmation reachable even when the captured node position is offscreen.
+  if (t.id === 'map_select_ftue') {
+    px = Math.max(20 - view.ox, Math.min(1900 + view.ox - pw, px));
+    py = Math.max(20 - view.oy, Math.min(1060 + view.oy - ph, py));
+  }
   const hd = d.header ?? [82, 20, 36, 76], ds = d.desc ?? [37, 73, 35, 65];
   const arrow = d.arrow && (t.id === 'obtain_relic_ftue' && t.anchor ? { ...d.arrow, x: t.anchor[0], y: t.anchor[1] } : t.id === 'map_select_ftue' ? { ...d.arrow, x: px + d.arrow.x, y: py + d.arrow.y }
     : (([x, y]) => ({ ...d.arrow!, x, y }))(anchored(d.arrow.x, d.arrow.y, d.arrow.to ?? '')));

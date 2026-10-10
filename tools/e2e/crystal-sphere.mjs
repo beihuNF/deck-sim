@@ -21,7 +21,10 @@ const tap = async (sel, nth = 0) => {
 
 await page.goto((process.env.URL ?? 'http://127.0.0.1:47173/') + '?seed=CRYSTAL1&unlock=all&tutorials=off');
 await page.waitForFunction(() => window.ui?.screen === 'menu', null, { timeout: 60000 });
-await startRun(page);
+await startRun(page).catch(async e => {
+  console.log('start state', await page.evaluate(() => ({ screen: window.ui?.screen, room: window.ui?.room?.kind, map: window.ui?.mapOpen, modal: document.querySelector('.modal-slot')?.textContent, overlays: window.ui?.overlays?.map(o => o.kind), options: [...document.querySelectorAll('.event-option,.anc-hitbox')].map(e => e.textContent) })));
+  await fail('startRun: ' + e.message);
+});
 // straight into the event, as tools/e2e/coverage.mjs enters events
 await page.evaluate(() => {
   const G = window.G, rm = G.RunManager.Instance;

@@ -385,7 +385,7 @@ export async function combatBackdropFor(G: any, cs: any, rs: any): Promise<Conta
   const enc = cs?.Encounter;
   if (!enc || !rs) return null;
   const c = rs.CurrentMapCoord;
-  const rng = new G.Rng().$ctor_Rng$UInt32_Int32((rs.Rng.Seed + (c ? c.row + c.col * 747 : 0)) >>> 0, 0); // NCombatRoom.GenerateBackgroundRngForCurrentPoint
+  const rng = new G.Rng().$ctor_Rng$UInt64($.op64('+', rs.Rng.Seed, c ? c.row + c.col * 747 : 0, true)); // NCombatRoom.GenerateBackgroundRngForCurrentPoint
   let bga: any;
   try { bga = enc.GetBackgroundAssets(rs.Act, rng); } catch (e) { console.warn('background assets', e); return null; }
   let scaling = 1, off: [number, number] = [0, 0];

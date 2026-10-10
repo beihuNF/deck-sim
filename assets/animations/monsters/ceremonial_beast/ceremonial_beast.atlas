@@ -1,142 +1,144 @@
 ceremonial_beast@0.5x.webp
-size:2033,523
+size:650,1032
 filter:Linear,Linear
-scale:0.434
+scale:0.32
 FreezeFrame
-bounds:2,17,504,557
-offsets:11,3,519,570
-rotate:90
+bounds:2,620,371,410
+offsets:8,2,382,420
+FreezeFrameWhite
+bounds:375,825,185,205
+offsets:101,105,382,420
 L back leg bottom
-bounds:909,16,78,71
+bounds:586,651,58,52
 rotate:90
 L back leg bottom glow
-bounds:1739,3,97,91
-offsets:1,0,98,91
+bounds:468,350,72,67
 L back leg top
-bounds:1241,11,121,142
+bounds:382,2,89,105
 rotate:90
 L back leg top glow
-bounds:1443,134,142,164
+bounds:361,350,105,121
 L front leg bottom
-bounds:2002,416,29,105
+bounds:621,31,21,77
 L front leg bottom glow
-bounds:1950,111,50,124
-L front leg top
-bounds:1171,50,68,129
-L front leg top glow
-bounds:1587,141,89,150
+bounds:493,635,37,91
 rotate:90
+L front leg top
+bounds:553,299,50,95
+rotate:90
+L front leg top glow
+bounds:562,826,65,110
 R back leg bottom
-bounds:1941,237,53,85
+bounds:472,217,39,63
 rotate:90
 R back leg bottom glow
-bounds:801,21,73,106
+bounds:561,110,54,78
 rotate:90
 R back leg top
-bounds:1941,292,90,106
+bounds:561,166,66,78
 R back leg top glow
-bounds:1512,12,109,120
-offsets:2,3,111,126
+bounds:489,2,81,89
+offsets:1,2,82,93
 R font leg bottom
-bounds:1840,40,69,103
+bounds:572,246,51,76
 rotate:90
 R font leg bottom glow
-bounds:561,10,84,123
-offsets:1,0,85,123
-rotate:90
+bounds:468,419,61,91
+offsets:1,0,62,91
 R front leg top
-bounds:686,16,78,113
-rotate:90
+bounds:502,131,57,84
 R front leg top glow
-bounds:1739,96,99,134
+bounds:530,534,73,99
 String 2
-bounds:2010,70,18,66
+bounds:238,8,13,49
+rotate:90
 String 6
-bounds:1385,2,11,37
-rotate:90
+bounds:640,681,8,28
 String10
-bounds:1838,23,15,78
-rotate:90
+bounds:629,878,11,58
 back bod
-bounds:988,181,254,158
+bounds:375,635,188,116
+rotate:90
 back bod glow
-bounds:988,341,276,180
+bounds:2,169,204,132
 back string
-bounds:1385,15,125,117
+bounds:562,938,92,86
+rotate:90
 blastwave
-bounds:561,96,425,425
-offsets:10,10,444,444
+bounds:2,303,315,315
+offsets:7,7,328,328
 bod string 1
-bounds:1492,300,103,164
+bounds:452,512,76,121
 bod string 2
-bounds:1623,16,123,114
+bounds:531,441,91,84
 rotate:90
 bottom antler
-bounds:1779,235,160,163
-offsets:0,0,161,163
+bounds:382,93,118,120
+offsets:0,0,119,120
 bottom antler glow
-bounds:1597,232,175,180
-offsets:2,2,180,184
-rotate:90
+bounds:208,169,129,132
+offsets:2,2,133,136
+death_glow
+bounds:542,351,88,88
+offsets:3,3,94,94
 eye anim 1
-bounds:2002,124,6,12
+bounds:555,120,4,9
 eye anim 2
-bounds:1455,2,11,15
-rotate:90
+bounds:640,645,8,11
 eye anim 3
-bounds:2002,138,16,16
+bounds:435,621,12,12
 eye anim 4
-bounds:2002,400,16,14
-offsets:0,1,16,15
+bounds:638,188,12,10
+offsets:0,1,12,11
+rotate:90
 eye anim 5
-bounds:73,2,16,13
-offsets:0,1,16,14
+bounds:553,287,12,10
+offsets:0,1,12,11
 head
-bounds:1945,13,96,63
+bounds:572,37,71,47
 rotate:90
 neck
-bounds:1599,409,112,202
-rotate:90
+bounds:493,674,83,149
 neck glow
-bounds:1266,329,135,224
-rotate:90
+bounds:2,2,99,165
 neck tuft
-bounds:1803,400,121,197
-rotate:90
+bounds:361,473,89,145
 shadow
-bounds:1266,466,331,55
-string 1
-bounds:801,5,14,57
+bounds:319,374,244,40
 rotate:90
+shine_line
+bounds:103,3,164,133
+offsets:5,4,175,142
+rotate:90
+slide_puff
+bounds:578,711,113,63
+rotate:90
+string 1
+bounds:638,202,10,42
 string 3
-bounds:2,2,13,69
+bounds:502,119,10,51
 rotate:90
 string 4
-bounds:1424,2,11,29
-rotate:90
+bounds:640,658,8,21
 string 5
-bounds:1443,317,10,39
-rotate:90
+bounds:452,482,7,28
 string 7
-bounds:686,2,12,45
-offsets:0,15,12,60
-rotate:90
+bounds:572,2,9,33
+offsets:0,11,9,44
 string 8
-bounds:2002,156,18,79
-string 9
-bounds:1838,7,14,79
+bounds:375,620,13,58
 rotate:90
+string 9
+bounds:319,314,11,58
 tail
-bounds:1840,111,108,122
+bounds:472,258,79,90
 tail end
-bounds:1171,9,53,39
+bounds:339,184,39,29
 target bone here +
-bounds:2022,173,62,9
+bounds:629,198,46,7
 rotate:90
 top antler
-bounds:988,2,177,181
-rotate:90
+bounds:339,215,131,133
 top antler glow
-bounds:1244,134,193,197
-offsets:3,2,198,201
-rotate:90
+bounds:238,23,142,144
+offsets:2,2,146,148

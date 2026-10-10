@@ -113,6 +113,46 @@ export class Dictionary<K = any, V = any> implements Iterable<[K, V]> {
   GetEnumerator() { return new Enumerator(this); }
 }
 
+/** .NET SortedDictionary enumerates keys by its comparer, independent of insertion order (map path pruning). */
+export class SortedDictionary<K = any, V = any> implements Iterable<[K, V]> {
+  private entries: [K, V][] = [];
+  private comparer: any;
+  constructor(src?: any, comparer?: any) {
+    const sequence = src != null && (typeof src[Symbol.iterator] === 'function' || typeof src.GetEnumerator === 'function');
+    this.comparer = sequence ? comparer : src;
+    if (sequence) for (const [key, value] of iter(src)) this.Add(key, value);
+  }
+  private cmp(a: K, b: K) { return this.comparer?.Compare?.(a, b) ?? compare(a, b); }
+  private index(key: K): number {
+    let lo = 0, hi = this.entries.length;
+    while (lo < hi) { const mid = (lo + hi) >>> 1; if (this.cmp(this.entries[mid][0], key) < 0) lo = mid + 1; else hi = mid; }
+    return lo;
+  }
+  get Count() { return this.entries.length; }
+  get Keys() { return this.entries.map(e => e[0]); }
+  get Values() { return this.entries.map(e => e[1]); }
+  ContainsKey(key: K) { const i = this.index(key); return i < this.Count && this.cmp(this.entries[i][0], key) === 0; }
+  TryGetValue(key: K, out: { v: any }) {
+    const i = this.index(key), found = i < this.Count && this.cmp(this.entries[i][0], key) === 0;
+    out.v = found ? this.entries[i][1] : undefined; return found;
+  }
+  get_Item(key: K) {
+    const result = { v: undefined as V | undefined };
+    if (!this.TryGetValue(key, result)) err('System.Collections.Generic.KeyNotFoundException', 'Key not found.');
+    return result.v as V;
+  }
+  set_Item(key: K, value: V) {
+    const i = this.index(key);
+    if (i < this.Count && this.cmp(this.entries[i][0], key) === 0) this.entries[i][1] = value;
+    else this.entries.splice(i, 0, [key, value]);
+  }
+  Add(key: K, value: V) { if (this.ContainsKey(key)) err('System.ArgumentException', 'Duplicate key.'); this.set_Item(key, value); }
+  Remove(key: K) { const i = this.index(key); if (i >= this.Count || this.cmp(this.entries[i][0], key) !== 0) return false; this.entries.splice(i, 1); return true; }
+  Clear() { this.entries.length = 0; }
+  *[Symbol.iterator](): Iterator<[K, V]> { for (const [k, v] of this.entries) yield [k, v]; }
+  GetEnumerator() { return new Enumerator(this); }
+}
+
 export class HashSet<T = any> implements Iterable<T> {
   m = new Slots<T>();
   constructor(src?: any, _comparer?: any) {

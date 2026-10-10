@@ -24,7 +24,7 @@ const fmt = (ls: any) => safe(() => ls?.GetFormattedText?.() ?? String(ls ?? '')
 const cl = (k: string) => safe(() => new G.LocString().$ctor_LocString('characters', k).GetFormattedText(), '');
 const EXPO_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
 const isRandom = (c: any) => !!G.RandomCharacter && c instanceof G.RandomCharacter;
-const shake = () => safe(() => $.ext('MegaCrit.Sts2.Core.Nodes.NGame').Instance.ScreenShake(G.ShakeStrength.Weak, G.ShakeDuration.Short, 90), null);
+const shake = () => safe(() => $.ext('MegaCrit.Sts2.Core.Nodes.NGame').Instance.ScreenShake($.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeStrength').Weak, $.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeDuration').Short, 90), null);
 
 interface Sel { c: any; locked: boolean; n: number }
 let embarking = false;

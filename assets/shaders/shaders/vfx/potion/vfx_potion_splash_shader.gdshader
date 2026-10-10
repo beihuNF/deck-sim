@@ -1,6 +1,11 @@
 shader_type canvas_item;
 render_mode blend_mix;
 
+float erosion_from_factors(vec2 factors, float input)
+{
+	return smoothstep(factors.x, factors.x + factors.y, input);
+}
+
 uniform vec2 distortion_panning_speed;
 uniform float distortion_strength;
 
@@ -22,7 +27,7 @@ void fragment() {
 	vec4 texture_color =  texture(TEXTURE, UV + (distortion_tex.b * distortion_strength));
 
 	float erosion_curve_val = texture(erosion_curve, vec2(lifetime)).r;
-	float erosion_val = smoothstep(erosion_curve_val, erosion_curve_val + erosion_offset, texture_color.a);
+	float erosion_val = erosion_from_factors(vec2(erosion_curve_val, erosion_offset), texture_color.a);
 
 	vec4 lut_tex = texture(lut, vec2(texture_color.r));
 	vec4 color_sub = lut_tex * vertex_color;

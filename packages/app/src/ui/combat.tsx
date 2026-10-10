@@ -45,7 +45,7 @@ export function combatHotkey(key: string): boolean {
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 /** static_hover_tips `<key>.title` / `.description` (the counters' and piles' hover tips), with optional variables. */
-export function staticTip(key: string, vars: Record<string, string> = {}) {
+export function staticTip(key: string, vars: Record<string, string> = { Hotkey: 'None' }) {
   const ls = (k: string) => { const l = new G.LocString().$ctor_LocString('static_hover_tips', k); for (const [n, v] of Object.entries(vars)) l.Add$String_String(n, v); return safe(() => l.GetFormattedText(), ''); };
   setTip(ls(`${key}.title`), ls(`${key}.description`));
 }

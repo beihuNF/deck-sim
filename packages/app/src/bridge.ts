@@ -97,9 +97,16 @@ export class CreatureView extends NCreature {
   /** NSelectionReticle.IsSelected (the four corner brackets around the hitbox). */
   reticle = false;
   private multi = false;
+  /** Retired Doormaker still animates the old NCreatureVisuals.Body API. */
+  LegacyBody: { Scale: any; Modulate: any; Texture: any } | null = null;
+  LegacyVisible: boolean | undefined;
   /** _EnterTree: the creature's power events, its powers' Flashed (and their NPower's events), CombatEnded. */
   constructor(public creature: any) {
     super();
+    if (creature.Monster instanceof G.Doormaker) {
+      this.LegacyBody = { Scale: new $.Vector2(1, 1), Modulate: new $.Color(1, 1, 1, 1), Texture: null };
+      this.Visuals.Body = this.LegacyBody;
+    }
     creature.PowerIncreased = $.dcombine(creature.PowerIncreased, this.onPowerIncreased);
     creature.PowerApplied = $.dcombine(creature.PowerApplied, this.onPowerApplied);
     creature.PowerRemoved = $.dcombine(creature.PowerRemoved, this.onPowerRemoved);
@@ -182,6 +189,11 @@ export class CreatureView extends NCreature {
     this.pulsing.delete(p);
   };
   get Entity() { return this.creature; }
+  SetVisible(visible: boolean) {
+    if (!(this.creature.Monster instanceof G.Door || this.creature.Monster instanceof G.Doormaker)) return;
+    this.LegacyVisible = visible;
+    invalidate();
+  }
   // ---------------------------------------------- focus and hover tips
   /** NCreature.OnFocus: the nameplate; while targeting the target manager takes the hover, else the creature's tips
    *  (re-shown on every combat-state change until unfocused). */
@@ -348,6 +360,10 @@ export class CreatureView extends NCreature {
   /** OnCombatEnded: AnimHideIntent (the orbs are cleared by the bridge's CombatEnded handler). */
   private onCombatEnded = () => this.AnimHideIntent();
   get HasSpineAnimation() { return true; }
+  SpineAnimation: any = {
+    IsValid: false, SetAnimation() {}, AddAnimation() {}, GetCurrentTrack() { return null; },
+    GetAnimationState() { return { SetAnimation() {}, AddAnimation() {}, GetCurrent() { return null; } }; },
+  };
 
   // ---------------------------------------------- NCreature.ScaleTo / SetDefaultScaleTo / OstyScaleToSize / SetScaleAndHue
   /** Visuals.Scale, NCreatureVisuals.DefaultScale and the hsv hue RandomizeEnemyScalesAndHues gives the body. */
@@ -721,6 +737,8 @@ export async function purchase(entry: any, inventory: any) {
  * `layer` (the top of the room's backdrop) once its GlobalPosition is set. Speech bubbles show themselves (`bubbles`).
  */
 class SceneContainerView {
+  IsNodeReady() { return true; }
+  IsInsideTree() { return true; }
   layer: any = null;
   AddChild(child: any) {
     const path = child?.SceneFilePath;
@@ -940,7 +958,7 @@ const merchantShop = (Base: any) => class extends Base {
 export class MerchantView extends merchantShop(NMerchantRoom) {
   constructor(public Room: any, public players: any) {
     super();
-    this.initShop(Room.Inventory, G.MerchantRoom.Dialogue, [1206, 468, 270, 330]);
+    this.initShop(Room.GetLocalInventory(), G.MerchantRoom.Dialogue, [1206, 468, 270, 330]);
     this.MerchantButton.IsLocalPlayerDead = safeGet(() => G.LocalContext.GetMe$IEnumerablePlayer(players).Creature.IsDead, false);
     this.MerchantButton.PlayerDeadLines = this.dialogue.PlayerDeadLines;
   }
@@ -1170,7 +1188,7 @@ export class MapView extends NMapScreen {
   RefreshAllMapPointVotes() {}
   TravelToMapCoord(coord: any) { return travelToMapCoord(coord); }
   HighlightPointType() {}
-  CleanUp() { if (G.RunManager.Instance.IsSinglePlayerOrFakeMultiplayer) G.CombatManager.Instance.Unpause(); }
+  CleanUp() { if (G.RunManager.Instance.IsSingleplayerOrFakeMultiplayer) G.CombatManager.Instance.Unpause(); }
 }
 
 // ------------------------------------------------------------------ rewards & card choices
@@ -1195,8 +1213,16 @@ export class RewardsView extends NRewardsScreen {
   paint?: () => void;
   private fade: any = null;
   private done = tcs();
-  constructor(public isTerminal: boolean, public runState: any) {
+  private beforeRoomExit = () => {
+    this.buttons = [];
+    this.updateScreenState();
+    this.proceedOn = false;
+    invalidate();
+  };
+  constructor(public rewardsSet: any, public isTerminal: boolean, public runState: any) {
     super();
+    this.buttons = list(rewardsSet.Rewards);
+    for (const b of this.buttons) b.MarkContentAsSeen();
     this.tryEnableProceed();
     NDebugAudio()?.Play('victory.mp3');
   }
@@ -1211,7 +1237,7 @@ export class RewardsView extends NRewardsScreen {
     invalidate();
   }
   private tryEnableProceed() {
-    if (safeGet(() => G.Hook.ShouldProceedToNextMapPoint(this.runState), true) && !this.proceedOn) {
+    if ((!this.rewardsSet.DisallowSkipping || !this.skipLabel) && safeGet(() => G.Hook.ShouldProceedToNextMapPoint(this.runState), true) && !this.proceedOn) {
       if (this.isTerminal && this.buttons.length === 0) hideBackstop();
       this.proceedOn = true;
     }
@@ -1236,7 +1262,7 @@ export class RewardsView extends NRewardsScreen {
     this.busy.add(b);
     invalidate();
     let ok = false;
-    try { ok = await b.OnSelectWrapper(); } catch (e) { console.error(e); }
+    try { ok = await G.RunManager.Instance.RewardsSetSynchronizer.SelectLocalReward(b); } catch (e) { console.error(e); }
     this.busy.delete(b);
     if (ok) {
       const at = iconAt ? new $.Vector2(iconAt[0], iconAt[1]) : null;
@@ -1278,10 +1304,16 @@ export class RewardsView extends NRewardsScreen {
       G.TaskHelper.RunSafely(G.RunManager.Instance.ProceedFromTerminalRewardsScreen());
       return;
     }
+    G.RunManager.Instance.RewardsSetSynchronizer.SkipLocalRewardsSet();
     popOverlay(this);
+  }
+  AfterOverlayOpened() {
+    const sync = G.RunManager.Instance.RewardsSetSynchronizer;
+    sync.RewardsSkippedDuringRoomExit = $.dcombine(sync.RewardsSkippedDuringRoomExit, this.beforeRoomExit);
   }
   AfterOverlayShown() {
     this.tryEnableProceed();
+    this.updateScreenState();
     if (!this.complete) {
       this.fade?.CustomStep(1e3);
       const t = (this.fade = play(this, new $.WebTween().SetParallel()));
@@ -1303,7 +1335,11 @@ export class RewardsView extends NRewardsScreen {
   /** Whatever was left unclaimed is recorded as skipped. */
   AfterOverlayClosed() {
     const rm = G.RunManager.Instance;
-    if (rm.IsInProgress && !rm.IsCleaningUp) { for (const r of this.buttons) safeGet(() => r.OnSkipped(), undefined); this.done.TrySetResult(); }
+    if (rm.RewardsSetSynchronizer) {
+      const sync = rm.RewardsSetSynchronizer;
+      sync.RewardsSkippedDuringRoomExit = $.dremove(sync.RewardsSkippedDuringRoomExit, this.beforeRoomExit);
+    }
+    if (rm.IsInProgress && !rm.IsCleaningUp) this.done.TrySetResult();
     this.proceedOn = false;
   }
 }
@@ -1311,7 +1347,7 @@ export class RewardsView extends NRewardsScreen {
 export function rewardListHeight(buttons: any[]) {
   return buttons.reduce((h, b, i) => h + (i ? 10 : 0) + (b instanceof G.LinkedRewardSet ? list(b.Rewards).length * 86 + (list(b.Rewards).length - 1) * 3 + 30 : 86), 0);
 }
-NRewardsScreen.ShowScreen = (isTerminal: boolean, rs: any) => { const v = new RewardsView(isTerminal, rs); pushOverlay(v); return v; };
+NRewardsScreen.ShowScreen = (set: any, isTerminal: boolean, rs: any) => { const v = new RewardsView(set, isTerminal, rs); pushOverlay(v); return v; };
 
 /** A holder for a picked card: its node starts where the card is on screen (the pick flies from there to the deck). */
 function holderFor(card: any, el: Element | null) {
@@ -1356,10 +1392,13 @@ export class CardRewardView extends CardRowView {
   taken = new Set<any>();
   /** The picked cards' NCard nodes (they fly to the deck carrying their reward glow: ui/reward-glow.tsx). */
   flying = new Map<any, any>();
+  private holders = new Map<any, any>();
+  private sourceOptions: any;
   private pending: any = null;
   constructor(options: any, alts: any) { super(); this.RefreshOptions(options, alts); }
   get UseSharedBackstop() { return true; }
   RefreshOptions(options: any, alts: any) {
+    this.sourceOptions = options;
     this.results = list(options);
     this.cards = this.results.map((o: any) => o.Card ?? o);
     this.alternatives = list(alts);
@@ -1367,27 +1406,28 @@ export class CardRewardView extends CardRowView {
     this.layoutRow(this.cards.length, 350);
     for (const r of this.results) for (const relic of list(safeGet(() => r.ModifyingRelics, []))) safeGet(() => relic.Flash(), undefined);
   }
-  CardsSelected() { this.pending = tcs(); return this.pending.Task; }
-  private finish(holders: any[], remove: boolean) { const p = this.pending; this.pending = null; p?.TrySetResult({ Item1: holders, Item2: remove }); }
+  OptionSelected() { this.pending = tcs(); return this.pending.Task; }
+  GetCardHolder(card: any) { return this.holders.get(card) ?? null; }
+  private finish(index: number | null) { const p = this.pending; this.pending = null; p?.TrySetResult(index); }
   select(card: any, el: Element | null) {
     if (!this.clickable || !this.pending) return;
     this.taken.add(card);
     const h = holderFor(card, el);
+    this.holders.set(card, h);
     this.flying.set(card, h.$_CardNode);
-    this.finish([h], true);
+    this.finish(list(this.sourceOptions).findIndex((r: any) => (r.Card ?? r) === card));
     invalidate();
   }
-  /** Alternatives (Skip, Reroll, Sacrifice): OnAlternateRewardSelected, then the option's own OnSelect. */
+  /** Return the option index; the rule layer performs the alternate reward and decides whether selection ends. */
   alt(a: any) {
-    const A = G.PostAlternateCardRewardAction;
-    if (a.AfterSelected !== A.None && a.AfterSelected !== A.DoNothing) this.finish([], a.AfterSelected === A.DismissScreenAndRemoveReward);
-    G.TaskHelper.RunSafely(a.OnSelect());
+    if (!this.clickable || !this.pending) return;
+    this.finish(list(this.sourceOptions).length + this.alternatives.indexOf(a));
   }
   AfterOverlayOpened() {
     if (!seenFtue('power_card_ftue') && this.cards.some((c) => c.Type === G.CardType.Power)) void showFtue('power_card_ftue', 'POWER_FTUE');
     this.lockClicks();
   }
-  AfterOverlayClosed() { if (this.pending) this.finish([], false); }
+  AfterOverlayClosed() { if (this.pending) this.finish(null); }
 }
 NCardRewardSelectionScreen.ShowScreen = (options: any, alternatives: any) => { const v = new CardRewardView(options, alternatives); pushOverlay(v); return v; };
 
@@ -1459,11 +1499,15 @@ export class GridSelectView {
   results: any[] | null = null;
   enchantment: any = null; enchantAmount = 0;
   toTransformation: ((c: any) => any) | null = null;
+  combatPile: any = null;
+  runState: any = null;
+  refreshPile: (() => void) | null = null;
+  onClose: (() => void) | null = null;
   private done = tcs();
   constructor(public grid: GridKind, public cards: any[], public prefs: any) {}
   get UseSharedBackstop() { return true; }
-  get min() { return this.prefs.MinSelect; }
-  get max() { return this.prefs.MaxSelect; }
+  get min() { return this.combatPile ? Math.min(this.prefs.MinSelect, this.cards.length) : this.prefs.MinSelect; }
+  get max() { return this.combatPile ? Math.min(this.prefs.MaxSelect, this.cards.length) : this.prefs.MaxSelect; }
   get cancelable() { return !!this.prefs.Cancelable; }
   get prompt() { return safeGet(() => this.prefs.Prompt.GetFormattedText(), ''); }
   get single() { return this.max === 1; }
@@ -1500,16 +1544,16 @@ export class GridSelectView {
   cancelPreview() { this.preview = false; this.selected = []; invalidate(); }
   confirmPreview() { if (this.selected.length >= Math.max(this.min, 1)) this.complete(this.selected); }
   close() { this.complete([]); }
-  private complete(cards: any[]) { this.done.TrySetResult(cards); popOverlay(this); }
+  complete(cards: any[]) { this.done.TrySetResult(cards); popOverlay(this); }
   togglePeek() {
     this.peeking = !this.peeking;
     if (this.peeking) hideBackstop(); else showBackstop();
     invalidate();
   }
   get peekEnabled() { return this.visible && G.CombatManager.Instance.IsInProgress; }
-  AfterOverlayShown() { this.visible = true; invalidate(); }
+  AfterOverlayShown() { this.refreshPile?.(); this.visible = true; invalidate(); }
   AfterOverlayHidden() { this.visible = false; invalidate(); }
-  AfterOverlayClosed() { if (this.peeking) { this.peeking = false; } this.done.TrySetResult([]); }
+  AfterOverlayClosed() { this.onClose?.(); this.onClose = null; if (this.peeking) { this.peeking = false; } this.done.TrySetResult([]); }
 }
 const SC = (n: string) => N('Screens.CardSelection.' + n);
 SC('NSimpleCardSelectScreen').Create = (cards: any, prefs: any) => {
@@ -1519,7 +1563,23 @@ SC('NSimpleCardSelectScreen').Create = (cards: any, prefs: any) => {
   return v;
 };
 SC('NDeckCardSelectScreen').Create = (cards: any, prefs: any) => new GridSelectView('deck', list(cards), prefs);
-SC('NDeckUpgradeSelectScreen').ShowScreen = (cards: any, prefs: any) => { const v = new GridSelectView('upgrade', list(cards), prefs); pushOverlay(v); return v; };
+SC('NCombatPileCardSelectScreen').Create = (pile: any, prefs: any, filter: any) => {
+  const v = new GridSelectView('simple', [], prefs);
+  v.combatPile = pile;
+  const update = (checkComplete = true) => {
+    v.cards = list(pile.Cards).filter((c: any) => !filter || filter(c));
+    if (pile.Type === G.PileType.Draw) v.cards.sort((a: any, b: any) => a.Rarity - b.Rarity || a.Id.CompareTo(b.Id));
+    v.selected = v.selected.filter((c: any) => v.cards.includes(c));
+    if (checkComplete && (v.cards.length === 0 || v.cards.length === v.selected.length)) v.complete(v.selected);
+    invalidate();
+  };
+  update(false);
+  v.refreshPile = update;
+  pile.ContentsChanged = $.dcombine(pile.ContentsChanged, update);
+  v.onClose = () => { pile.ContentsChanged = $.dremove(pile.ContentsChanged, update); };
+  return v;
+};
+SC('NDeckUpgradeSelectScreen').ShowScreen = (cards: any, prefs: any, runState: any) => { const v = new GridSelectView('upgrade', list(cards), prefs); v.runState = runState; pushOverlay(v); return v; };
 SC('NDeckTransformSelectScreen').ShowScreen = (cards: any, toTransformation: any, prefs: any) => {
   const v = new GridSelectView('transform', list(cards), prefs);
   v.toTransformation = (c: any) => (typeof toTransformation === 'function' ? toTransformation(c) : toTransformation?.Invoke?.(c));
@@ -1700,7 +1760,7 @@ NCrystalSphereScreen.ShowScreen = (game: any) => {
 // RollingBoulderPower deals its damage from NRollingBoulderVfx's HitCreature signal (one per creature the boulder rolls
 // over) and then awaits the node leaving the tree. No boulder animation here: every target is hit right away.
 const NRollingBoulderVfx = N('Vfx.NRollingBoulderVfx');
-NRollingBoulderVfx.Create = (creatures: any) => {
+NRollingBoulderVfx.Create = (creatures: any, _damage: number, _debugFinalPosition?: any) => {
   const v = $.dummy(NRollingBoulderVfx);
   const targets = list(creatures);
   v.Connect = (signal: any, callable: any) => {
@@ -1882,7 +1942,7 @@ class MusicControllerView extends NRunMusicController {
     const act = this.runState?.Act;
     if (!act) return;
     const opts = list(act.BgMusicOptions);
-    const i = new G.Rng().$ctor_Rng$UInt32_Int32(this.runState.Rng.Seed >>> 0, 0).NextInt$2(0, opts.length);
+    const i = new G.Rng().$ctor_Rng$2(this.runState.Rng.Seed, 'bg_music').NextInt$2(0, opts.length);
     this.track = opts[i] ?? opts[0];
     audio.playMusic(this.track);
     audio.setMusicProgress(0);
@@ -1919,6 +1979,8 @@ class MusicControllerView extends NRunMusicController {
 const musicController = new MusicControllerView();
 
 export function installBridge() {
+  // The DOM decides which screen accepts input; the rule layer requests a refresh after changing rooms.
+  $.ext('MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext.ActiveScreenContext').Instance = { Update: invalidate };
   NAudioManager.Instance = new AudioManagerView();
   NRunMusicController.Instance = musicController;
   NGame.Instance = new GameView();

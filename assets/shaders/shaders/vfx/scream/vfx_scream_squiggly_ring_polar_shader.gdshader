@@ -1,6 +1,18 @@
 shader_type canvas_item;
 render_mode blend_mix;
 
+vec2 polar_coordinates(vec2 uv, vec2 center, float zoom, float repeat)
+{
+	vec2 dir = uv - center;
+	float radius = length(dir) * 2.0;
+	float angle = atan(dir.y, dir.x) * 1.0/(3.1416 * 2.0);
+	return mod(vec2(radius * zoom, angle * repeat), 1.0);
+}
+float erosion_from_factors(vec2 factors, float input)
+{
+	return smoothstep(factors.x, factors.x + factors.y, input);
+}
+
 uniform vec2 tiling;
 uniform vec2 x_offsets;
 
@@ -17,24 +29,6 @@ varying float rotation_rad;
 varying vec4 vertex_color;
 varying float lifetime;
 
-vec2 get_polar_uv(vec2 base_uv) {
-	base_uv -= 0.5;
-	base_uv *= 2.0;
-
-	float angle = atan(base_uv.y, base_uv.x) / (2.0 * PI);
-	float dist = length(vec2(
-			base_uv.x,
-			base_uv.y
-			));
-
-	vec2 polar_uv = vec2(
-			angle,
-			dist
-			);
-
-	return polar_uv;
-}
-
 void vertex() {
 	rotation_rad = INSTANCE_CUSTOM.x;
 	vertex_color = COLOR;
@@ -44,22 +38,22 @@ void vertex() {
 void fragment() {
 	float interpolation = texture(offset_curve, vec2(lifetime)).r;
 
-	vec2 distortion_polar_uv = get_polar_uv(UV);
+	vec2 distortion_polar_uv = polar_coordinates(UV, vec2(0.5, 0.5), 1.0, 1.0);
 	distortion_polar_uv *= distortion_tiling;
 	distortion_polar_uv += (TIME * distortion_offset_speed) + vec2(rotation_rad);
 
 	vec2 direction = normalize(vec2(0.5, 0.5) - UV);
 	vec4 distortion_mask = texture(TEXTURE, distortion_polar_uv);
 
-	vec2 polar_uv = get_polar_uv(UV + (direction * distortion_mask.g * distortion_mask.b * distortion_strength));
+	vec2 polar_uv = polar_coordinates(UV + (direction * distortion_mask.g * distortion_mask.b * distortion_strength), vec2(0.5, 0.5), 1.0, 1.0);
 	polar_uv *= tiling;
-	polar_uv += vec2(0.0, mix(x_offsets.x, x_offsets.y, interpolation));
+	polar_uv += vec2(mix(x_offsets.x, x_offsets.y, interpolation), 0.0);
 
 	vec4 main_tex = texture(TEXTURE, UV);
 	vec4 main_tex_polar = texture(TEXTURE, polar_uv);
 
 	float erosion_curve_val = texture(erosion_curve, vec2(lifetime)).r;
-	float erosion_val = smoothstep(erosion_curve_val, erosion_curve_val + erosion_offset, main_tex_polar.r);
+	float erosion_val = erosion_from_factors(vec2(erosion_curve_val, erosion_offset), main_tex_polar.r);
 
 	vec3 sub_color = vertex_color.rgb;
 	float alpha = vertex_color.a * main_tex.a * erosion_val;

@@ -1,98 +1,79 @@
 crossbow_ruby_raider@0.5x.webp
-size:1656,478
+size:331,523
 filter:Linear,Linear
-scale:0.6
+scale:0.279
 arrow
-bounds:1246,160,103,81
-offsets:0,0,103,82
-rotate:90
+bounds:226,101,48,38
 back lower arm
-bounds:1178,156,105,66
-offsets:0,1,106,67
-rotate:90
+bounds:276,130,49,31
 back upper arm
-bounds:839,151,97,72
+bounds:214,2,45,33
+rotate:90
 bottom shoulder
-bounds:1563,274,91,82
-offsets:1,0,92,83
-bottom shoulder light
-bounds:1188,265,91,82
-rotate:90
+bounds:276,163,50,57
 cape
-bounds:2,3,518,473
+bounds:2,301,241,220
 chestplate
-bounds:1329,312,132,164
-offsets:10,0,142,164
-chestplate back
-bounds:1188,362,114,97
-rotate:90
+bounds:226,222,61,76
+offsets:5,0,66,76
 crossbow
-bounds:522,147,329,264
-rotate:90
+bounds:71,176,153,123
 crossbow hand l
-bounds:1272,269,41,47
+bounds:2,2,20,22
 rotate:90
 crossbow hand r
-bounds:788,150,73,49
-rotate:90
+bounds:278,48,34,23
 crossbow handle
-bounds:1490,307,58,49
-offsets:0,0,73,49
+bounds:185,19,27,23
+offsets:0,0,34,23
 hand
-bounds:938,159,71,58
-rotate:90
-head
-bounds:1287,437,39,40
-offsets:0,0,40,40
-rotate:90
+bounds:276,18,33,28
 helmet
-bounds:1329,156,87,154
+bounds:245,407,114,66
+rotate:90
+helmet_feather
+bounds:26,4,18,35
+rotate:90
+helmet_fill
+bounds:313,455,66,13
+rotate:90
 hip armor
-bounds:1052,263,213,134
-offsets:0,0,214,134
-rotate:90
-hips
-bounds:601,3,142,107
-rotate:90
-hood back
-bounds:1463,33,98,131
-offsets:0,107,98,238
-hood top
-bounds:1418,166,70,144
-hood top copy
-bounds:522,2,77,143
+bounds:129,101,95,73
 l foot
-bounds:998,152,130,95
+bounds:289,238,59,40
+rotate:90
 l lower leg
-bounds:788,225,120,251
-offsets:1,0,121,251
+bounds:71,57,56,117
 l upper leg
-bounds:1463,358,118,178
+bounds:129,44,55,83
 rotate:90
+neck
+bounds:249,5,42,25
+rotate:90
+neck_ruffle
+bounds:278,73,33,32
 notch
-bounds:1052,253,8,20
-rotate:90
+bounds:313,444,4,9
 r foot
-bounds:1563,21,125,57
-rotate:90
+bounds:71,7,52,48
 r lower leg
-bounds:910,232,83,244
+bounds:245,300,44,105
 r upper leg
-bounds:710,10,135,156
-offsets:0,0,135,157
-rotate:90
+bounds:226,141,48,79
 shadow
-bounds:868,3,593,146
-offsets:5,2,599,149
+bounds:2,24,275,67
+offsets:3,1,279,69
+rotate:90
 string_tight
-bounds:995,249,227,55
+bounds:291,299,106,26
 rotate:90
 top lower arm
-bounds:1130,154,46,107
+bounds:276,107,21,50
+rotate:90
 top shoulder
-bounds:1490,169,103,81
-offsets:1,1,104,82
+bounds:214,49,50,62
 rotate:90
 top upper arm
-bounds:1573,148,58,124
-offsets:5,1,63,125
+bounds:125,15,27,58
+offsets:2,0,29,58
+rotate:90

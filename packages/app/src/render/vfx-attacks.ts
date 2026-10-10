@@ -26,7 +26,7 @@ const mul = (a: number[], b: number[]) => a.map((v, i) => v * (b[i] ?? 1));
 const byte = (v: number) => Math.max(0, Math.min(255, Math.round(v * 255)));
 const hex = (c: number[]) => (byte(c[0]) << 16) | (byte(c[1]) << 8) | byte(c[2]);
 /** NGame.ScreenShake(ShakeStrength.<s>, ShakeDuration.<d>). */
-const shake = (s: string, d: string) => safe(() => N('NGame').Instance?.ScreenShake?.(G.ShakeStrength[s], G.ShakeDuration[d]), null);
+const shake = (s: string, d: string) => safe(() => N('NGame').Instance?.ScreenShake?.($.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeStrength')[s], $.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeDuration')[d]), null);
 /** Cmd.Wait: none under FastMode Instant, in non-interactive mode or while the combat ends (as in the original). */
 const cmdWait = (s: number): Promise<void> => Promise.resolve(G.Cmd.Wait$2(s, false));
 /** Process-frame time (NHeavyBluntVfx.WaitForSeconds) — not skipped by fast mode. */

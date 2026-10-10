@@ -69,6 +69,14 @@ packages/wiki   资料站：构建时无头启动规则层，生成 /wiki/ 下�
 CHROME=<headless shell 路径> FAST=1 GOD=1 node tools/e2e/play.mjs /tmp/play       # 自动游玩
 CHROME=<路径> UNLOCK=0 GOD=1 FULL=1 SEED=E2EFINAL node tools/e2e/play.mjs /tmp/full 12000   # 全新存档完整一局：药水、牌堆查看、每层读档检查、保存退出+刷新+继续、通关后时间线收尾
 CHROME=<headless shell 路径> node tools/e2e/coverage.mjs /tmp/cov                 # 全部卡牌/药水/遭遇战/遗物/事件覆盖
+CHROME=<路径> LEGACY=1 node tools/e2e/coverage.mjs /tmp/legacy cards,encounters # 旧存档保留的退役卡牌和遭遇（含旧训练木偶三种设置）
+CHROME=<路径> node tools/e2e/hand-piles.mjs /tmp/hand-piles                  # 真实出牌、弃牌、消耗及跨回合的手牌/桌面节点同步
+CHROME=<路径> node tools/e2e/doormaker.mjs /tmp/doormaker                    # 旧门扉制造者三种形态、门复活及战斗结束
+CHROME=<路径> node tools/e2e/potion-use.mjs /tmp/potions                   # 鼠标使用群体、自身和投掷药水并核对效果
+CHROME=<路径> node tools/e2e/extra-turn.mjs /tmp/extra-turn                 # 额外回合后仍可结束回合
+CHROME=<路径> node tools/e2e/punch-off.mjs /tmp/punch-off                   # 瞬间速度下拳击比赛的两个分支
+CHROME=<路径> SEED=<种子> GOD=2 FAST=1 STOP_FLOOR=6 node tools/e2e/play.mjs /tmp/opening 3000 # 开局对照，不能算整局验收
+CHROME=<headless shell 路径> node tools/e2e/old-saves.mjs /tmp/old-saves      # 独立浏览器上下文导入冻结旧档 → 继续 → 重存 → 再继续
 CHROME=<headless shell 路径> node tools/e2e/continue.mjs /tmp/cont                # 保存并退出 → 刷新 → 继续
 CHROME=<headless shell 路径> node tools/e2e/unlock-all.mjs /tmp/unlock           # 设置里的全解锁：全新存档确认解锁 → 检查写入 → 刷新后仍在 → 局内不提供
 CHROME=<headless shell 路径> node tools/e2e/console.mjs /tmp/console             # 开发者控制台：开关、补全、执行命令、历史
@@ -83,7 +91,7 @@ CHANNEL=chrome GPU=1 node tools/e2e/perf.mjs /tmp/perf                          
 
 ## 从游戏包重新生成
 
-只有在更新游戏版本或修改提取、转译工具时才需要。前提：macOS，已安装 `/Applications/SlayTheSpire2.app`。
+只有在更新游戏版本或修改提取、转译工具时才需要。前提：macOS，已安装游戏。工具会寻找 `/Applications/SlayTheSpire2.app`，随后寻找 Steam 默认安装目录；自定义目录可通过 `STS2_GAME_RESOURCES` 指定 Resources 路径，转译器和反编译脚本也接受 `STS2_GAME_ASSEMBLIES` 指定 DLL 目录。
 
 升级游戏版本不要直接照下面的顺序跑：先备份、先看差异、先保旧存档，步骤和升级后的重查清单在 `.claude/skills/upgrading-game-version/SKILL.md`。
 
@@ -106,6 +114,7 @@ tools/decompile.sh
 # 4. 生成索引与场景
 tools/.venv/bin/python tools/spine_index.py
 tools/.venv/bin/python tools/scenes.py
+tools/.venv/bin/python tools/legacy_assets.py     # 补回旧存档模型所需的冻结资源；新版资源优先
 
 # 5. 转译规则层 → packages/core/src/gen
 pnpm gen

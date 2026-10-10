@@ -24,7 +24,7 @@ import { view } from '../view';
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const fmt = (ls: any) => safe(() => ls?.GetFormattedText?.() ?? String(ls ?? ''), '');
 const m = (k: string) => loc('main_menu_ui', k);
-const rng = (seed: number) => new G.Rng().$ctor_Rng$UInt32_Int32(seed >>> 0, 0);
+const rng = (seed: number | bigint) => new G.Rng().$ctor_Rng$UInt64(seed);
 const EXPO_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
 const hoverSfx = () => playOneShot('event:/sfx/ui/clicks/ui_hover');
 const clickSfx = () => playOneShot('event:/sfx/ui/clicks/ui_click');

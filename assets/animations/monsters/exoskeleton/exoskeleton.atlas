@@ -1,120 +1,115 @@
 exoskeleton@0.5x.webp
-size:284,523
+size:713,205
 filter:Linear,Linear
-scale:0.16
+scale:0.159
 antennae
-bounds:194,127,20,50
+bounds:572,119,20,50
 antennae 2
-bounds:166,94,20,50
+bounds:403,2,20,50
 antennae 3
-bounds:2,2,9,21
+bounds:287,4,9,21
 rotate:90
 antennae 4
-bounds:272,498,7,23
+bounds:653,2,7,23
+rotate:90
 antennae 5
-bounds:252,85,3,7
+bounds:434,113,3,7
+rotate:90
 antennae 6
-bounds:89,108,2,6
+bounds:425,46,2,6
 back armor
-bounds:232,439,38,82
+bounds:257,15,38,82
+rotate:90
 bod
-bounds:2,116,89,149
+bounds:257,55,88,148
 bottom arm 1
-bounds:257,112,25,64
+bounds:594,137,25,63
+rotate:90
 top arm 1
-bounds:257,112,25,64
+bounds:594,137,25,63
+rotate:90
 bottom arm 2
-bounds:188,85,40,40
+bounds:641,95,40,40
 top arm 2
-bounds:188,85,40,40
+bounds:641,95,40,40
 bottom arm 3
-bounds:188,61,22,41
+bounds:589,29,22,41
 rotate:90
 bottom arm 4
-bounds:89,19,45,41
+bounds:589,53,44,40
 bottom armor
-bounds:216,249,40,66
-rotate:90
+bounds:671,137,40,66
 bottom eye
-bounds:265,345,29,17
-rotate:90
+bounds:622,7,29,17
 bottom foot
-bounds:226,31,28,11
-rotate:90
+bounds:257,2,28,11
 top foot
-bounds:226,31,28,11
-rotate:90
+bounds:257,2,28,11
 bottom leg 1
-bounds:230,94,25,40
+bounds:632,26,25,39
+rotate:90
 bottom leg 2
-bounds:89,2,29,15
+bounds:425,2,28,15
 top leg 2
-bounds:89,2,29,15
+bounds:425,2,28,15
 bottom leg 3
-bounds:120,3,14,34
+bounds:455,3,14,33
 rotate:90
 top leg 3
-bounds:120,3,14,34
+bounds:455,3,14,33
 rotate:90
 head
-bounds:152,146,31,40
-rotate:90
+bounds:635,53,31,40
 head armor
-bounds:216,175,72,39
+bounds:598,164,71,39
 offsets:0,0,73,39
-rotate:90
 head armor 2
-bounds:198,291,81,65
-rotate:90
+bounds:434,46,81,65
 millipedestone1
-bounds:231,66,19,26
+bounds:496,18,19,26
 millipedestone2
-bounds:166,66,20,26
+bounds:673,28,20,26
 millipedestone3
-bounds:239,38,26,19
+bounds:601,2,25,19
 rotate:90
 shadow
-bounds:198,374,147,32
-offsets:2,0,149,32
-rotate:90
+bounds:450,171,146,32
+offsets:2,0,148,32
 slam_blur
-bounds:2,267,194,254
-offsets:0,2,194,256
+bounds:2,10,193,253
+offsets:0,2,193,255
+rotate:90
 top arm 3
-bounds:183,9,22,41
+bounds:517,7,22,41
 rotate:90
 top arm 4
-bounds:136,19,45,41
+bounds:594,95,45,40
 top eye
-bounds:156,2,12,15
+bounds:675,11,12,15
 top leg 1
-bounds:257,70,25,40
+bounds:560,2,25,39
+rotate:90
 top lil arm
-bounds:265,309,16,34
+bounds:695,20,16,34
 top lil arm 2
-bounds:198,269,13,20
+bounds:653,11,13,20
+rotate:90
 wing 1
-bounds:93,144,121,57
-rotate:90
+bounds:450,113,120,56
 wing 2
-bounds:93,62,71,80
+bounds:517,31,70,80
 wing 3
-bounds:152,179,86,62
-offsets:0,0,87,62
-rotate:90
+bounds:347,54,85,62
+offsets:0,0,86,62
 wing 4
-bounds:2,13,101,85
-rotate:90
+bounds:347,118,101,85
 wing cover 1
-bounds:257,178,69,25
-rotate:90
+bounds:425,19,69,25
 wing cover 2
-bounds:183,33,26,41
-offsets:0,1,26,42
-rotate:90
+bounds:683,95,26,40
+offsets:0,1,26,41
 wing cover 3
-bounds:216,136,31,37
+bounds:668,56,31,37
 offsets:0,1,31,38
 wing cover 4
-bounds:232,376,61,41
-rotate:90
+bounds:341,11,60,41

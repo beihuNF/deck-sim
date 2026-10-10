@@ -1,10 +1,17 @@
 // Hand-written System.* surface used by the rule layer (see src/gen/bcl-uses.txt).
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { provide, ext, str, fmt, fmtNum, cs, compare, compareStr, compareOrdinal, equals, hash, idHash, iter, round, enumStr, enumValues, isI, T, types, Enumerator, dm, charsToStr, span } from './core';
+import { provide, ext, str, fmt, fmtNum, cs, compare, compareStr, compareOrdinal, equals, hash, idHash, iter, round, enumStr, enumValues, isI, T, types, Enumerator, dm, charsToStr, span, int64 } from './core';
 import { Task, TaskCompletionSource, CancellationToken, CancellationTokenSource } from './task';
-import { Dictionary, HashSet, Queue, Stack, LinkedList } from './collections';
+import { Dictionary, SortedDictionary, HashSet, Queue, Stack, LinkedList } from './collections';
 import { Enumerable } from './linq';
 import { GAME_VERSION } from '../version';
+
+// Type.Assembly and Assembly.GetExecutingAssembly must share identity (content sorting uses reference equality).
+const gameAssembly = {
+  GetName: () => ({ Name: 'sts2', Version: { ToString: () => GAME_VERSION } }),
+  FullName: 'sts2', Location: '/',
+  GetTypes: () => Array.from(types.values()),
+};
 
 function def(proto: any, name: string, value: any) {
   Object.defineProperty(proto, name, { value, configurable: true, writable: true, enumerable: false });
@@ -194,9 +201,16 @@ const numStatics = (name: string, int: boolean, min: number, max: number) => ({
   Floor: Math.floor, Ceiling: Math.ceil, Truncate: Math.trunc,
 });
 provide('System.Int32', numStatics('Int32', true, -2147483648, 2147483647));
-provide('System.Int64', numStatics('Int64', true, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER));
+const num64Statics = (unsigned: boolean) => ({
+  $name: unsigned ? 'UInt64' : 'Int64', MinValue: unsigned ? 0 : -9223372036854775808n,
+  MaxValue: unsigned ? 18446744073709551615n : 9223372036854775807n,
+  Parse: (s: any) => int64(BigInt(String(s).trim()), unsigned),
+  TryParse: (s: any, out: any) => { try { out.v = int64(BigInt(String(s).trim()), unsigned); return true; } catch { out.v = 0; return false; } },
+  Min: (a: any, b: any) => a < b ? a : b, Max: (a: any, b: any) => a > b ? a : b,
+});
+provide('System.Int64', num64Statics(false));
 provide('System.UInt32', numStatics('UInt32', true, 0, 4294967295));
-provide('System.UInt64', numStatics('UInt64', true, 0, Number.MAX_SAFE_INTEGER));
+provide('System.UInt64', num64Statics(true));
 provide('System.Int16', numStatics('Int16', true, -32768, 32767));
 provide('System.Byte', numStatics('Byte', true, 0, 255));
 provide('System.Single', numStatics('Single', false, -3.4028234663852886e38, 3.4028234663852886e38));
@@ -336,7 +350,7 @@ getter(F, 'IsValueType', function (this: any) { return !!this.$struct || !!this.
 getter(F, 'IsGenericType', function () { return false; });
 getter(F, 'IsSealed', function () { return false; });
 getter(F, 'BaseType', function (this: any) { const p = Object.getPrototypeOf(this); return p && p !== Function.prototype ? p : null; });
-getter(F, 'Assembly', function () { return { GetName: () => ({ Name: 'sts2' }), FullName: 'sts2' }; });
+getter(F, 'Assembly', function () { return gameAssembly; });
 getter(F, 'TypeHandle', function (this: any) { return this; });
 def(F, 'IsSubclassOf', function (this: any, t: any) { return this !== t && typeof t === 'function' && this.prototype instanceof t; });
 def(F, 'IsAssignableFrom', function (this: any, c: any) {
@@ -369,6 +383,10 @@ provide('System.Collections.Generic.Comparer`1', { $name: 'Comparer', Default: {
 const cultureCmp = (ic: boolean) => ({ Compare: (a: string, b: string) => compareStr(a, b, ic), Equals: (a: string, b: string) => compareStr(a, b, ic) === 0, GetHashCode: (a: string) => hash(ic ? a?.toUpperCase() : a) });
 provide('System.StringComparer', {
   $name: 'StringComparer',
+  Create: (culture: any, options: number | boolean) => {
+    const collator = new Intl.Collator(culture?.Name || 'en', { sensitivity: options === true || options === 1 ? 'accent' : 'variant' });
+    return { Compare: collator.compare, Equals: (a: string, b: string) => collator.compare(a, b) === 0 };
+  },
   Ordinal: { Compare: (a: string, b: string) => compareStr(a, b, 4), Equals: (a: any, b: any) => a === b, GetHashCode: hash },
   OrdinalIgnoreCase: { Compare: (a: string, b: string) => compareStr(a, b, 5), Equals: (a: string, b: string) => a?.toUpperCase() === b?.toUpperCase(), GetHashCode: (a: string) => hash(a?.toUpperCase()) },
   InvariantCulture: cultureCmp(false), InvariantCultureIgnoreCase: cultureCmp(true), CurrentCulture: cultureCmp(false), CurrentCultureIgnoreCase: cultureCmp(true),
@@ -472,6 +490,9 @@ export class DateTime {
 }
 provide('System.DateTime', DateTime);
 provide('System.DateTimeOffset', Object.assign(class DateTimeOffset extends DateTime {
+  static get MinValue() { return new DateTimeOffset(-62135596800000); }
+  static get MaxValue() { return new DateTimeOffset(253402300799999); }
+  static get UnixEpoch() { return new DateTimeOffset(0); }
   static get Now() { return new DateTimeOffset(Date.now()); }
   static get UtcNow() { return new DateTimeOffset(Date.now()); }
   static FromUnixTimeSeconds(s: number) { return new DateTimeOffset(s * 1000); }
@@ -493,7 +514,9 @@ provide('System.Threading.Tasks.TaskCompletionSource`1', TaskCompletionSource);
 provide('System.Threading.CancellationToken', CancellationToken);
 provide('System.Threading.CancellationTokenSource', CancellationTokenSource);
 provide('System.Collections.Generic.Dictionary`2', Dictionary);
-provide('System.Collections.Generic.SortedDictionary`2', Dictionary);
+provide('System.Collections.Generic.SortedDictionary`2', SortedDictionary);
+provide('System.Collections.Immutable.ImmutableHashSet`1', { get Empty() { return new HashSet(); } });
+provide('System.Runtime.ExceptionServices.ExceptionDispatchInfo', { Capture: (error: any) => ({ Throw() { throw error; } }) });
 provide('System.Collections.Concurrent.ConcurrentDictionary`2', Dictionary);
 provide('System.Collections.Generic.HashSet`1', HashSet);
 provide('System.Collections.Generic.SortedSet`1', HashSet);
@@ -713,7 +736,7 @@ provide('System.Reflection.CustomAttributeExtensions', {
   IsDefined: (m: any, t: any) => (typeof m?.IsDefined === 'function' ? m.IsDefined(t) : false),
 });
 provide('System.AppDomain', { CurrentDomain: { GetAssemblies: () => [], AssemblyResolve: null, BaseDirectory: '/', FriendlyName: 'sts2' } });
-provide('System.Reflection.Assembly', { GetExecutingAssembly: () => ({ GetName: () => ({ Name: 'sts2', Version: { ToString: () => GAME_VERSION } }), GetTypes: () => [], Location: '/' }), GetEntryAssembly: () => null, LoadFrom: () => null });
+provide('System.Reflection.Assembly', { GetExecutingAssembly: () => gameAssembly, GetAssembly: () => gameAssembly, GetEntryAssembly: () => gameAssembly, LoadFrom: () => null });
 
 // ------------------------------------------------------------------ Regex (.NET pattern dialect is close to JS for the patterns the game uses)
 const RX_IGNORECASE = 1, RX_MULTILINE = 2, RX_EXPLICITCAPTURE = 4, RX_SINGLELINE = 16, RX_IGNOREWS = 32;
@@ -910,6 +933,11 @@ const utf8 = new TextEncoder();
 provide('System.Text.Encoding', {
   UTF8: {
     GetBytes: (s: any, a?: any, b?: any, arr?: any, off?: any) => {
+      if (typeof s === 'string' && a != null && typeof a !== 'number' && b === undefined) {
+        const bytes = utf8.encode(s);
+        for (let i = 0; i < bytes.length; i++) a[i] = bytes[i];
+        return bytes.length;
+      }
       if (typeof s === 'string' && arr !== undefined) { const bytes = utf8.encode(s.substr(a, b)); for (let i = 0; i < bytes.length; i++) arr[off + i] = bytes[i]; return bytes.length; }
       return Array.from(utf8.encode(typeof s === 'string' ? s : charsToStr(s)));
     },
@@ -919,8 +947,16 @@ provide('System.Text.Encoding', {
   ASCII: { GetBytes: (s: string) => Array.from(s, (c) => c.charCodeAt(0) & 127), GetString: (b: number[]) => charsToStr(b) },
   Unicode: { GetBytes: (s: string) => Array.from(s).flatMap((c) => [c.charCodeAt(0) & 255, c.charCodeAt(0) >> 8]) },
 });
-const le = (arr: number[], v: number, n: number, off = 0) => { for (let i = 0; i < n; i++) arr[off + i] = Math.floor(v / 2 ** (8 * i)) & 255; };
-const rle = (arr: number[], n: number, signed: boolean) => { let v = 0; for (let i = n - 1; i >= 0; i--) v = v * 256 + (arr[i] & 255); if (signed && v >= 2 ** (8 * n - 1)) v -= 2 ** (8 * n); return v; };
+const le = (arr: number[], v: number | bigint, n: number, off = 0) => {
+  const value = BigInt.asUintN(n * 8, typeof v === 'bigint' ? v : BigInt(Math.trunc(v)));
+  for (let i = 0; i < n; i++) arr[off + i] = Number((value >> BigInt(8 * i)) & 255n);
+};
+const rle = (arr: number[], n: number, signed: boolean) => {
+  let v = 0n;
+  for (let i = n - 1; i >= 0; i--) v = (v << 8n) | BigInt(arr[i] & 255);
+  if (signed) v = BigInt.asIntN(n * 8, v);
+  return int64(v, !signed);
+};
 provide('System.Buffers.Binary.BinaryPrimitives', {
   WriteInt32LittleEndian: (a: number[], v: number) => le(a, v >>> 0, 4), WriteUInt32LittleEndian: (a: number[], v: number) => le(a, v >>> 0, 4),
   WriteInt16LittleEndian: (a: number[], v: number) => le(a, v & 0xffff, 2), WriteUInt16LittleEndian: (a: number[], v: number) => le(a, v & 0xffff, 2),

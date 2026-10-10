@@ -1,5 +1,6 @@
 // Runtime entry for generated code: `import * as $ from "../rt/index"`.
 export * from './core';
+export { rotateLeft64, xxHash64 } from './int64';
 export { Task, async, seq, Seq, toTask, TaskCompletionSource, CancellationToken, CancellationTokenSource } from './task';
 export { Dictionary, HashSet, Queue, Stack, introSort } from './collections';
 export { Enumerable } from './linq';

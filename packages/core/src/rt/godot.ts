@@ -377,17 +377,23 @@ export function readResource(p: string) { return resReader(resPath(p)); }
 
 const ModeFlags = { Read: 1, Write: 2, ReadWrite: 3, WriteRead: 7 };
 class FileAccess {
+  private static openError = 0;
   private buf = '';
   private pos = 0;
   constructor(private path: string, private mode: number, content?: string) { if (mode & 1) this.buf = content ?? vfs.read(path) ?? ''; }
   static ModeFlags = ModeFlags;
   static Open(path: string, mode: number) {
-    if (!isUser(path)) { const s = mode === ModeFlags.Read ? readResource(path) : null; return s === null ? null : new FileAccess(path, mode, s); }
-    if (mode === ModeFlags.Read && !vfs.exists(path)) return null;
+    this.openError = 0;
+    if (!isUser(path)) {
+      const s = mode === ModeFlags.Read ? readResource(path) : null;
+      if (s === null) { this.openError = 7; return null; } // Error.FileNotFound
+      return new FileAccess(path, mode, s);
+    }
+    if (mode === ModeFlags.Read && !vfs.exists(path)) { this.openError = 7; return null; }
     return new FileAccess(path, mode);
   }
   static FileExists(p: string) { return isUser(p) ? vfs.exists(p) : readResource(p) !== null; }
-  static GetOpenError() { return 0; }
+  static GetOpenError() { return this.openError; }
   static GetFileAsString(p: string) { return vfs.read(p) ?? ''; }
   static GetModifiedTime() { return Math.floor(Date.now() / 1000); }
   GetAsText() { return this.buf; }

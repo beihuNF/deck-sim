@@ -1,35 +1,32 @@
 eye_with_teeth@0.5x.webp
-size:384,520
+size:619,276
 filter:Linear,Linear
-scale:0.5
+scale:0.465
 back petals
-bounds:2,4,181,230
+bounds:330,60,168,214
 death_still
-bounds:2,236,261,252
-offsets:1,0,262,252
+bounds:2,30,244,234
+rotate:90
 extra vine
-bounds:2,490,28,351
+bounds:2,2,26,326
 rotate:90
 eyeball
-bounds:265,283,103,103
+bounds:500,179,95,95
 iris
-bounds:185,69,37,69
-offsets:0,0,37,70
+bounds:238,36,34,65
 rotate:90
 leaf 1
-bounds:265,214,67,92
+bounds:238,72,62,86
 rotate:90
 leaf 1 open
-bounds:265,152,60,88
-offsets:1,1,61,90
+bounds:330,2,56,83
+offsets:1,0,57,83
 rotate:90
 leaf 2
-bounds:185,108,126,78
-rotate:90
+bounds:500,24,117,72
 leaf 3
-bounds:265,388,117,85
+bounds:500,98,109,79
 leaf 4
-bounds:265,2,86,148
+bounds:238,136,80,138
 pupil
-bounds:355,475,21,43
-offsets:1,1,23,44
+bounds:305,30,21,40

@@ -18,11 +18,11 @@ void fragment()
 	float distortion_mask = texture(TEXTURE, (UV * distortion_tiling) + (TIME * distortion_offset_speed) + vec2(rotation_rad)).b;
 	distortion_mask -= 0.5;
 	distortion_mask *= 2.0;
-	
+
 	vec4 main_tex = texture(TEXTURE, UV + vec2(distortion_mask * distortion_strength, 0));
-	
+
 	vec4 sub_color = vertex_color;
 	float alpha = main_tex.a * vertex_color.a;
-	
-	COLOR = vec4(sub_color.rgb, alpha); 
+
+	COLOR = vec4(sub_color.rgb, alpha);
 }

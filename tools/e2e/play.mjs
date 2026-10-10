@@ -8,8 +8,9 @@
 // does) on every floor's map and rebuilds a RunState from it. FULL=1 turns all five on.
 // DUMP=<dir> copies the player's save files out at each of those points (see dump below): the old-save fixtures of
 // packages/core/test/old-saves.test.ts are made this way.
+// STOP_FLOOR=<n> ends on that floor's map for comparing deterministic openings; it is not a full-run check.
 // Exit code: 0 when the run reached the game-over screen (prints RESULT WIN/LOSS) or ran out of steps cleanly;
-// 1 on a hang, a stuck/looping UI or uncaught page errors.
+// 1 on a hang, a stuck/looping UI, console errors or uncaught page errors.
 // CHROME: a Playwright chromium, e.g. `npx playwright install chromium-headless-shell` →
 //   ~/Library/Caches/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-mac-arm64/chrome-headless-shell
 import { chromium } from 'playwright';
@@ -161,21 +162,29 @@ const step = () => page.evaluate(() => {
     const endTurn = () => (er0 ? { ...info, screen: 'combat', did: true, tap: [er0.left + er0.width / 2, er0.top + er0.height / 2] } : { ...info, screen: 'combat-wait' });
     // play a playable hand card with the mouse like a player: drag it up (and click an enemy for targeted cards)
     const cr = window.G.$.ext('MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom').Instance, hand = cr?.Ui?.Hand;
+    const cs = window.G.CombatManager.Instance.DebugOnlyGetState?.();
+    // Focus the leader rather than endlessly killing its respawning minions (The Kin).
+    const enemyHitbox = () => {
+      const enemies = [...(cs?.Enemies ?? [])].filter(e => !e.IsDead);
+      const minion = e => [...e.Powers].some(p => p instanceof window.G.MinionPower);
+      enemies.sort((a, b) => Number(minion(a)) - Number(minion(b)) || b.MaxHp - a.MaxHp);
+      return enemies.map(e => cr?.GetCreatureNode(e)?.overlay?.querySelector('.cr-hitbox')).find(Boolean)
+        ?? q('.creature[data-side="enemy"]:not(.dead) .cr-hitbox');
+    };
     // a play still open after our release waits for a click, as in the game: released over no enemy (the aimed one
     // died or left meanwhile) → NTargetManager's ClickMouseToTarget; released before the card reached the play zone →
     // NMouseCardPlay's click mode. Click a live enemy like a player would.
     if (hand?.currentPlay) {
-      const e = q('.creature[data-side="enemy"]:not(.dead) .cr-hitbox');
+      const e = enemyHitbox();
       return e ? { ...info, screen: 'combat-wait', tap: tapOf(e) } : { ...info, screen: 'combat-wait' };
     }
     const stage = q('.stage-root').getBoundingClientRect(), k = stage.width / 1920;
     const vp = (x, y) => [stage.left + x * k, stage.top + y * k];
     // a thrown potion aims like a card: click a live enemy
     if (q('.combat.targeting')) {
-      const e = q('.creature[data-side="enemy"]:not(.dead) .cr-hitbox');
+      const e = enemyHitbox();
       return e ? { ...info, screen: 'potion-aim', did: true, tap: tapOf(e) } : { ...info, screen: 'combat-wait' };
     }
-    const cs = window.G.CombatManager.Instance.DebugOnlyGetState?.();
     if (etb && cs && !hand?.IsInCardSelection) {
       const turn = `${rs?.TotalFloor}:${cs.RoundNumber}`;
       // POTIONS: once per player turn, the first held potion: open its popup, press Drink / Throw (or close it if unusable)
@@ -205,7 +214,7 @@ const step = () => page.evaluate(() => {
     const h = hand?.ActiveHolders.find((x) => x.hitboxEnabled && x.CardModel?.CanPlay$0?.());
     if (h) {
       const g = h.GlobalPosition, T = window.G.TargetType, tt = h.CardModel.TargetType;
-      const enemy = [...document.querySelectorAll('.creature[data-side="enemy"]:not(.dead) .cr-hitbox')][0];
+      const enemy = enemyHitbox();
       const er = enemy?.getBoundingClientRect();
       const to = tt === T.AnyEnemy && er ? [er.left + er.width / 2, er.top + er.height / 2] : null;
       if (tt === T.AnyEnemy && !to) return endTurn();
@@ -407,6 +416,10 @@ for (let i = 0; i < maxSteps; i++) {
     failed = true;
     break;
   }
+  if (process.env.STOP_FLOOR && s.screen === 'map' && s.floor >= Number(process.env.STOP_FLOOR)) {
+    console.log('opening checkpoint', JSON.stringify({ floor: s.floor, room: s.room, hp: s.hp, seed: s.seed }));
+    break;
+  }
   if (s.done) {
     result = s.win ? 'WIN' : 'LOSS';
     // NGameOverScreen: Continue once it has slid in, then (after the summary) Main Menu / Unlock → the timeline
@@ -463,6 +476,13 @@ for (let i = 0; i < maxSteps; i++) {
       const cs = window.G.CombatManager.Instance.DebugOnlyGetState?.();
       const hand = window.G.$.ext('MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom').Instance?.Ui?.Hand;
       return JSON.stringify({ enemies: (cs?.Enemies ?? []).map((e) => e.Monster?.Id?.Entry), play: !!hand?.currentPlay,
+        phase: window.G.RunManager.Instance.ActionQueueSynchronizer.CombatState,
+        action: window.G.RunManager.Instance.ActionExecutor?.CurrentlyRunningAction?.constructor?.$name,
+        handSelect: hand?.IsInCardSelection, overlays: window.ui.overlays.map(o => ({ kind: o.kind, type: o.constructor?.name })),
+        endTurn: document.querySelector('.end-turn-btn')?.className,
+        playerActionsDisabled: window.G.CombatManager.Instance.PlayerActionsDisabled,
+        paused: window.G.CombatManager.Instance.IsPaused, mapOpen: window.ui.mapOpen,
+        endTurnNode: (() => { const b = window.G.$.ext('MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom').Instance?.Ui?.EndTurnButton; return b && { enabled: b.IsEnabled, state: b.State }; })(),
         hitboxes: [...document.querySelectorAll('.creature[data-side="enemy"] .cr-hitbox')].map((el) => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map(Math.round); }) });
     }).catch((e) => String(e)));
     await page.screenshot({ path: `${out}/stuck.png` }); failed = true; break;
@@ -483,4 +503,4 @@ if (process.env.PROBE) {
 if (process.env.PROBE) console.log('probe', await page.evaluate(() => { const m = window.G.$.ext('MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapScreen').Instance; return JSON.stringify({ traveling: m?.IsTraveling, open: m?.IsOpen, trav: [...document.querySelectorAll('.mp.travelable')].length, exec: window.G.RunManager.Instance.ActionExecutor?.IsRunning, act: window.G.RunManager.Instance.ActionExecutor?.CurrentlyRunningAction?.constructor?.$name }); }));
 console.log(`RESULT ${result ?? (failed ? 'FAILED' : 'UNFINISHED')} floor=${last.split(':')[0]} errors=${logs.filter((l) => l.startsWith('[error]')).length} pageerrors=${pageErrors}`);
 await browser.close();
-process.exit(failed || pageErrors ? 1 : 0);
+process.exit(failed || pageErrors || logs.some(l => l.startsWith('[error]')) ? 1 : 0);

@@ -190,6 +190,7 @@ export function isI(v: any, i: any): boolean {
 }
 export function isT(v: any, t: any): boolean {
   if (v == null || t == null) return false;
+  if (typeof v === 'bigint' && (t === T.Int64 || t === T.UInt64)) return true;
   if (t.$prim) return t.$prim === 'object' ? true : typeof v === t.$prim;
   if (t.$is) return t.$is(v);
   if (t.$iface) return isI(v, t);
@@ -208,6 +209,7 @@ export function isT(v: any, t: any): boolean {
 export function getType(x: any): any {
   if (x == null) throw new (ext('System.NullReferenceException'))('GetType on null');
   switch (typeof x) {
+    case 'bigint': return x < 0n ? T.Int64 : T.UInt64;
     case 'number':
       return Number.isInteger(x) ? T.Int32 : T.Double;
     case 'string':
@@ -268,6 +270,8 @@ export function hash(x: any): number {
   switch (typeof x) {
     case 'number':
       return Number.isInteger(x) ? x | 0 : strHash(String(x));
+    case 'bigint':
+      return Number(BigInt.asIntN(32, x ^ (x >> 32n)));
     case 'string':
       return strHash(x);
     case 'boolean':
@@ -656,15 +660,34 @@ export function liftEq(a: any, b: any, eq: (a: any, b: any) => boolean) {
 export function tupleStr(t: any[]) {
   return '(' + t.map(str).join(', ') + ')';
 }
-/** 64-bit shifts and bitwise ops (C# long/ulong); JS bit operators are 32-bit. */
-export function op64(op: string, a: number, b: number): number {
+/** Exact unchecked C# long/ulong arithmetic. Keep small values as numbers for existing runtime APIs. */
+export type Int64 = number | bigint;
+const asBigInt = (v: Int64) => typeof v === 'bigint' ? v : BigInt(Math.trunc(v));
+export function int64(v: Int64, unsigned = false): Int64 {
+  const n = unsigned ? BigInt.asUintN(64, asBigInt(v)) : BigInt.asIntN(64, asBigInt(v));
+  return n >= -9007199254740991n && n <= 9007199254740991n ? Number(n) : n;
+}
+export function narrow64(v: Int64, bits: number, unsigned = false): number {
+  return Number(unsigned ? BigInt.asUintN(bits, asBigInt(v)) : BigInt.asIntN(bits, asBigInt(v)));
+}
+export function op64(op: string, a: Int64, b: Int64, unsigned = false): Int64 {
+  const x = asBigInt(int64(a, unsigned)), y = asBigInt(b);
+  let r: bigint;
   switch (op) {
-    case '<<': return a * 2 ** (b & 63);
-    case '>>': case '>>>': return Math.floor(a / 2 ** (b & 63));
+    case '+': r = x + y; break;
+    case '-': r = x - y; break;
+    case '*': r = x * y; break;
+    case '/': r = x / y; break;
+    case '%': r = x % y; break;
+    case '<<': r = x << (y & 63n); break;
+    case '>>': r = x >> (y & 63n); break;
+    case '>>>': r = BigInt.asUintN(64, x) >> (y & 63n); break;
+    case '&': r = x & y; break;
+    case '|': r = x | y; break;
+    case '^': r = x ^ y; break;
+    default: throw new Error(`Unsupported 64-bit operator ${op}`);
   }
-  const x = BigInt.asUintN(64, BigInt(Math.trunc(a))), y = BigInt.asUintN(64, BigInt(Math.trunc(b)));
-  const r = op === '&' ? x & y : op === '|' ? x | y : x ^ y;
-  return Number(r);
+  return int64(r, unsigned);
 }
 /** C# interface static members live on the interface marker object. */
 export function ifaceStatics(i: any, cls: any) {

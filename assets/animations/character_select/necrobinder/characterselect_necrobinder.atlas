@@ -1,84 +1,86 @@
-characterselect_necrobinder@0.88x.webp
-size:4652,1299
+characterselect_necrobinder@0.794x.webp
+size:5160,1738
 filter:Linear,Linear
-scale:0.5
+scale:0.6
 belt
-bounds:3976,338,282,150
-rotate:90
+bounds:4361,3,338,179
 chest bottom
-bounds:3798,20,332,310
-offsets:0,1,332,311
+bounds:1061,49,398,372
+offsets:0,1,398,373
+rotate:90
 chest top
-bounds:4132,41,339,295
-offsets:0,1,339,296
+bounds:705,40,407,354
+offsets:0,1,407,355
 rotate:90
 head
-bounds:2254,26,245,201
-offsets:1,0,247,201
-index
-bounds:2673,25,529,573
+bounds:4166,481,294,241
+offsets:1,0,296,241
 rotate:90
+index
+bounds:2,2,701,401
 left arm
-bounds:4042,880,417,608
-offsets:1,0,418,608
+bounds:4314,1236,500,729
+offsets:1,0,501,729
 rotate:90
 left shoulder bottom
-bounds:1047,14,172,330
-offsets:1,2,174,333
-rotate:90
+bounds:4923,465,207,396
+offsets:1,3,209,400
 left shoulder top
-bounds:4429,50,188,330
-offsets:1,2,190,333
+bounds:1435,51,225,396
+offsets:1,3,228,400
 left sleeve arm
-bounds:1379,2,221,744
-offsets:0,0,221,745
-rotate:90
+bounds:3759,843,265,893
+offsets:0,0,265,894
 left sleeve top
-bounds:871,188,475,1109
-offsets:131,0,606,1115
+bounds:2,405,570,1331
+offsets:157,0,727,1338
 middle
-bounds:2819,569,728,554
-rotate:90
+bounds:1949,53,773,501
 neck_fire
-bounds:871,7,174,179
-offsets:0,2,174,183
-neck_streak
-bounds:2,40,5,54
-osty_finger_outline
-bounds:4042,622,492,256
-osty_index_outline
-bounds:2110,556,741,707
+bounds:4923,863,209,214
+offsets:0,3,209,220
 rotate:90
+neck_streak
+bounds:574,441,6,65
+rotate:90
+osty_finger_outline
+bounds:2964,781,793,955
 osty_outline
-bounds:2,96,1201,867
+bounds:1488,556,1180,901
+offsets:0,0,1184,901
 rotate:90
 palm
-bounds:2110,229,561,325
+bounds:4314,777,607,457
 pinky
-bounds:3627,332,320,347
-rotate:90
+bounds:4409,184,469,591
 right arm
-bounds:2125,25,202,127
-offsets:0,0,204,127
-rotate:90
+bounds:4701,30,242,152
+offsets:0,0,245,152
 right shoulder
-bounds:3627,13,169,317
+bounds:4945,83,202,380
 right sleeve
-bounds:4128,382,238,458
-rotate:90
+bounds:1662,5,285,549
 ring
-bounds:3615,654,643,425
-rotate:90
+bounds:2724,69,628,638
 scythe
-bounds:1348,225,760,1072
-offsets:1,0,761,1073
+bounds:574,449,912,1287
+offsets:1,0,913,1288
 skirt
-bounds:3375,619,678,238
+bounds:4026,922,814,286
 rotate:90
 skirt top
-bounds:2501,31,134,196
+bounds:4923,1074,160,235
+rotate:90
+sparks 1 copy
+bounds:2391,709,1027,571
+offsets:7,6,1040,579
+rotate:90
+sparks 1 copy 2
+bounds:3354,3,810,776
 spine
-bounds:4536,647,101,231
-offsets:0,0,102,232
+bounds:2391,586,121,276
+offsets:0,1,122,278
+rotate:90
 thumb
-bounds:3248,65,377,502
+bounds:4166,80,383,193
+rotate:90

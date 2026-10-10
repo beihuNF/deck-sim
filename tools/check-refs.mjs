@@ -33,8 +33,19 @@ const declares = (cls, member) => {
   const at = gen.search(new RegExp(`^export (?:abstract )?class ${cls}\\b`, 'm'));
   if (at < 0) return false;
   const end = gen.indexOf('\nexport ', at + 1);
-  return new RegExp(`^  (?:static )?(?:get |set )?${member.replace(/\$/g, '\\$')}\\b`, 'm').test(gen.slice(at, end < 0 ? undefined : end));
+  return new RegExp(`^  (?:declare )?(?:static )?(?:get |set )?${member.replace(/\$/g, '\\$')}\\b`, 'm').test(gen.slice(at, end < 0 ? undefined : end));
 };
+// Compatibility may explicitly expose an old overload name. Accept only direct aliases whose target still exists.
+const memberAliases = new Map();
+for (const m of read(OVERRIDES).matchAll(/\bg\.(\w+)\.prototype\.([\w$]+)\s*=\s*g\.\1\.prototype\.([\w$]+)\s*;/g)) {
+  if (declares(m[1], m[3])) memberAliases.set(`${m[1]}.${m[2]}`, m[3]);
+}
+const aliasNames = new Set([...memberAliases.keys()].map(k => k.slice(k.indexOf('.') + 1)));
+// Explicit web adapters add queries removed upstream. Their replacement source
+// must still declare the state they read; arbitrary missing replacements fail.
+const addedMembers = new Map([
+  ['CombatManager.IsPlayPhase', ['ActionQueueSynchronizer', 'CombatState']],
+]);
 
 const bad = [], notes = [];
 for (const f of hand) {
@@ -44,7 +55,13 @@ for (const f of hand) {
     const miss = (what) => bad.push(`${f}:${i + 1}  ${what}`);
     // the rule layer is `G` everywhere; packages/core's own files also call it `g`
     for (const m of line.matchAll(f.startsWith('packages/core/src/') ? /(?<![\w$.])[Gg]\.([A-Z]\w*)/g : /(?<![\w$.])(?:window\.)?G\.([A-Z]\w*)/g)) if (!exported.has(m[1])) miss(`G.${m[1]} is not exported by the rule layer`);
-    for (const m of line.matchAll(/\.((?:\$(?:ctor|zero)_\w+|[A-Za-z_]\w*\$\w+)(?:\$\w+)*)(?=\(|\s*=[^=])/g)) if (!gen.includes(`${m[1]}(`) && !stubs.includes(`${m[1]}(`)) miss(`member ${m[1]} is not in the rule layer`);
+    // Singleton queries used by the UI are also any-typed. A renamed plain
+    // property (unlike an overload suffix) otherwise silently becomes undefined.
+    for (const m of line.matchAll(/\b[Gg]\.(\w+)\.Instance\.([A-Z]\w*)/g)) {
+      const adapter = addedMembers.get(`${m[1]}.${m[2]}`);
+      if (!declares(m[1], m[2]) && !memberAliases.has(`${m[1]}.${m[2]}`) && !(adapter && declares(...adapter))) miss(`${m[1]}.${m[2]} singleton member is not in the rule layer`);
+    }
+    for (const m of line.matchAll(/\.((?:\$(?:ctor|zero)_\w+|[A-Za-z_]\w*\$\w+)(?:\$\w+)*)(?=\(|\s*=[^=])/g)) if (!gen.includes(`${m[1]}(`) && !stubs.includes(`${m[1]}(`) && !aliasNames.has(m[1])) miss(`member ${m[1]} is not in the rule layer`);
     for (const m of line.matchAll(/\bN\('([\w.]+)'\)/g)) if (!fullNames.has(`MegaCrit.Sts2.Core.Nodes.${m[1]}`)) notes.push(`${f}:${i + 1}  node ${m[1]} is not referenced by the rule layer`);
     for (const m of line.matchAll(/['"](MegaCrit\.[\w.+`]*[\w`])['"]/g)) if (!fullNames.has(m[1])) miss(`type ${m[1]} is not in the rule layer`);
     for (const m of line.matchAll(/\.Entry\s*[!=]==?\s*'([A-Z][A-Z0-9_]*)'/g)) if (!classKeys.has(m[1].replaceAll('_', '').toLowerCase())) miss(`model id ${m[1]} has no class`);
@@ -58,7 +75,10 @@ for (const f of hand) {
       ...Array.from(line.matchAll(/^(\w+)\.([\w$]+)\s*=[^=]/g), (m) => [aliases.get(m[1]), m[2]]),
       ...Array.from(line.matchAll(/Object\.defineProperty\(g\.(\w+)\.prototype,\s*'(\w+)'/g), (m) => [m[1], m[2]]),
     ];
-    for (const [cls, member] of replaced) if (cls && !declares(cls, member)) miss(`${cls}.${member} is replaced but the rule layer no longer declares it`);
+    for (const [cls, member] of replaced) if (cls && !declares(cls, member) && !memberAliases.has(`${cls}.${member}`)) {
+      const adapter = addedMembers.get(`${cls}.${member}`);
+      if (!adapter || !declares(...adapter)) miss(`${cls}.${member} is replaced but the rule layer no longer declares it`);
+    }
   });
 }
 if (notes.length) console.log(`notes (${notes.length}):\n${notes.join('\n')}\n`);

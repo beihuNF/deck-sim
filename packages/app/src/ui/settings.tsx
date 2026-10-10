@@ -43,7 +43,7 @@ for (const ev of ['visibilitychange', 'blur', 'focus']) (ev === 'visibilitychang
 // NLanguageDropdown._languageCodeToName
 const LANG_NAMES: Record<string, string> = {
   eng: 'English', zhs: '中文', zht: '繁體中文', jpn: '日本語', kor: '한국어', deu: 'Deutsch', fra: 'Français', spa: 'Español (Castellano)',
-  esp: 'Español (Latinoamérica)', ita: 'Italiano', pol: 'Polski', ptb: 'Português Brasileiro', rus: 'Русский', tha: 'ไทย', tur: 'Türkçe',
+  esp: 'Español (Latinoamérica)', ind: 'Bahasa Indonesia', ita: 'Italiano', pol: 'Polski', ptb: 'Português Brasileiro', rus: 'Русский', tha: 'ไทย', tur: 'Türkçe',
 };
 
 // ------------------------------------------------------------------ rows
@@ -92,7 +92,7 @@ function generalRows(inRun: boolean): Row[] {
   return [
     { kind: 'lang', label: s(inRun ? 'LANGUAGE_IN_RUN' : 'LANGUAGE'), disabled: inRun },
     { kind: 'page', label: s('SCREENSHAKE'), tip: [s('SCREENSHAKE_HEADER'), s('SCREENSHAKE_DESCRIPTION')], options: ['NONE', 'SOME', 'NORMAL', 'LOTS', 'CAAAW'].map((k) => s(`SCREENSHAKE_${k}`)),
-      get: () => p().ScreenShakeOptionIndex, set: (i) => { p().ScreenShakeOptionIndex = i; safe(() => $.ext('MegaCrit.Sts2.Core.Nodes.NGame').Instance.ScreenShakeTrauma(G.ShakeStrength.Medium), null); } },
+      get: () => p().ScreenShakeOptionIndex, set: (i) => { p().ScreenShakeOptionIndex = i; safe(() => $.ext('MegaCrit.Sts2.Core.Nodes.NGame').Instance.ScreenShakeTrauma($.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeStrength').Medium), null); } },
     tick('FASTMODE', 'FASTMODE', () => p().FastMode !== G.FastModeType.Normal, (v) => { p().FastMode = v ? G.FastModeType.Fast : G.FastModeType.Normal; }, 'FAST_MODE'),
     tick('SHOW_RUN_TIMER_HEADER', 'SHOW_RUN_TIMER_HEADER', () => p().ShowRunTimer, (v) => { p().ShowRunTimer = v; }, 'RUN_TIMER'),
     tick('SHOW_HAND_CARD_COUNT_HEADER', 'SHOW_HAND_CARD_COUNT_HEADER', () => p().ShowCardIndices, (v) => { p().ShowCardIndices = v; }, 'HAND_CARD_COUNT'),

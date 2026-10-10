@@ -2,7 +2,8 @@
 
 | 项目 | 值 |
 |---|---|
-| 原作版本 | Slay the Spire 2 v0.98.3（commit `cb602cef`，2026-03-09，Steam 抢先体验） |
+| 当前原作版本 | Slay the Spire 2 v0.111.0 public-beta（commit `41cef1ea`，2026-08-13） |
+| 最初移植版本 | v0.98.3（commit `cb602cef`，2026-03-09）；下文最初计划及历史实施记录保留当时数据 |
 | 原作技术栈 | Godot 4.5.1 定制版 + .NET 9 / C#，FMOD Studio，Spine 4.2 |
 | 方案日期 | 2026-09-27 |
 | 目标平台 | 桌面浏览器（Chrome / Edge / Firefox / Safari 18.4+），触屏平板为次要目标 |

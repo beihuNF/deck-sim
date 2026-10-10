@@ -1,6 +1,11 @@
 shader_type canvas_item;
 render_mode blend_mix;
 
+float erosion_from_factors(vec2 factors, float input)
+{
+	return smoothstep(factors.x, factors.x + factors.y, input);
+}
+
 uniform vec4 bright_color : source_color;
 uniform float bright_energy;
 
@@ -14,7 +19,7 @@ uniform float erosion_offset = 1.0;
 varying vec4 vertex_color;
 
 void vertex() {
-	vertex_color = COLOR;	
+	vertex_color = COLOR;
 }
 
 void fragment() {
@@ -22,12 +27,12 @@ void fragment() {
 	vec4 tex = texture(TEXTURE, UV);
 
 	vec4 erosion_tex = texture(erosion_texture, UV);
-	float erosion = smoothstep(erosion_base, erosion_base + erosion_offset, erosion_tex.r);
+	float erosion = erosion_from_factors(vec2(erosion_base, erosion_offset), erosion_tex.r);
 	erosion = mix(1.0, erosion, erosion_enabled);
-	
+
 	vec4 final_color = mix(tex, bright_color, bright_enabled);
 	final_color.a = tex.a;
 	final_color.a *= erosion;
-	
+
 	COLOR = final_color * vertex_color;
 }

@@ -52,7 +52,7 @@ interface Banner { id: number; act: any; index: number; o: { A: number; BandA: n
 type Mode = 'none' | 'draw' | 'erase';
 
 const S = {
-  map: null as any, seed: 0,
+  map: null as any, seed: 0 as number | bigint,
   nodes: [] as MapNode[], byKey: new Map<string, MapNode>(),
   boss: null as MapNode | null, boss2: null as MapNode | null, start: null as MapNode | null,
   paths: new Map<string, Dot[]>(), distY: 0,
@@ -78,9 +78,9 @@ const travelable = (n: MapNode) => (S.debugTravel && !S.traveling) || (S.travelE
 const pivot = (n: MapNode) => (n.kind === 'normal' ? [28, 28] : n.kind === 'ancient' ? [104, 104] : [187, 153]);
 
 // ------------------------------------------------------------------ NMapScreen.SetMap
-export function setMap(map: any, seed: number, clearDrawings: boolean) {
+export function setMap(map: any, seed: number | bigint, clearDrawings: boolean) {
   const r = rs();
-  S.map = map; S.seed = seed >>> 0;
+  S.map = map; S.seed = seed;
   S.nodes = []; S.byKey.clear(); S.paths.clear();
   marker.visible = false;
   if (clearDrawings) drawings.clearAll();
@@ -89,7 +89,7 @@ export function setMap(map: any, seed: number, clearDrawings: boolean) {
   const k = map.SecondBossMapPoint != null ? 0.9 : 1;
   S.distY = (2325 / (rows - 1)) * k;
   const distX = 1050 / cols;
-  const rng = new G.Rng().$ctor_Rng$UInt32_String(S.seed || r.Rng.Seed, `map_jitter_${r.CurrentActIndex}`);
+  const rng = new G.Rng().$ctor_Rng$2(S.seed || r.Rng.Seed, `map_jitter_${r.CurrentActIndex}`);
   const add = (p: any, kind: Kind, x: number, y: number, w: number, h: number, scale = 1, angle = 0) => {
     const n: MapNode = { p, key: keyOf(p.coord), kind, x, y, w, h, scale, angle, state: St.Untravelable, phase: Math.random() * 3140, Pulse: 1, focus: false, anim: 'instant', Hover: 1, circle: null, el: null };
     S.nodes.push(n); S.byKey.set(n.key, n);
@@ -168,7 +168,7 @@ export function openMap(fromTopBar = false) {
   // NBackButton: moved to its hidden position, then enabled when past the act's first floor (it slides in)
   back.enabled = false;
   if (safe(() => r.ActFloor > 0, false)) requestAnimationFrame(() => { if (S.isOpen) { back.enabled = true; invalidate(); } });
-  if (G.RunManager.Instance.IsSinglePlayerOrFakeMultiplayer) safe(() => G.CombatManager.Instance.Pause(), undefined);
+  if (G.RunManager.Instance.IsSingleplayerOrFakeMultiplayer) safe(() => G.CombatManager.Instance.Pause(), undefined);
   const neow = safe(() => r.CurrentActIndex === 0 && r.ExtraFields.StartedWithNeow, false);
   if ((neow ? r.ActFloor === 1 : r.ActFloor === 0) && !S.hasPlayedAnimation) {
     if (!fromTopBar && (fastMode() < G.FastModeType.Fast || !seenFtue('map_select_ftue'))) playStartOfActAnimation();
@@ -204,7 +204,7 @@ export function openMap(fromTopBar = false) {
 export function closeMap(animateOut = true) {
   if (!S.isOpen) return;
   S.isOpen = false; ui.mapOpen = false;
-  if (G.RunManager.Instance.IsSinglePlayerOrFakeMultiplayer) safe(() => G.CombatManager.Instance.Unpause(), undefined);
+  if (G.RunManager.Instance.IsSingleplayerOrFakeMultiplayer) safe(() => G.CombatManager.Instance.Unpause(), undefined);
   back.enabled = false;
   signalOpenedClosed();
   if (animateOut) {
@@ -232,7 +232,7 @@ function hide() {
 }
 /** NOverlayStack hides / shows the overlays and NMerchantRoom swaps its music track on Opened / Closed. */
 function signalOpenedClosed() {
-  if (ui.room?.kind === 'shop') safe(() => G.NRunMusicController?.Instance?.ToggleMerchantTrack?.(), undefined);
+  if (ui.room?.kind === 'shop') safe(() => $.ext('MegaCrit.Sts2.Core.Nodes.Audio.NRunMusicController')?.Instance?.ToggleMerchantTrack?.(), undefined);
 }
 export const isMapVisible = () => S.visible;
 /** A new run or the main menu: the run's NMapScreen goes away with it. */
@@ -305,7 +305,7 @@ function selectLocally(n: MapNode) {
   const vote = new G.MapVote().$zero_MapVote();
   vote.coord = n.p.coord;
   vote.mapGenerationCount = G.RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount;
-  const src = new G.RunLocation().$ctor_RunLocation$2(r.CurrentMapCoord, r.CurrentActIndex);
+  const src = new G.MapLocation().$ctor_MapLocation$2(r.CurrentMapCoord, r.CurrentActIndex);
   G.RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new G.VoteForMapCoordAction().$ctor_VoteForMapCoordAction(me, src, vote));
 }
 /** NMapScreen.TravelToMapCoord: the chosen node's circle and brush burst, the path inking in, the marker, the fade. */
@@ -436,7 +436,7 @@ function startLoop() {
 /** NMapScreen.UpdateScrollPosition. */
 function updateScroll(dt: number) {
   if (fx.MapY !== S.target) {
-    fx.MapY += (S.target - fx.MapY) * dt * 15;
+    fx.MapY += (S.target - fx.MapY) * Math.min(1, dt * 15);
     if (Math.abs(fx.MapY - S.target) < 0.5) fx.MapY = S.target;
   }
   if (!S.dragging) {
@@ -531,8 +531,8 @@ function focus(n: MapNode) {
   if (n.kind === 'boss') { if (travelable(n)) tweenHover(n, 1.05, 0.05); }
   // the MapPointHistory tip for traveled nodes other than the current one
   const r = rs();
-  if (n.state === St.Traveled && keyOf(safe(() => r.CurrentLocation.coord, {})) !== n.key) {
-    const entry = safe(() => r.GetHistoryEntryFor(new G.RunLocation().$ctor_RunLocation$2(n.p.coord, r.CurrentActIndex)), null);
+  if (n.state === St.Traveled && keyOf(safe(() => r.MapLocation.coord, {})) !== n.key) {
+    const entry = safe(() => r.GetHistoryEntryFor(new G.MapLocation().$ctor_MapLocation$2(n.p.coord, r.CurrentActIndex)), null);
     if (entry) {
       let floor = n.p.coord.row + 1;
       const hist = list(r.MapPointHistory);

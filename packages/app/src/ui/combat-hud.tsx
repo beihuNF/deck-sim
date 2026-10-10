@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { toggleCardsView, closeCardsView } from './pause';
 import { useEffect, useRef } from 'preact/hooks';
-import { G, $, N } from '../game';
+import { G, $, N, list } from '../game';
 import { ui, invalidate } from '../store';
 import { imageUrl } from '../assets';
 import { setTip } from './tooltip';
@@ -27,7 +27,7 @@ const QUART = 3, EXPO = 5, CUBIC = 7, BACK = 10, OUT = 1;
 /** static_hover_tips `<key>.title` / `.description`, at a point anchored like its button (`to`: view.ts anchored). */
 function staticTip(key: string, vars: Record<string, string>, x0: number, y0: number, to = '') {
   const [x, y] = anchored(x0, y0, to);
-  const ls = (k: string) => { const l = new G.LocString().$ctor_LocString('static_hover_tips', k); for (const [n, v] of Object.entries(vars)) l.Add$String_String(n, v); return safe(() => l.GetFormattedText(), ''); };
+  const ls = (k: string) => { const l = new G.LocString().$ctor_LocString('static_hover_tips', k); for (const [n, v] of Object.entries({ Hotkey: 'None', ...vars })) l.Add$String_String(n, v); return safe(() => l.GetFormattedText(), ''); };
   setTip(ls(`${key}.title`), ls(`${key}.description`), { kind: 'at', x, y });
 }
 /** Style writes that skip unchanged values (the buttons are painted every frame). */
@@ -245,10 +245,10 @@ const CREAM = [1, 0.964706, 0.886275], GRAY = [0.5, 0.5, 0.5], RED = [1, 1 / 3, 
 const ETB_OUTLINE = [0.0756, 0.12084, 0.18];
 const col = (c: number[]) => new $.Color(c[0], c[1], c[2], 1);
 const longPressOn = () => safe(() => !!G.SaveManager.Instance.PrefsSave.IsLongPressEnabled, false);
-function endTurnText(round: number, undo = false) {
+function endTurnText(turn: number, undo = false) {
   return safe(() => {
     const l = new G.LocString().$ctor_LocString('gameplay_ui', undo ? 'UNDO_END_TURN_BUTTON' : 'END_TURN_BUTTON');
-    if (!undo) { if (l.Add$String_Decimal) l.Add$String_Decimal('turnNumber', round); else l.Add$String_String('turnNumber', String(round)); }
+    if (!undo) { if (l.Add$String_Decimal) l.Add$String_Decimal('turnNumber', turn); else l.Add$String_String('turnNumber', String(turn)); }
     return l.GetFormattedText();
   }, t('endTurn'));
 }
@@ -316,7 +316,7 @@ class EndTurnCtl extends Clickable {
   private get canTurnBeEnded() { const h = this.hand; return !!h && !h.InCardPlay && h.mode === 1; }
   private canTakeAction(p: any) {
     const extra = safe(() => this.cm.PlayersTakingExtraTurn, null);
-    return safe(() => p.Creature.IsAlive, false) && (!extra || extra.Count === 0 || extra.Contains(p));
+    return safe(() => p.Creature.IsAlive, false) && (!extra || list(extra).length === 0 || list(extra).includes(p));
   }
   private setText(s: string) { if (this.text !== s) { this.text = s; invalidate(); } }
   private removeTip() { if (this.tipShown) { this.tipShown = false; setTip(null); } }
@@ -336,7 +336,7 @@ class EndTurnCtl extends Clickable {
     // the room's web view can mount after the play phase began (the node itself lives for the whole combat)
     const cs = this.view.combatState;
     if (cm.IsInProgress && cm.IsPlayPhase && safe(() => cs.CurrentSide === G.CombatSide.Player, false)) {
-      this.setText(endTurnText(cs.RoundNumber));
+      this.setText(endTurnText(this.me.PlayerCombatState.TurnNumber));
       this.state = !this.ready() && this.canTakeAction(this.me) ? 'Enabled' : 'Disabled';
       this.n.PosY = 846;
       this.refreshEnabled();
@@ -355,7 +355,7 @@ class EndTurnCtl extends Clickable {
   }
   private onTurnStarted(state: any) {
     if (state.CurrentSide !== G.CombatSide.Player || !this.cm.IsInProgress) return;
-    this.setText(endTurnText(state.RoundNumber));
+    this.setText(endTurnText(this.me.PlayerCombatState.TurnNumber));
     if (this.canTakeAction(this.me)) { this.setState('Enabled'); return; }
     this.animIn();
     this.setState('Disabled');
@@ -373,7 +373,7 @@ class EndTurnCtl extends Clickable {
   private afterPlayerUnendedTurn(player: any) {
     if (!safe(() => G.LocalContext.IsMe$Player(player), true) || !this.canTakeAction(player)) return;
     this.setState('Enabled');
-    this.setText(endTurnText(player.Creature.CombatState.RoundNumber));
+    this.setText(endTurnText(player.PlayerCombatState.TurnNumber));
     this.startOrStopPulseVfx();
   }
   private hasPlayableCard() { return safe(() => [...$.iter(this.me.PlayerCombatState.Hand.Cards)].some((c: any) => c.CanPlay$0()), false); }
@@ -418,18 +418,18 @@ class EndTurnCtl extends Clickable {
   callReleaseLogic() {
     if (!this.canTurnBeEnded) return;
     this.fadeGlow();
-    const me = this.me, round = me.Creature.CombatState.RoundNumber, ready = this.ready();
+    const me = this.me, turn = me.PlayerCombatState.TurnNumber, ready = this.ready();
     this.setState('Disabled');
     G.RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(ready
-      ? new G.UndoEndPlayerTurnAction().$ctor_UndoEndPlayerTurnAction(me, round)
-      : new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(me, round));
+      ? new G.UndoEndPlayerTurnAction().$ctor_UndoEndPlayerTurnAction(me, turn)
+      : new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(me, turn));
     invalidate();
   }
   /** SecretEndTurnLogicViaFtue: the cannot-play tip's hidden hitbox ends the turn without the playable-cards check. */
   secretEndTurn() {
     this.fadeGlow();
     const me = this.me;
-    G.RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(me, me.Creature.CombatState.RoundNumber));
+    G.RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(me, me.PlayerCombatState.TurnNumber));
     invalidate();
   }
   /** The first time a turn is ended with playable cards the tip shows instead; three ends without any retire it. */

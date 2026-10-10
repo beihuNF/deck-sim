@@ -28,7 +28,7 @@ const sameId = (a: any, b: any) => String(a) === String(b);
 /** NRunHistory.LoadDeathQuote (seeded by the run's seed). The game-over screen's GetDeathQuote adds a debug line when nothing matched. */
 export function deathQuote(h: any, charId: any, debugFallback = true): string {
   const ch = G.ModelDb.GetById(G.CharacterModel, charId);
-  const rng = new G.Rng().$ctor_Rng$UInt32_Int32(G.StringHelper.GetDeterministicHashCode(h.Seed) >>> 0, 0);
+  const rng = new G.Rng().$ctor_Rng$UInt64(G.StringHelper.GetDeterministicHashCode(h.Seed));
   const random = (prefix: string) => { const ls = G.LocString.GetRandomWithPrefix('run_history', prefix, rng); ch.AddDetailsTo(ls); return fmt(ls); };
   let body = '';
   if (h.Win) body = random('MAP_POINT_HISTORY.falseVictory');
@@ -466,7 +466,7 @@ const BANNER_COLOR = (r: number) => { const R = G.CardRarity; return ({ [R.Basic
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 /** NTinyCard (32 × 32, nearest filtering): pool-coloured card back with the frame material, desc box, type portrait, rarity banner. */
 export function TinyCard({ card }: { card: any }) {
-  const pool = safe(() => card.Pool.constructor.name, '');
+  const pool = safe(() => Object.keys(DECK_COLOR).find((name) => card.Pool instanceof G[name]) ?? '', '');
   const back = safe(() => { const c = card.Pool.DeckEntryCardColor; return [c.R, c.G, c.B]; }, null) ?? (DECK_COLOR[pool] ? hex(DECK_COLOR[pool]) : [1, 1, 1]);
   const type = safe(() => $.enumStr(G.CardType, card.Type).toLowerCase(), 'skill');
   const shape = type === 'attack' || type === 'power' ? type : 'skill';

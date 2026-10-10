@@ -434,7 +434,7 @@ function CardGrid({ v }: { v: GridSelectView }) {
         <div class="cg-inner" ref={inner} style={{ top: `${s.current.y}px` }}>
           {v.cards.map((c, i) => {
             const r = Math.floor(i / cols), col = i % cols;
-            const shown = v.showUpgrades && safe(() => c.IsUpgradable, false) ? upgradedClone(c) : c;
+            const shown = v.showUpgrades && safe(() => c.IsUpgradable, false) ? upgradedClone(c, v.runState) : c;
             return <GridHolder card={shown} x={x0 + col * 280} y={248.8 + r * 377.6} highlight={v.selected.includes(c)} mode={shown !== c ? 2 : undefined}
               clickable={!v.preview && !v.peeking} onPick={() => v.click(c)} onInspect={() => inspectCard(v.cards, c)} key={c} />;
           })}
@@ -446,9 +446,9 @@ function CardGrid({ v }: { v: GridSelectView }) {
 }
 const upgrades = new WeakMap<any, any>();
 /** NGridCardHolder.SetIsPreviewingUpgrade: an upgraded clone shown in the preview style. */
-function upgradedClone(c: any) {
+function upgradedClone(c: any, runState?: any) {
   let u = upgrades.get(c);
-  if (!u) { u = safe(() => { const x = c.MutableClone(); x.UpgradeInternal(); return x; }, c); upgrades.set(c, u); }
+  if (!u) { u = safe(() => { const x = runState ? runState.CloneCard(c) : c.MutableClone(); x.UpgradeInternal(); return x; }, c); upgrades.set(c, u); }
   return u;
 }
 function BottomPrompt({ text, small }: { text: string; small?: boolean }) {
@@ -487,7 +487,7 @@ function GridPreview({ v }: { v: GridSelectView }) {
   let body: any;
   if ((v.grid === 'upgrade' || v.grid === 'enchant') && v.single) {
     const card = sel[0];
-    const after = v.grid === 'upgrade' ? upgradedClone(card) : enchantedClone(card, v);
+    const after = v.grid === 'upgrade' ? upgradedClone(card, v.runState) : enchantedClone(card, v);
     body = (
       <>
         <PreviewCard card={card} x={680} y={540} />
@@ -507,7 +507,7 @@ function GridPreview({ v }: { v: GridSelectView }) {
   } else {
     // the remove / select row scales down for many cards (the upgrade and enchant rows do not)
     const k = v.grid === 'deck' ? (n > 6 ? 0.55 : n > 3 ? 0.8 : 1) : 1;
-    const shown = sel.map((c) => (v.grid === 'upgrade' ? upgradedClone(c) : v.grid === 'enchant' ? enchantedClone(c, v) : c));
+    const shown = sel.map((c) => (v.grid === 'upgrade' ? upgradedClone(c, v.runState) : v.grid === 'enchant' ? enchantedClone(c, v) : c));
     body = shown.map((c, i) => <PreviewCard card={c} x={960 + (i - (n - 1) / 2) * 400 * k} y={540} scale={k} mode={v.grid === 'upgrade' ? 2 : undefined} />);
   }
   const dark = v.grid === 'enchant' || (v.grid === 'upgrade' && !v.single) ? 0.85 : 0.78;

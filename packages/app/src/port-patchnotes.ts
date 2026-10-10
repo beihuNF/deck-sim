@@ -1,11 +1,64 @@
 /** Web port updates, newest first. Add both languages here; original game notes remain in assets/patch_notes. */
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
+    date: '2026_10_10',
+    eng: `[gold][b]Display[/b][/gold]
+• Fixed a white screen that could cover the game after continuing a saved run or changing screens.
+• Fixed played or discarded cards remaining in the hand or on the table and blocking other cards.
+• Fixed dragging cards from icons in their text being canceled.
+• Fixed the Punch-Off event freezing the game at Instant speed.
+• Fixed Defect beam effects and Architect damage text on the victory screen.
+• Fixed a rendering error after Necrobinder's Doom kill animation.
+
+[gold][b]Community[/b][/gold]
+• Updated the QQ group QR code.
+
+[gold][b]Combat[/b][/gold]
+• Fixed ending extra player turns and displaying their turn numbers.
+• Fixed area potions being canceled instead of used from the potion belt.
+
+[gold][b]Save compatibility[/b][/gold]
+• Preserved the original Doormaker battle and its changing forms in existing runs.`,
+    zhs: `[gold][b]画面[/b][/gold]
+• 修复继续存档或切换界面后可能遮住游戏的白屏。
+• 修复打出或弃掉的卡牌仍残留在手牌或桌面上、遮挡其他卡牌的问题。
+• 修复从卡牌文字中的图标位置拖动时，出牌操作被取消的问题。
+• 修复选择“瞬间”速度时，拳击比赛事件卡住游戏的问题。
+• 修复故障机器人的光束特效及胜利结算的建筑师伤害文本。
+• 修复死灵契约师的灾厄击杀动画结束后可能出现的渲染错误。
+
+[gold][b]社区[/b][/gold]
+• 更新 QQ 群二维码。
+
+[gold][b]战斗[/b][/gold]
+• 修复额外回合中结束回合可能失效及回合编号显示错误的问题。
+• 修复从药水栏使用范围药水时，操作被取消的问题。
+
+[gold][b]存档兼容[/b][/gold]
+• 保留旧对局中的门扉制造者战斗及其形态变化。`,
+  },
+  {
     date: '2026_10_09',
     eng: `[gold][b]Main menu[/b][/gold]
-• Temporarily hidden the notice about the game being taken offline soon.`,
+• Temporarily hidden the notice about the game being taken offline soon.
+
+[gold][b]Game update[/b][/gold]
+• Updated rules and game assets to public-beta v0.111.0.
+• Added Traditional Chinese and Indonesian localization.
+
+[gold][b]Save compatibility[/b][/gold]
+• Preserved existing v0.98.3 runs, including retired cards, when loading and re-saving with the public-beta rules.
+• Existing Lasting Candy and Pumpkin Candle keep their original counters and effects.`,
     zhs: `[gold][b]主菜单[/b][/gold]
-• 暂时隐藏游戏近期下线提示。`,
+• 暂时隐藏游戏近期下线提示。
+
+[gold][b]游戏更新[/b][/gold]
+• 游戏规则与资源更新至 public-beta v0.111.0。
+• 新增繁体中文和印度尼西亚语。
+
+[gold][b]存档兼容[/b][/gold]
+• 升级 public-beta 规则后仍可继续、重新保存 v0.98.3 的旧对局，保留旧牌组中的已移除卡牌。
+• 旧存档中的持久糖果和南瓜蜡烛保留原来的计数与效果。`,
   },
   {
     date: '2026_10_08',

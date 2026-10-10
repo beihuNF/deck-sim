@@ -1,27 +1,27 @@
 stabbot@0.5x.webp
-size:267,107
+size:356,144
 filter:Linear,Linear
-scale:0.15
+scale:0.212
 arm_l
-bounds:245,44,7,14
+bounds:199,29,10,20
 rotate:90
 arm_r
-bounds:245,53,18,29
+bounds:298,45,25,41
 bod
-bounds:87,36,69,71
-rotate:90
+bounds:199,41,97,101
 bottom wing
-bounds:160,44,83,61
+bounds:2,24,118,87
+rotate:90
 ditch line
-bounds:2,15,196,14
+bounds:2,2,276,20
 off
-bounds:245,84,20,21
+bounds:325,57,29,29
 stabby_l
-bounds:200,4,38,36
+bounds:298,88,54,50
 rotate:90
 stabby_r
-bounds:238,2,26,40
-top wing
-bounds:2,31,74,83
-offsets:45,0,119,83
+bounds:280,2,37,56
 rotate:90
+top wing
+bounds:91,25,106,117
+offsets:63,0,169,117

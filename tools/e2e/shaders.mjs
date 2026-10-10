@@ -11,9 +11,16 @@ const logs = [];
 page.on('console', (m) => { if (m.type() === 'debug' && m.text().startsWith('[shader]')) logs.push(m.text().slice(0, 300)); });
 await page.goto(process.env.URL ?? 'http://127.0.0.1:47173/');
 await page.waitForFunction(() => window.ui?.screen === 'menu' && window.__loadShader);
-const res = await page.evaluate(async (fs) => Object.fromEntries(await Promise.all(fs.map(async (f) => [f, !!(await window.__loadShader(f))]))), files);
+const res = {};
+for (const file of files) {
+  const before = logs.length;
+  res[file] = await page.evaluate(async f => !!(await window.__loadShader(f)), file);
+  if (!res[file]) console.log(file, logs.slice(before).join('\n'));
+}
 const bad = Object.entries(res).filter(([, ok]) => !ok).map(([f]) => f);
 console.log(`${files.length - bad.length}/${files.length} shaders compile`);
 for (const f of bad) console.log('  unsupported', f);
 for (const l of logs) console.log(l);
 await browser.close();
+
+process.exitCode = bad.length ? 1 : 0;

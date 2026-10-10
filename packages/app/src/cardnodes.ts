@@ -16,7 +16,6 @@ const NCombatUi = N('Combat.NCombatUi');
 const NCardFlyVfx = N('Vfx.NCardFlyVfx');
 const NCardFlyShuffleVfx = N('Vfx.NCardFlyShuffleVfx');
 const NCardFlyPowerVfx = N('Vfx.NCardFlyPowerVfx');
-const NExhaustVfx = N('Vfx.Cards.NExhaustVfx');
 const NThoughtBubbleVfx = N('Vfx.NThoughtBubbleVfx');
 const NCreature = N('Combat.NCreature');
 /** NodeUtil.IsDescendant over the web nodes' parent links. */
@@ -102,6 +101,10 @@ export function Web<B extends new (...a: any[]) => any>(Base: B) {
     }
     IsAncestorOf(n: any) { for (let p = n?.$parent; p; p = p.$parent) if (p === this) return true; return false; }
     IsInsideTree() { return !this.$freed && !!this.$parent; }
+    // Web views are initialized by their constructors; there is no deferred
+    // Godot _Ready pass. Tree helpers must move cards synchronously so the
+    // next pile change can find and cancel the same node's play tween.
+    IsNodeReady() { return !this.$freed; }
     Reparent(p: any, keepGlobal = true) {
       const g = this.xf();
       p.AddChild(this);
@@ -219,6 +222,7 @@ export class CardNodeView extends Web(NCard) {
   id = ++cardIds;
   /** NCard.Body: the card visuals NCardFlyVfx shrinks and darkens. */
   Body = { Scale: v2(1, 1), Modulate: white() };
+  CardVfxContainer = new ContainerNode(0, 0, 'card-vfx');
   CardHighlight = new CardHighlight();
   pileType = G.PileType.None;
   previewMode = 0;
@@ -233,7 +237,7 @@ export class CardNodeView extends Web(NCard) {
   /** CSS filter on the drawn card (NCardTransformVfx's shader on its SubViewport render). */
   cssFilter = '';
   get Size() { return v2(0, 0); }
-  constructor(model: any) { super(); this.Model = model; }
+  constructor(model: any) { super(); this.Model = model; this.AddChild(this.CardVfxContainer); }
   UpdateVisuals(pile: number, mode: number) { this.pileType = pile; this.previewMode = mode; this.EnchantmentTab.Visible = true; invalidate(); }
   SetPreviewTarget(c: any) { this.previewTarget = c; invalidate(); }
   /** NCard.FlashRelicOnCard: an NRelicFlashVfx on the body at 2×, at Size × 0.5 (the centre). */
@@ -255,13 +259,20 @@ export class CardNodeView extends Web(NCard) {
     this.PlayPileTween.TweenProperty(this, 'scale', v2(0.8, 0.8), 0.25).SetEase(1).SetTrans(7);
   }
 }
-NCard.Create = (card: any) => (card && !G.TestMode.IsOn ? new CardNodeView(card) : null);
+NCard.Create = (card: any, visibility = G.ModelVisibility.Visible) => {
+  if (!card || G.TestMode.IsOn) return null;
+  const node = new CardNodeView(card);
+  node.Visibility = visibility;
+  return node;
+};
 /** NCard.FindOnTable: hand holders, then the play queue, then the play container. */
 NCard.FindOnTable = (card: any, overridePile?: any) => {
   if (!card || G.TestMode.IsOn || !G.CombatManager.Instance.IsInProgress) return null;
   const ui = N('Rooms.NCombatRoom').Instance?.Ui;
   if (!(ui instanceof CombatUiView)) return null;
-  const t = card.Pile != null ? card.Pile.Type : overridePile;
+  // CardPileCmd passes the old pile after it has already updated the model's
+  // pile. Find that existing node before moving it, as upstream does.
+  const t = overridePile ?? card.Pile?.Type;
   if (t === G.PileType.Hand) return ui.Hand.GetCard(card) ?? ui.PlayQueue.GetCardNode(card) ?? ui.GetCardFromPlayContainer(card);
   if (t === G.PileType.Play) return ui.GetCardFromPlayContainer(card);
   return null;
@@ -1428,7 +1439,15 @@ export class CardFlyVfx extends Web(NCardFlyVfx) {
   }
 }
 const lerpAngle = (a: number, b: number, t: number) => { const d = ((((b - a) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI; return a + d * t; };
-NCardFlyVfx.Create = (card: any, end: any, adding: boolean, trailPath: string) => (G.TestMode.IsOn || !(card instanceof CardNodeView) ? null : new CardFlyVfx(card, end, adding, trailPath));
+NCardFlyVfx.Create = (card: any, target: any, addingOrTrail: boolean | string, trailPath?: string) => {
+  if (G.TestMode.IsOn || !(card instanceof CardNodeView)) return null;
+  if (typeof addingOrTrail === 'string') {
+    const creature = N('Rooms.NCombatRoom').Instance?.GetCreatureNode(target);
+    return creature ? new CardFlyVfx(card, creature.VfxSpawnPosition, false, addingOrTrail) : null;
+  }
+  const end = typeof target === 'number' ? G.PileTypeExtensions.GetTargetPosition(target, card) : target;
+  return new CardFlyVfx(card, end, addingOrTrail, trailPath ?? '');
+};
 
 /** NCardFlyShuffleVfx: a card silhouette arcs from pile to pile (cards moving without a node, e.g. the shuffle). */
 export class ShuffleFlyVfx extends Web(NCardFlyShuffleVfx) {
@@ -1496,7 +1515,7 @@ export class CardSmithVfx extends Web(N('Vfx.NCardSmithVfx')) {
   static pending: { node: any; spark: number }[] = [];
   constructor(private cards: any[], private cardNode: CardNodeView | null, private sfx: boolean) { super(); }
   private spark(n: number) { CardSmithVfx.pending.push({ node: this, spark: n }); }
-  private shake() { safe(() => N('NGame').Instance?.ScreenShake?.(G.ShakeStrength.Weak, G.ShakeDuration.Short, 180 + rand(-10, 10)), null); }
+  private shake() { safe(() => N('NGame').Instance?.ScreenShake?.($.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeStrength').Weak, $.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeDuration').Short, 180 + rand(-10, 10)), null); }
   $entered() {
     const audio = () => { if (this.sfx) safe(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('card_smith.mp3', 1, 1), null); };
     if (this.cardNode || !this.cards.length) {
@@ -1562,19 +1581,6 @@ N('Vfx.NCardSmithVfx').Create = (a?: any, playSfx = true) => {
   return new CardSmithVfx(a ? [...$.iter(a)] : [], null, playSfx);
 };
 
-/** NExhaustVfx: the burn particles at the card (render/cardfx.ts plays vfx/cards/exhaust_vfx there). */
-export class ExhaustVfx extends Web(NExhaustVfx) {
-  static pending: { x: number; y: number }[] = [];
-  constructor(private card: CardNodeView) { super(); }
-  $entered() {
-    const p = this.card.GlobalPosition;
-    ExhaustVfx.pending.push({ x: p.X, y: p.Y });
-    safe(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('card_exhaust.mp3'), null);
-    setTimeout(() => this.QueueFree(), 2000);
-  }
-}
-NExhaustVfx.Create = (card: any) => (G.TestMode.IsOn || !(card instanceof CardNodeView) ? null : new ExhaustVfx(card));
-
 /** Curve2D of vfx_card_power_fly.tscn (in, out, position per point), baked for length sampling. */
 const SWOOSH = [0, 0, 0, 0, 0, 0, 50.0031, 14.2866, -50.0031, -14.2866, -85, -37, 1.86905, 73.8276, -1.86905, -73.8276, -182, -149,
   -115.699, -12.5866, 115.699, 12.5866, 67, -228, 40.9602, -107.087, -40.9602, 107.087, 209, 41, 162.128, 8.78094, -162.128, -8.78094, -167, 160, 0, 0, 0, 0, -427, 27];
@@ -1633,7 +1639,7 @@ export class CardFlyPowerVfx extends Web(NCardFlyPowerVfx) {
       this.trail?.track();
       if (n >= 0.9 && !shrinking) { shrinking = true; tween().TweenProperty(card, 'scale', v2(0, 0), Math.max(0.01, dur - acc)); }
     }
-    safe(() => N('NGame').Instance?.ScreenShake?.(G.ShakeStrength.Medium, G.ShakeDuration.Short), null);
+    safe(() => N('NGame').Instance?.ScreenShake?.($.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeStrength').Medium, $.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeDuration').Short), null);
     if (this.trail) await this.trail.FadeOut();
     card.QueueFree();
     this.QueueFree();

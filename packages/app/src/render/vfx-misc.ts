@@ -183,6 +183,116 @@ const create = (ready: (n: VfxNode) => void | Promise<void>, pos?: any) => {
 const parentSize = () => v2(view.w, view.h);
 const isVec = (x: any) => x && typeof x === 'object' && 'X' in x && !('CurrentHp' in x);
 
+// ------------------------------------------------------------------ beta power and form effects
+for (const [name, scene] of [['NPowerAppliedBuffVfx', 'vfx_buff_applied'], ['NPowerAppliedDebuffVfx', 'vfx_debuff_applied']]) {
+  N(`Vfx.Ui.${name}`).Create = (pos: any) => G.TestMode.IsOn ? null : create(async (n) => {
+    const v = await n.scene(`scenes/vfx/ui/${scene}.tscn`);
+    if (!v) return;
+    v.restart([...v.ps.keys()]);
+    await cmdWait(2);
+    n.QueueFree();
+  }, pos);
+}
+const FORM_BONES: Record<string, string[]> = {
+  echo: ['breathe', 'body_3', 'chest_particle_attach', 'body_upper2', 'torso_upper'],
+  reaper: ['bod_upper', 'body_2', 'body', 'body_lower', 'torso_upper'],
+  serpent: ['breathe', 'body_3', 'chest_particle_attach', 'body_upper2', 'torso_twist'],
+  void: ['head', 'head', 'head', 'head', 'head'],
+};
+/** Form effects live with the creature, follow its animated attachment bone, and expose the power's active/trigger API. */
+for (const form of ['demon', 'echo', 'reaper', 'serpent', 'void']) {
+  const name = `N${form[0].toUpperCase() + form.slice(1)}FormVfx`;
+  N(`Vfx.Forms.${name}`).Create = (target: any) => {
+    if (G.TestMode.IsOn) return null;
+    const ownerRoom = room(), cn = ownerRoom?.GetCreatureNode(target);
+    if (!cn) return null;
+    let active = form !== 'echo', trigger = false, progress = active ? 1 : 0;
+    let scene: SceneVfx | null = null;
+    const n: any = create(async (node) => {
+      scene = await node.scene(`scenes/vfx/forms/${form}/vfx_${form}_form_idle_vfx.tscn`);
+      if (!scene) return;
+      const triggered = [...scene.ps.keys()].filter(p => p.includes('effect_triggered_vfx/'));
+      const gated = [...scene.ps.keys()].filter(p => form === 'echo' || p.includes('power_active_vfx/'));
+      scene.emit(triggered, false);
+      scene.emit(gated, active);
+      $.onFrame((dt: number) => {
+        if (node.$freed || room() !== ownerRoom || !target.IsAlive) { node.QueueFree(); return false; }
+        const a = activeStage?.actors.get(target), sp = a?.spine;
+        if (a && !a.root.destroyed) {
+          scene!.root.setFromMatrix(toFrameTransform(a.root));
+          const index = ['IRONCLAD', 'SILENT', 'REGENT', 'NECROBINDER', 'DEFECT'].indexOf(target.Player?.Character?.Id?.Entry);
+          const bone = sp?.skeleton.findBone(FORM_BONES[form]?.[index] ?? '');
+          if (bone && sp) {
+            const pt = sp.toGlobal({ x: bone.worldX, y: bone.worldY });
+            scene!.node('center_pivot').position.copyFrom(scene!.root.toLocal(pt));
+          }
+        }
+        if (trigger) { scene!.restart(triggered); if (form === 'serpent') progress = 1; trigger = false; }
+        progress = Math.max(0, Math.min(1, progress + (form === 'serpent' ? -dt : active ? dt : -dt)));
+        if (form === 'echo' || form === 'void') scene!.root.alpha = 0.25 + 0.75 * progress;
+        if (form === 'serpent') scene!.node('center_pivot').alpha = 0.25 + 0.75 * progress;
+      });
+    });
+    n.SetActive = (on: boolean) => { active = on; if (scene) scene.emit([...scene.ps.keys()].filter(p => form === 'echo' || p.includes('power_active_vfx/')), on); };
+    n.OnEffectTriggered = () => { trigger = true; };
+    ownerRoom.CombatVfxContainer.AddChild(n);
+    return n;
+  };
+}
+/** Display matrices include the viewport margin; form effects share the frame-coordinate VFX canvas. */
+const toFrameTransform = (node: Container) => node.worldTransform.clone().translate(-view.ox, -view.oy);
+
+N('Vfx.NGrandFinaleVfx').totalAnticipationDuration = 1.625;
+N('Vfx.NGrandFinaleVfx').Create = (target: any) => {
+  if (G.TestMode.IsOn) return null;
+  const pos = isVec(target) ? target : room()?.GetCreatureNode(target)?.VfxSpawnPosition;
+  if (!pos) return null;
+  return create(async n => {
+    const v = await n.scene('scenes/vfx/vfx_grand_finale.tscn');
+    if (!v) return;
+    const groups = (key: string) => [...v.ps.keys()].filter(p => p.startsWith(key + '/'));
+    v.emit([...v.ps.keys()], false);
+    for (const group of ['anticipation_container', 'slash_container', 'end_container']) v.node(group).position.set(pos.X, pos.Y);
+    v.node('spotlight_container').position.set(960, edge.t);
+    v.node('spotlight_container/spotlight').alpha = 0;
+    const fade = new $.WebTween(); fade.TweenProperty(v.node('spotlight_container/spotlight'), 'alpha', 1, 1);
+    v.restart(groups('spotlight_container'));
+    await cmdWait(1.25); if (n.$freed) return;
+    v.restart(groups('anticipation_container'));
+    await cmdWait(0.25); if (n.$freed) return;
+    v.restart(groups('slash_container'));
+    await cmdWait(0.125); if (n.$freed) return;
+    shake(4, 2);
+    await cmdWait(0.0125); if (n.$freed) return;
+    v.restart(groups('end_container'));
+    const out = new $.WebTween(); out.TweenProperty(v.node('spotlight_container/spotlight'), 'alpha', 0, 0.5);
+    await cmdWait(2); n.QueueFree();
+  });
+};
+N('Vfx.NGrandFinaleImpactVfx').Create = (target: any, ground?: any) => {
+  if (G.TestMode.IsOn) return null;
+  const cn = isVec(target) ? null : room()?.GetCreatureNode(target);
+  const centre = cn?.VfxSpawnPosition ?? target, bottom = cn?.GetBottomOfHitbox() ?? ground;
+  if (!centre || !bottom) return null;
+  return create(async n => {
+    const v = await n.scene('scenes/vfx/vfx_grand_finale_impact.tscn');
+    if (!v) return;
+    v.node('hit_center_container').position.set(centre.X, centre.Y);
+    v.node('hit_ground_container').position.set(bottom.X, bottom.Y);
+    v.restart([...v.ps.keys()]);
+    await cmdWait(2); n.QueueFree();
+  });
+};
+N('Vfx.NTestSubjectBurnVfx').Create = () => G.TestMode.IsOn ? null : create(async n => {
+  const v = await n.scene('scenes/vfx/monsters/test_subject_burn_vfx.tscn');
+  if (!v) return;
+  v.root.alpha = 0;
+  const t = new $.WebTween();
+  t.TweenInterval(0.25); t.TweenProperty(v.root, 'alpha', 1, 0.3); t.TweenInterval(0.1);
+  t.TweenProperty(v.root, 'alpha', 0.5, 0.15); t.TweenProperty(v.root, 'alpha', 1, 0.25); t.TweenInterval(0.35);
+  t.TweenProperty(v.root, 'alpha', 0, 0.3); t.whenFinished(() => n.QueueFree());
+});
+
 // ------------------------------------------------------------------ fire
 /**
  * NGroundFireVfx (vfx/fires/vfx_ground_fire) at the target's GetBottomOfHitbox: ApplyColor recolours the stepped-fire
@@ -549,7 +659,7 @@ function eyePos(owner: any) {
   const cn = room()?.GetCreatureNode(owner);
   if (!cn) return null;
   const p = cn.VfxSpawnPosition, ch = owner.Player?.Character;
-  if (ch instanceof G.Defect) { const o = ch.EyelineOffset; return v2(p.X + o.X, p.Y + o.Y); }
+  if (ch instanceof G.Defect) { const o = G.Defect.EyelineOffset; return v2(p.X + o.X, p.Y + o.Y); }
   return v2(p.X, p.Y);
 }
 const angleTo = (a: any, b: any) => Math.atan2(b.Y - a.Y, b.X - a.X);
@@ -1335,6 +1445,7 @@ N('Vfx.NDoomVfx').Create = (visuals: any, position: any, size: any, shouldDie: b
     if (e?.animation?.name === 'hurt') { e.trackTime = 0.1; e.timeScale = 0; } // StartDoomAnim's frozen hurt pose
   }
   const n = new VfxNode(async (n) => {
+    let clip: Graphics | null = null;
     try {
       G.SfxCmd.Play$2('event:/sfx/characters/necrobinder/necrobinder_doom_kill', 1);
       const s = await loadScene('scenes/vfx/vfx_doom.tscn'), front = layerOf(n);
@@ -1356,7 +1467,6 @@ N('Vfx.NDoomVfx').Create = (visuals: any, position: any, size: any, shouldDie: b
       ];
       // the body in the viewport: feet at its bottom centre, sliding down with the Visual, clipped by viewport and Mask
       const o = { Position: v2(0, -vh * 0.5) };
-      let clip: Graphics | null = null;
       if (actor && stageRoot && !actor.root.destroyed) {
         clip = new Graphics();
         stageRoot.addChild(clip);
@@ -1381,8 +1491,16 @@ N('Vfx.NDoomVfx').Create = (visuals: any, position: any, size: any, shouldDie: b
       await finished(t);
       for (const sub of subs) sub.showOrHide(0, 0.25);
       await delay(2);
-      clip?.destroy();
     } finally {
+      // The actor can survive until the next stage update. Pixi still traverses its mask then,
+      // so detach it before destroying the Graphics context and keep the sunk body hidden.
+      if (clip) {
+        if (actor && !actor.root.destroyed && actor.root.mask === clip) {
+          actor.root.visible = false;
+          actor.root.mask = null;
+        }
+        if (!clip.destroyed) clip.destroy();
+      }
       n.QueueFree();
       tcs.TrySetResult();
       if (c) { r?.removing?.delete(c); r?.removingNodes?.delete(c); }

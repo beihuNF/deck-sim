@@ -17,7 +17,7 @@ void vertex() {
 	vertex_color = COLOR;
 	lifetime = INSTANCE_CUSTOM.y/INSTANCE_CUSTOM.w;
 	flipbook_offset = INSTANCE_CUSTOM.z;
-	
+
 	VERTEX += pivot_offset * (1.0/TEXTURE_PIXEL_SIZE);
 }
 
@@ -25,6 +25,6 @@ void fragment() {
 	float offset = texture(offset_curve, vec2(lifetime)).r;
 	vec4 tex = texture(TEXTURE, UV * texture_tiling + vec2(flipbook_offset, initial_offset + offset));
 	float mask = texture(mask_texture, UV).r;
-	
+
 	COLOR = vec4(vertex_color.rgb, smoothstep(0.35, 0.65, vertex_color.a * tex.r * mask));
 }

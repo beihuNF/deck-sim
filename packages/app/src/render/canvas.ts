@@ -94,7 +94,9 @@ export function translate(code: string, floatLiterals: boolean | 'cmp' = false):
   let s = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
   if (UNSUPPORTED.test(s)) return null;
   const mode = /render_mode\s+([^;]*);/.exec(s)?.[1] ?? '';
-  s = s.replace(/shader_type\s+\w+\s*;/, '').replace(/render_mode\s+[^;]*;/, '');
+  s = s.replace(/shader_type\s+\w+\s*;/, '').replace(/render_mode\s+[^;]*;/, '')
+    .replace(/group_uniforms\s*[^;]*;/g, '')
+    .replace(/\b(input|repeat)\b/g, '_gd_$1'); // editor grouping has no runtime meaning
   const uniforms: Uniform[] = [];
   // array sizes may use the shader's integer constants (uniform vec3 fades[gridSize * gridSize])
   const consts: Record<string, number> = {};

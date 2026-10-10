@@ -50,6 +50,125 @@ function emitAt(node: any, scene: string, name: string) {
     });
   } });
 }
+/** Restart the particles below a named container, using the current scene's emitter parameters. */
+function emitGroup(node: any, scene: string, group: string) {
+  pendingFx.push({ node, draw: (root) => {
+    void loadScene(scene).then((s) => {
+      if (!s || root.destroyed || node.$freed) return;
+      const g = node.xf(), c = Math.cos(g.rot), sn = Math.sin(g.rot);
+      for (const it of s.items) {
+        if (it.k !== 'particles' || !it.p.startsWith(group + '/')) continue;
+        const [a, b, cc, d, x, y] = it.m;
+        const p = particleItem({ ...it, m: [g.sx * c * a - g.sy * sn * b, g.sx * sn * a + g.sy * c * b,
+          g.sx * c * cc - g.sy * sn * d, g.sx * sn * cc + g.sy * c * d,
+          g.x + x * g.sx * c - y * g.sy * sn, g.y + x * g.sx * sn + y * g.sy * c] }, true,
+          () => { if (!p.destroyed) p.destroy({ children: true }); });
+        root.addChild(p);
+      }
+    });
+  } });
+}
+
+// v0.111.0 separates hand exhaustion, ordinary exhaustion and permanent card removal.
+const EXHAUST = 'scenes/vfx/ui/card/vfx_card_exhaust.tscn';
+const QUICK_EXHAUST = 'scenes/vfx/ui/card/vfx_card_exhaust_quick.tscn';
+class CardExhaustVfx extends Web(N('Vfx.Cards.NCardExhaustVfx')) {
+  private origin: any;
+  constructor(private card: CardNodeView, private quick = false) {
+    super();
+    this.origin = card.GlobalPosition;
+    if (!quick) { card.Reparent(this); card.Position = v2(); }
+  }
+  PlayAnimation() { return $.toTask(this.play()); }
+  private async play() {
+    if (!this.quick) this.GlobalPosition = this.origin;
+    const scene = this.quick ? QUICK_EXHAUST : EXHAUST;
+    emitGroup(this, scene, this.quick ? 'card_mask/vfx_anticipation_particles' : 'vfx_container');
+    const t = tween();
+    t.TweenProperty(this.card.Body, 'modulate:a', 0, 0.4).SetEase(EZ.In).SetTrans(TR.Cubic);
+    await finished(t);
+    if (this.$freed) return;
+    if (this.quick) {
+      const parent = NCombatRoom()?.Ui;
+      if (parent) this.Reparent(parent);
+      else { this.QueueFree(); return; }
+      emitGroup(this, scene, 'vfx_particles');
+    }
+    this.card.QueueFree();
+    setTimeout(() => this.QueueFree(), 2000);
+  }
+}
+N('Vfx.Cards.NCardExhaustVfx').Create = (card: any) => G.TestMode.IsOn || !(card instanceof CardNodeView) ? null : new CardExhaustVfx(card);
+N('Vfx.Cards.NCardExhaustQuickVfx').Create = (card: any) => {
+  if (G.TestMode.IsOn || !(card instanceof CardNodeView)) return null;
+  const n = new CardExhaustVfx(card, true);
+  card.CardVfxContainer.AddChild(n);
+  return n;
+};
+class CardRemoveVfx extends Web(N('Vfx.Cards.NCardRemoveVfx')) {
+  constructor(private card: CardNodeView) { super(); }
+  $entered() { this.GlobalPosition = this.card.GlobalPosition; this.Rotation = this.card.Rotation; void this.play(); }
+  private async play() {
+    const scene = 'scenes/vfx/ui/card/vfx_card_remove.tscn';
+    emitGroup(this, scene, 'anticipation_particles');
+    await G.Cmd.Wait$2(0.25, false);
+    if (this.$freed) return;
+    emitGroup(this, scene, 'slash_particles/slash_start');
+    await G.Cmd.Wait$2(0.1, false);
+    if (this.$freed) return;
+    emitGroup(this, scene, 'slash_particles/slash_end');
+    emitGroup(this, scene, 'card_particles');
+    setTimeout(() => this.QueueFree(), 2000);
+  }
+}
+N('Vfx.Cards.NCardRemoveVfx').Create = (card: any) => G.TestMode.IsOn || !(card instanceof CardNodeView) ? null : new CardRemoveVfx(card);
+
+/** Shine transformation preserves the beta's two awaited stages and interruption behavior. */
+class CardTransformShineVfx extends Web(N('Vfx.Cards.NCardTransformShineVfx')) {
+  private tw: any = null;
+  constructor(private card: CardNodeView, private endCard: any, private relics: any) { super(); }
+  PlayAnimation(short = false) { return $.toTask((async () => { await this.update(short); await this.reveal(); })()); }
+  PlayAnimationWithoutWaitingForEnd(short = false) { return $.toTask((async () => { await this.update(short); void this.reveal(); })()); }
+  PlayUntilCardUpdate(short = false) { return $.toTask(this.update(short)); }
+  PlayShineAndReveal() { return $.toTask(this.reveal()); }
+  private async update(short: boolean) {
+    sfx('event:/sfx/ui/cards/card_transform');
+    this.tw = tween();
+    this.tw.TweenProperty(this.card, 'scale', v2(1.15, 1.15), 0.75).SetEase(EZ.InOut).SetTrans(TR.Cubic);
+    const duration = short ? 1.5 : 0.875;
+    for (let t = 0; t <= duration; t += await frame()) {
+      if (this.$freed || !this.card.IsInsideTree() || !this.endCard.Pile) { this.QueueFree(); return; }
+      this.card.cssFilter = `brightness(${1 + Math.min(1, t / 0.75) * 3})`;
+    }
+    NCombatRoom()?.Ui?.Hand?.TryCancelCardPlay(this.card.Model);
+    this.card.Model = this.endCard;
+    this.card.UpdateVisuals(this.endCard.Pile.Type, G.CardPreviewMode.Normal);
+    NCombatRoom()?.Ui?.Hand?.GetCardHolder(this.endCard)?.UpdateCard();
+  }
+  private async reveal() {
+    if (this.$freed) return;
+    const scene = 'scenes/vfx/ui/card/vfx_card_transform.tscn';
+    this.card.cssFilter = '';
+    this.tw = tween();
+    this.tw.TweenProperty(this.card, 'scale', v2(1, 1), 0.25).SetEase(EZ.Out).SetTrans(TR.Cubic);
+    for (const r of this.relics ? $.iter(this.relics) : []) { r.Flash(); this.card.FlashRelicOnCard(r); }
+    emitGroup(this, scene, 'reveal_particles');
+    await G.Cmd.Wait$2(0.125, false);
+    if (this.$freed) return;
+    emitGroup(this, scene, 'card_mask/shine_particles');
+    await G.Cmd.Wait$2(0.4, false);
+    if (this.$freed) return;
+    emitGroup(this, scene, 'end_particles');
+    setTimeout(() => this.QueueFree(), 2000);
+  }
+  QueueFree() { this.tw?.Kill(); this.card.cssFilter = ''; this.card.Scale = v2(1, 1); super.QueueFree(); }
+}
+N('Vfx.Cards.NCardTransformShineVfx').Create = (card: any, end: any, relics: any) => {
+  if (G.TestMode.IsOn || !(card instanceof CardNodeView)) return null;
+  const n = new CardTransformShineVfx(card, end, relics);
+  card.CardVfxContainer.AddChild(n);
+  return n;
+};
 /** An atlas frame (AtlasTexture) as a texture with its trim margins, so it stretches like the original region. */
 async function frameTexture(path: string): Promise<Texture | null> {
   const f = atlasFrame(path);

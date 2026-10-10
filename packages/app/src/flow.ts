@@ -26,7 +26,7 @@ export interface RunOptions { ascension?: number; seed?: string | null; modifier
 export async function startRun(character: any, o: RunOptions = {}) {
   resetUi();
   ui.menuStack = [];
-  const seed = o.seed || new URLSearchParams(location.search).get('seed') || G.SeedHelper.GetRandomSeed(10);
+  const seed = o.seed || new URLSearchParams(location.search).get('seed') || G.SeedHelper.GetRandomSeed(null, 12);
   if (G.RandomCharacter && character instanceof G.RandomCharacter) character = rollRandomCharacter();
   // StartRunLobby.UpdatePreferredAscension: remember the level picked for this character (not for dailies)
   if (!o.dailyTime && o.ascension != null) safe(() => { G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(character.Id).PreferredAscension = o.ascension; });

@@ -42,10 +42,12 @@ export interface NewRunOptions {
 export async function startNewSingleplayerRun(o: NewRunOptions) {
   const unlockState = g.SaveManager.Instance.GenerateUnlockStateFromProgress();
   const player = g.Player.CreateForNewRun$CharacterModel_UnlockState_UInt64(o.character, unlockState, 1);
-  const acts = Array.from(g.ActModel.GetRandomList(o.seed, unlockState, false)).map((a: any) => a.ToMutable());
-  const runState = g.RunState.CreateForNewRun([player], acts, o.modifiers ?? [], o.ascension ?? 0, o.seed);
+  const rng = new g.Rng().$ctor_Rng$2(g.StringHelper.GetDeterministicHashCode(o.seed), 'act_selection');
+  const acts = Array.from(g.ActModel.GetRandomList(rng, unlockState, false)).map((a: any) => a.ToMutable());
+  const gameMode = o.dailyTime != null ? g.GameMode.Daily : o.modifiers?.length ? g.GameMode.Custom : g.GameMode.Standard;
+  const runState = g.RunState.CreateForNewRun([player], acts, o.modifiers ?? [], gameMode, o.ascension ?? 0, o.seed);
   const rm = g.RunManager.Instance;
-  rm.SetUpNewSinglePlayer(runState, o.shouldSave ?? false, o.dailyTime ?? null);
+  rm.SetUpNewSingleplayer(runState, o.shouldSave ?? false, o.dailyTime ?? null);
   await rm.FinalizeStartingRelics();
   rm.Launch();
   o.attach?.(runState);
@@ -66,7 +68,7 @@ export async function continueSavedRun(attach?: (runState: any) => void) {
   const save = res.SaveData;
   const runState = g.RunState.FromSerializable(save);
   const rm = g.RunManager.Instance;
-  rm.SetUpSavedSinglePlayer(runState, save);
+  await rm.SetUpSavedSingleplayer(runState, save);
   rm.Launch();
   attach?.(runState);
   await rm.GenerateMap();
@@ -75,16 +77,16 @@ export async function continueSavedRun(attach?: (runState: any) => void) {
 }
 
 // neutral locales whose language the game ships under its ISO 639-2 code (Chinese, Portuguese and Spanish are regional)
-const NEUTRAL: Record<string, string> = { en: 'eng', de: 'deu', fr: 'fra', it: 'ita', ja: 'jpn', ko: 'kor', pl: 'pol', ru: 'rus', th: 'tha', tr: 'tur' };
+const NEUTRAL: Record<string, string> = { en: 'eng', de: 'deu', fr: 'fra', id: 'ind', it: 'ita', ja: 'jpn', ko: 'kor', pl: 'pol', ru: 'rus', th: 'tha', tr: 'tur' };
 /**
  * The game language for the device's locales (navigator.languages, most preferred first), by the rules of
  * PlatformUtil.GetThreeLetterLanguageCode (zh → zhs unless Traditional, pt-BR → ptb) plus Steam's spanish / latam split.
- * Locales the game does not ship (zh-Hant, pt-PT, …) are skipped; English when none matches.
+ * Traditional Chinese uses zht; locales the game does not ship (pt-PT, …) are skipped.
  */
 export function platformLanguage(locales: readonly string[]): string {
   for (const locale of locales) {
     const [lang, ...sub] = locale.toLowerCase().split(/[-_]/);
-    if (lang === 'zh') { if (!sub.some((s) => s === 'hant' || s === 'tw' || s === 'hk' || s === 'mo')) return 'zhs'; }
+    if (lang === 'zh') return sub.some((s) => s === 'hant' || s === 'tw' || s === 'hk' || s === 'mo') ? 'zht' : 'zhs';
     else if (lang === 'pt') { if (!sub.includes('pt')) return 'ptb'; }
     else if (lang === 'es') return sub.length === 0 || sub.includes('es') ? 'spa' : 'esp';
     else if (NEUTRAL[lang]) return NEUTRAL[lang];

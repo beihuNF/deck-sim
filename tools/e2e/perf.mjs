@@ -1,6 +1,7 @@
 // Idle CPU per screen (menu, map, combat) from Chrome's own counters, plus a CPU profile of the combat screen.
 // Usage: CHROME=<path> [URL=<build>] [HEADED=1] node tools/e2e/perf.mjs <outDir>
 // Headless shells render WebGL in software (SwiftShader), so compare Script/Style/Layout time, not GPU/paint.
+// ENCOUNTER=<model class> compares the same encounter across versions whose seeded maps differ.
 import { chromium } from 'playwright';
 import { startRun, travel } from './start.mjs';
 import fs from 'node:fs';
@@ -47,8 +48,21 @@ await page.waitForTimeout(2000);
 await measure('map');
 const tFight = Date.now();
 await travel(page);
-await page.waitForFunction(() => document.querySelector('.end-turn:not(.off)'), null, { timeout: 60000 });
+await page.waitForFunction(() => document.querySelector('.end-turn-btn.shown:not(.disabled)'), null, { timeout: 60000 });
+if (process.env.ENCOUNTER) {
+  await page.evaluate(async name => {
+    const G = window.G;
+    if (!G[name]) throw new Error('Unknown encounter ' + name);
+    await G.RunManager.Instance.EnterRoomDebug(G.RoomType.Monster, G.MapPointType.Unassigned,
+      G.ModelDb.Encounter(G[name]).ToMutable(), false);
+  }, process.env.ENCOUNTER);
+  await page.waitForFunction(() => document.querySelector('.end-turn-btn.shown:not(.disabled)'), null, { timeout: 60000 });
+}
 console.log(`map click → first fight playable: ${Date.now() - tFight}ms`);
+console.log('combat models:', await page.evaluate(() => {
+  const cs = window.G.CombatManager.Instance.DebugOnlyGetState();
+  return { encounter: cs.Encounter.Id.Entry, enemies: cs.Enemies.map(e => e.Monster.Id.Entry) };
+}));
 await page.waitForTimeout(3000);
 await measure('combat (idle, player turn)');
 

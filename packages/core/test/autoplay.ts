@@ -6,7 +6,7 @@ export async function until(cond: () => boolean, max = 2000) { for (let i = 0; i
 
 export async function travelTo(G: any, runState: any, point: any) {
   const me = runState.Players[0];
-  const src = new G.RunLocation().$ctor_RunLocation$2(runState.CurrentMapCoord, runState.CurrentActIndex);
+  const src = new G.MapLocation().$ctor_MapLocation$2(runState.CurrentMapCoord, runState.CurrentActIndex);
   const vote = new G.MapVote().$zero_MapVote();
   vote.coord = point.coord;
   vote.mapGenerationCount = G.RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount;
@@ -45,7 +45,7 @@ export async function autoCombat(G: any, runState: any, log: (s: string) => void
       await settle();
     }
     if (!cm.IsInProgress) return turn;
-    G.RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(me, st.RoundNumber));
+    G.RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(me, me.PlayerCombatState.TurnNumber));
     await settle();
     await until(() => !cm.IsInProgress || combatState(G)?.RoundNumber > st.RoundNumber);
   }

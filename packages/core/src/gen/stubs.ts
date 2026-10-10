@@ -11,13 +11,6 @@ export class Callable$ {
   static From(...a) { return $.defaultOf(Callable$); }
 }
 $.stub("Godot.Callable", Callable$);
-export class ClassDB$ {
-  static $name = "ClassDB";
-  static $fullName = "Godot.ClassDB";
-  static $stub = true;
-  static Instantiate(...a) { return $.defaultOf(Variant$); }
-}
-$.stub("Godot.ClassDB", ClassDB$);
 export class Array_Collections$ {
   static $name = "Array";
   static $fullName = "Godot.Collections.Array";
@@ -101,9 +94,7 @@ export class Engine$ {
   static $stub = true;
   static GetArchitectureName(...a) { return ""; }
   static GetMainLoop(...a) { return null; }
-  static GetSingleton(...a) { return null; }
   static GetVersionInfo(...a) { return new $.Dictionary(); }
-  static HasSingleton(...a) { return false; }
   static IsEditorHint(...a) { return false; }
 }
 $.stub("Godot.Engine", Engine$);
@@ -123,13 +114,12 @@ export class GodotObject$ {
   static $name = "GodotObject";
   static $fullName = "Godot.GodotObject";
   static $stub = true;
-  Call(...a) { return $.defaultOf(Variant$); }
   CallDeferred(...a) { return $.defaultOf(Variant$); }
   Connect(...a) { return 0; }
   Disconnect(...a) { return undefined; }
   Dispose(...a) { return undefined; }
+  IsConnected(...a) { return false; }
   static IsInstanceValid(...a) { return false; }
-  Set(...a) { return undefined; }
   ToSignal(...a) { return null; }
 }
 $.stub("Godot.GodotObject", GodotObject$);
@@ -155,9 +145,9 @@ export class Mathf$ {
   static CeilToInt(...a) { return 0; }
   static Clamp(...a) { return 0; }
   static Cos(...a) { return 0; }
-  static Floor(...a) { return 0; }
   static FloorToInt(...a) { return 0; }
   static Lerp(...a) { return 0; }
+  static Log(...a) { return 0; }
   static Max(...a) { return 0; }
   static Min(...a) { return 0; }
   static Pow(...a) { return 0; }
@@ -257,6 +247,7 @@ export class StringExtensions$ {
   static $stub = true;
   static Capitalize(...a) { return ""; }
   static GetBaseDir(...a) { return ""; }
+  static PathJoin(...a) { return ""; }
   static ToSnakeCase(...a) { return ""; }
 }
 $.stub("Godot.StringExtensions", StringExtensions$);
@@ -273,6 +264,14 @@ $.stub("Godot.TextServer+JustificationFlag", $.stubEnum("JustificationFlag", { N
 $.stub("Godot.TextServer+LineBreakFlag", $.stubEnum("LineBreakFlag", { None: 0, Mandatory: 1, WordBound: 2, GraphemeBound: 4, Adaptive: 8, TrimEdgeSpaces: 16, TrimIndent: 32, TrimStartEdgeSpaces: 64, TrimEndEdgeSpaces: 128 }));
 $.stub("Godot.TextServer+Orientation", $.stubEnum("Orientation", { Horizontal: 0, Vertical: 1 }));
 $.stub("Godot.TextServer+OverrunBehavior", $.stubEnum("OverrunBehavior", { NoTrimming: 0, TrimChar: 1, TrimWord: 2, TrimEllipsis: 3, TrimWordEllipsis: 4, TrimEllipsisForce: 5, TrimWordEllipsisForce: 6 }));
+export class TextServerManager$ {
+  static $name = "TextServerManager";
+  static $fullName = "Godot.TextServerManager";
+  static $stub = true;
+  static get Singleton() { return TextServerManager$.$_Singleton !== undefined ? TextServerManager$.$_Singleton : null; }
+  static set Singleton(v) { TextServerManager$.$_Singleton = v; }
+}
+$.stub("Godot.TextServerManager", TextServerManager$);
 $.stub("Godot.TextureRect+ExpandModeEnum", $.stubEnum("ExpandModeEnum", { KeepSize: 0, IgnoreSize: 1, FitWidth: 2, FitWidthProportional: 3, FitHeight: 4, FitHeightProportional: 5 }));
 export class Time$ {
   static $name = "Time";
@@ -305,7 +304,6 @@ export class Variant$ {
   static $stub = true;
   static $default() { return new Variant$(); }
   As(...a) { return (typeof a[0] === "function" && a[0].$name ? $.dummy(a[0]) : $.defaultOf(a[0])); }
-  AsGodotObject(...a) { return $.dummy(GodotObject$); }
   AsString(...a) { return ""; }
   static From(...a) { return $.defaultOf(Variant$); }
   static op_Implicit(...a) { return $.defaultOf(Variant$); }
@@ -323,8 +321,6 @@ export class Vector2$ {
   static set Left(v) { Vector2$.$_Left = v; }
   static get One() { return Vector2$.$_One !== undefined ? Vector2$.$_One : $.defaultOf(Vector2$); }
   static set One(v) { Vector2$.$_One = v; }
-  static get Right() { return Vector2$.$_Right !== undefined ? Vector2$.$_Right : $.defaultOf(Vector2$); }
-  static set Right(v) { Vector2$.$_Right = v; }
   static get Up() { return Vector2$.$_Up !== undefined ? Vector2$.$_Up : $.defaultOf(Vector2$); }
   static set Up(v) { Vector2$.$_Up = v; }
   get X() { return this.$_X !== undefined ? this.$_X : 0; }
@@ -356,6 +352,7 @@ export class Harmony$ {
   static $name = "Harmony";
   static $fullName = "HarmonyLib.Harmony";
   static $stub = true;
+  static GetAllPatchedMethods(...a) { return []; }
   PatchAll(...a) { return undefined; }
 }
 $.stub("HarmonyLib.Harmony", Harmony$);
@@ -373,6 +370,53 @@ export class MegaSpineBinding$ {
   set BoundObject(v) { this.$_BoundObject = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSpineBinding", MegaSpineBinding$);
+export class SpineAnimationAccess$ {
+  static $name = "SpineAnimationAccess";
+  static $fullName = "MegaCrit.Sts2.Core.Bindings.MegaSpine.SpineAnimationAccess";
+  static $stub = true;
+  static $default() { return new SpineAnimationAccess$(); }
+  AddAnimation(...a) { return undefined; }
+  GetAnimationState(...a) { return $.dummy(MegaAnimationState$); }
+  GetCurrentTrack(...a) { return $.dummy(MegaTrackEntry$); }
+  get IsValid() { return this.$_IsValid !== undefined ? this.$_IsValid : false; }
+  set IsValid(v) { this.$_IsValid = v; }
+  SetAnimation(...a) { return undefined; }
+}
+$.stub("MegaCrit.Sts2.Core.Bindings.MegaSpine.SpineAnimationAccess", SpineAnimationAccess$);
+export class Controller$ {
+  static $name = "Controller";
+  static $fullName = "MegaCrit.Sts2.Core.ControllerInput.Controller";
+  static $stub = true;
+  static get dPadDown() { return Controller$.$_dPadDown !== undefined ? Controller$.$_dPadDown : "dPadDown"; }
+  static set dPadDown(v) { Controller$.$_dPadDown = v; }
+  static get dPadLeft() { return Controller$.$_dPadLeft !== undefined ? Controller$.$_dPadLeft : "dPadLeft"; }
+  static set dPadLeft(v) { Controller$.$_dPadLeft = v; }
+  static get dPadRight() { return Controller$.$_dPadRight !== undefined ? Controller$.$_dPadRight : "dPadRight"; }
+  static set dPadRight(v) { Controller$.$_dPadRight = v; }
+  static get dPadUp() { return Controller$.$_dPadUp !== undefined ? Controller$.$_dPadUp : "dPadUp"; }
+  static set dPadUp(v) { Controller$.$_dPadUp = v; }
+  static get faceButtonNorth() { return Controller$.$_faceButtonNorth !== undefined ? Controller$.$_faceButtonNorth : "faceButtonNorth"; }
+  static set faceButtonNorth(v) { Controller$.$_faceButtonNorth = v; }
+  static get lStickDown() { return Controller$.$_lStickDown !== undefined ? Controller$.$_lStickDown : "lStickDown"; }
+  static set lStickDown(v) { Controller$.$_lStickDown = v; }
+  static get lStickLeft() { return Controller$.$_lStickLeft !== undefined ? Controller$.$_lStickLeft : "lStickLeft"; }
+  static set lStickLeft(v) { Controller$.$_lStickLeft = v; }
+  static get lStickPress() { return Controller$.$_lStickPress !== undefined ? Controller$.$_lStickPress : "lStickPress"; }
+  static set lStickPress(v) { Controller$.$_lStickPress = v; }
+  static get lStickRight() { return Controller$.$_lStickRight !== undefined ? Controller$.$_lStickRight : "lStickRight"; }
+  static set lStickRight(v) { Controller$.$_lStickRight = v; }
+  static get lStickUp() { return Controller$.$_lStickUp !== undefined ? Controller$.$_lStickUp : "lStickUp"; }
+  static set lStickUp(v) { Controller$.$_lStickUp = v; }
+  static get rStickDown() { return Controller$.$_rStickDown !== undefined ? Controller$.$_rStickDown : "rStickDown"; }
+  static set rStickDown(v) { Controller$.$_rStickDown = v; }
+  static get rStickLeft() { return Controller$.$_rStickLeft !== undefined ? Controller$.$_rStickLeft : "rStickLeft"; }
+  static set rStickLeft(v) { Controller$.$_rStickLeft = v; }
+  static get rStickRight() { return Controller$.$_rStickRight !== undefined ? Controller$.$_rStickRight : "rStickRight"; }
+  static set rStickRight(v) { Controller$.$_rStickRight = v; }
+  static get rStickUp() { return Controller$.$_rStickUp !== undefined ? Controller$.$_rStickUp : "rStickUp"; }
+  static set rStickUp(v) { Controller$.$_rStickUp = v; }
+}
+$.stub("MegaCrit.Sts2.Core.ControllerInput.Controller", Controller$);
 export class ControllerConfig$ {
   static $name = "ControllerConfig";
   static $fullName = "MegaCrit.Sts2.Core.ControllerInput.ControllerConfig";
@@ -388,6 +432,12 @@ export class MegaInput$ {
   static $stub = true;
   static get cancel() { return MegaInput$.$_cancel !== undefined ? MegaInput$.$_cancel : "cancel"; }
   static set cancel(v) { MegaInput$.$_cancel = v; }
+  static get confirm() { return MegaInput$.$_confirm !== undefined ? MegaInput$.$_confirm : "confirm"; }
+  static set confirm(v) { MegaInput$.$_confirm = v; }
+  static get endTurn() { return MegaInput$.$_endTurn !== undefined ? MegaInput$.$_endTurn : "endTurn"; }
+  static set endTurn(v) { MegaInput$.$_endTurn = v; }
+  static get pauseAndBack() { return MegaInput$.$_pauseAndBack !== undefined ? MegaInput$.$_pauseAndBack : "pauseAndBack"; }
+  static set pauseAndBack(v) { MegaInput$.$_pauseAndBack = v; }
   static get viewExhaustPileAndTabRight() { return MegaInput$.$_viewExhaustPileAndTabRight !== undefined ? MegaInput$.$_viewExhaustPileAndTabRight : "viewExhaustPileAndTabRight"; }
   static set viewExhaustPileAndTabRight(v) { MegaInput$.$_viewExhaustPileAndTabRight = v; }
 }
@@ -406,7 +456,8 @@ export class NodeUtil$ {
   static $name = "NodeUtil";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.GodotExtensions.NodeUtil";
   static $stub = true;
-  static IsDescendant(...a) { return false; }
+  static AwaitProcessFrame(...a) { return $.Task.FromResult(0); }
+  static GetTreeOrNull(...a) { return null; }
   static IsValid(...a) { return false; }
   static TryGrabFocus(...a) { return undefined; }
 }
@@ -415,6 +466,7 @@ export class TweenHelper$ {
   static $name = "TweenHelper";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.GodotExtensions.TweenHelper";
   static $stub = true;
+  static AwaitFinished(...a) { return $.Task.CompletedTask; }
   static FastForwardToCompletion(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.GodotExtensions.TweenHelper", TweenHelper$);
@@ -427,8 +479,34 @@ export class NodePool$ {
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Pooling.NodePool", NodePool$);
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.Capstones.ICapstoneScreen", $.iface("ICapstoneScreen", []));
+export class DecodedDailyScore$ {
+  static $name = "DecodedDailyScore";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.DecodedDailyScore";
+  static $stub = true;
+  static $default() { return new DecodedDailyScore$(); }
+  get badges() { return this.$_badges !== undefined ? this.$_badges : 0; }
+  set badges(v) { this.$_badges = v; }
+  get floors() { return this.$_floors !== undefined ? this.$_floors : 0; }
+  set floors(v) { this.$_floors = v; }
+  get isValid() { return this.$_isValid !== undefined ? this.$_isValid : false; }
+  set isValid(v) { this.$_isValid = v; }
+  get runTime() { return this.$_runTime !== undefined ? this.$_runTime : 0; }
+  set runTime(v) { this.$_runTime = v; }
+  get victory() { return this.$_victory !== undefined ? this.$_victory : 0; }
+  set victory(v) { this.$_victory = v; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.DecodedDailyScore", DecodedDailyScore$);
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.Map.DrawingMode", $.stubEnum("DrawingMode", { None: 0, Drawing: 1, Erasing: 2 }));
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.Overlays.IOverlayScreen", $.iface("IOverlayScreen", []));
+export class ActiveScreenContext$ {
+  static $name = "ActiveScreenContext";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext.ActiveScreenContext";
+  static $stub = true;
+  static get Instance() { return ActiveScreenContext$.$_Instance !== undefined ? ActiveScreenContext$.$_Instance : null; }
+  static set Instance(v) { ActiveScreenContext$.$_Instance = v; }
+  Update(...a) { return undefined; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext.ActiveScreenContext", ActiveScreenContext$);
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.Timeline.EpochSlotState", $.stubEnum("EpochSlotState", { None: 0, Complete: 1, Obtained: 2, NotObtained: 3 }));
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Backgrounds.NKaiserCrabBossBackground+ArmSide", $.stubEnum("ArmSide", { Left: 0, Right: 1 }));
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NSmokePuffVfx+SmokePuffColor", $.stubEnum("SmokePuffColor", { Green: 0, Purple: 1 }));
@@ -436,6 +514,8 @@ export class PlayerFullscreenHealVfx$ {
   static $name = "PlayerFullscreenHealVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.PlayerFullscreenHealVfx";
   static $stub = true;
+  static get AssetPaths() { return PlayerFullscreenHealVfx$.$_AssetPaths !== undefined ? PlayerFullscreenHealVfx$.$_AssetPaths : []; }
+  static set AssetPaths(v) { PlayerFullscreenHealVfx$.$_AssetPaths = v; }
   static Play(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.PlayerFullscreenHealVfx", PlayerFullscreenHealVfx$);
@@ -449,13 +529,14 @@ $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.PlayerHurtVignetteHelper", PlayerHurtVignet
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.RumbleStyle", $.stubEnum("RumbleStyle", { None: 0, Rumble: 1, Drunk: 2 }));
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeDuration", $.stubEnum("ShakeDuration", { None: 0, Short: 1, Normal: 2, Long: 3, Forever: 4 }));
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeStrength", $.stubEnum("ShakeStrength", { None: 0, VeryWeak: 1, Weak: 2, Medium: 3, Strong: 4, TooMuch: 5 }));
-$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.VfxColor", $.stubEnum("VfxColor", { Red: 0, Green: 1, Blue: 2, Purple: 3, Black: 4, White: 5, Cyan: 6, Gold: 7 }));
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.VfxColor", $.stubEnum("VfxColor", { Red: 0, Green: 1, Blue: 2, Purple: 3, Black: 4, White: 5, Cyan: 6, Gold: 7, Orange: 8, Swamp: 9, DarkGray: 10 }));
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.VfxDuration", $.stubEnum("VfxDuration", { None: 0, VeryShort: 1, Short: 2, Standard: 3, Long: 4, VeryLong: 5, Custom: 6, Forever: 7 }));
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.VfxPosition", $.stubEnum("VfxPosition", { None: 0, Left: 1, Center: 2, Right: 3 }));
 export class MetricsSerializerContext$ { static $name = "MetricsSerializerContext"; static get Default() { return $.jsonContext("MetricsSerializerContext"); } }
 $.stub("MegaCrit.Sts2.Core.Runs.Metrics.MetricsSerializerContext", MetricsSerializerContext$);
 export class MegaCritSerializerContext$ { static $name = "MegaCritSerializerContext"; static get Default() { return $.jsonContext("MegaCritSerializerContext"); } }
 $.stub("MegaCrit.Sts2.Core.Saves.MegaCritSerializerContext", MegaCritSerializerContext$);
-$.stub("Sentry.BreadcrumbLevel", $.stubEnum("BreadcrumbLevel", { Debug: -1, Info: 0, Warning: 1, Error: 2, Critical: 3 }));
+$.stub("Sentry.BreadcrumbLevel", $.stubEnum("BreadcrumbLevel", { Debug: -1, Info: 0, Warning: 1, Error: 2, Fatal: 3 }));
 export class EventLikeExtensions$ {
   static $name = "EventLikeExtensions";
   static $fullName = "Sentry.EventLikeExtensions";
@@ -463,10 +544,43 @@ export class EventLikeExtensions$ {
   static SetFingerprint(...a) { return undefined; }
 }
 $.stub("Sentry.EventLikeExtensions", EventLikeExtensions$);
+export class SentryNativeEvent$ {
+  static $name = "SentryNativeEvent";
+  static $fullName = "Sentry.Godot.SentryNativeEvent";
+  static $stub = true;
+  get Environment() { return this.$_Environment !== undefined ? this.$_Environment : ""; }
+  set Environment(v) { this.$_Environment = v; }
+  GetExceptionValue(...a) { return ""; }
+}
+$.stub("Sentry.Godot.SentryNativeEvent", SentryNativeEvent$);
+export class SentryNativeOptions$ {
+  static $name = "SentryNativeOptions";
+  static $fullName = "Sentry.Godot.SentryNativeOptions";
+  static $stub = true;
+  SetBeforeSend(...a) { return undefined; }
+}
+$.stub("Sentry.Godot.SentryNativeOptions", SentryNativeOptions$);
+export class SentrySdk$ {
+  static $name = "SentrySdk";
+  static $fullName = "Sentry.Godot.SentrySdk";
+  static $stub = true;
+  static AddBreadcrumb(...a) { return undefined; }
+  static CaptureEvent(...a) { return null; }
+  static CaptureException(...a) { return null; }
+  static Close(...a) { return undefined; }
+  static ConfigureScope(...a) { return undefined; }
+  static Init(...a) { return undefined; }
+  static get IsEnabled() { return SentrySdk$.$_IsEnabled !== undefined ? SentrySdk$.$_IsEnabled : false; }
+  static set IsEnabled(v) { SentrySdk$.$_IsEnabled = v; }
+}
+$.stub("Sentry.Godot.SentrySdk", SentrySdk$);
 export class Scope$ {
   static $name = "Scope";
   static $fullName = "Sentry.Scope";
   static $stub = true;
+  AddAttachment(...a) { return undefined; }
+  get Environment() { return this.$_Environment !== undefined ? this.$_Environment : ""; }
+  set Environment(v) { this.$_Environment = v; }
   SetExtra(...a) { return undefined; }
   SetTag(...a) { return undefined; }
   get User() { return this.$_User !== undefined ? this.$_User : null; }
@@ -479,8 +593,20 @@ export class SentryEvent$ {
   static $stub = true;
   get Exception() { return this.$_Exception !== undefined ? this.$_Exception : null; }
   set Exception(v) { this.$_Exception = v; }
+  get Level() { return this.$_Level !== undefined ? this.$_Level : null; }
+  set Level(v) { this.$_Level = v; }
+  get Message() { return this.$_Message !== undefined ? this.$_Message : null; }
+  set Message(v) { this.$_Message = v; }
 }
 $.stub("Sentry.SentryEvent", SentryEvent$);
+$.stub("Sentry.SentryLevel", $.stubEnum("SentryLevel", { Debug: 0, Info: 1, Warning: 2, Error: 3, Fatal: 4 }));
+export class SentryMessage$ {
+  static $name = "SentryMessage";
+  static $fullName = "Sentry.SentryMessage";
+  static $stub = true;
+  static op_Implicit(...a) { return null; }
+}
+$.stub("Sentry.SentryMessage", SentryMessage$);
 export class SentryOptions$ {
   static $name = "SentryOptions";
   static $fullName = "Sentry.SentryOptions";
@@ -502,19 +628,6 @@ export class SentryOptions$ {
   SetBeforeSend(...a) { return undefined; }
 }
 $.stub("Sentry.SentryOptions", SentryOptions$);
-export class SentrySdk$ {
-  static $name = "SentrySdk";
-  static $fullName = "Sentry.SentrySdk";
-  static $stub = true;
-  static AddBreadcrumb(...a) { return undefined; }
-  static CaptureException(...a) { return null; }
-  static CaptureMessage(...a) { return null; }
-  static ConfigureScope(...a) { return undefined; }
-  static Init(...a) { return null; }
-  static get IsEnabled() { return SentrySdk$.$_IsEnabled !== undefined ? SentrySdk$.$_IsEnabled : false; }
-  static set IsEnabled(v) { SentrySdk$.$_IsEnabled = v; }
-}
-$.stub("Sentry.SentrySdk", SentrySdk$);
 export class SentryUser$ {
   static $name = "SentryUser";
   static $fullName = "Sentry.SentryUser";
@@ -613,6 +726,15 @@ export class GameLobbyJoinRequested_t$ {
   set m_steamIDLobby(v) { this.$_m_steamIDLobby = v; }
 }
 $.stub("Steamworks.GameLobbyJoinRequested_t", GameLobbyJoinRequested_t$);
+export class GameOverlayActivated_t$ {
+  static $name = "GameOverlayActivated_t";
+  static $fullName = "Steamworks.GameOverlayActivated_t";
+  static $stub = true;
+  static $default() { return new GameOverlayActivated_t$(); }
+  get m_bActive() { return this.$_m_bActive !== undefined ? this.$_m_bActive : 0; }
+  set m_bActive(v) { this.$_m_bActive = v; }
+}
+$.stub("Steamworks.GameOverlayActivated_t", GameOverlayActivated_t$);
 export class GlobalStatsReceived_t$ {
   static $name = "GlobalStatsReceived_t";
   static $fullName = "Steamworks.GlobalStatsReceived_t";
@@ -939,11 +1061,27 @@ export class SteamUGC$ {
   static $name = "SteamUGC";
   static $fullName = "Steamworks.SteamUGC";
   static $stub = true;
+  static CreateQueryUGCDetailsRequest(...a) { return null; }
   static GetItemInstallInfo(...a) { return false; }
   static GetNumSubscribedItems(...a) { return 0; }
+  static GetNumSupportedGameVersions(...a) { return 0; }
   static GetSubscribedItems(...a) { return 0; }
+  static GetSupportedGameVersionData(...a) { return false; }
+  static ReleaseQueryUGCRequest(...a) { return false; }
+  static SendQueryUGCRequest(...a) { return $.defaultOf(SteamAPICall_t$); }
 }
 $.stub("Steamworks.SteamUGC", SteamUGC$);
+export class SteamUGCQueryCompleted_t$ {
+  static $name = "SteamUGCQueryCompleted_t";
+  static $fullName = "Steamworks.SteamUGCQueryCompleted_t";
+  static $stub = true;
+  static $default() { return new SteamUGCQueryCompleted_t$(); }
+  get m_eResult() { return this.$_m_eResult !== undefined ? this.$_m_eResult : 0; }
+  set m_eResult(v) { this.$_m_eResult = v; }
+  get m_handle() { return this.$_m_handle !== undefined ? this.$_m_handle : null; }
+  set m_handle(v) { this.$_m_handle = v; }
+}
+$.stub("Steamworks.SteamUGCQueryCompleted_t", SteamUGCQueryCompleted_t$);
 export class SteamUser$ {
   static $name = "SteamUser";
   static $fullName = "Steamworks.SteamUser";
@@ -1010,17 +1148,20 @@ export class Node$ extends GodotObject$ {
   static $fullName = "Godot.Node";
   static $stub = true;
   AddChild(...a) { return undefined; }
+  AddSibling(...a) { return undefined; }
   CreateTween(...a) { return $.dummy(Tween$); }
+  GetChildCount(...a) { return 0; }
   GetChildren(...a) { return []; }
   GetIndex(...a) { return 0; }
-  GetNode(...a) { return (typeof a[0] === "function" && a[0].$name ? $.dummy(a[0]) : $.dummy(Node$)); }
+  GetNode(...a) { return (typeof a[0] === "function" && a[0].$name ? $.dummy(a[0]) : $.defaultOf(a[0])); }
+  GetNodeOrNull(...a) { return $.dummy(Node$); }
   GetParent(...a) { return $.dummy(Node$); }
   GetPath(...a) { return null; }
   GetProcessDeltaTime(...a) { return 0; }
-  GetTree(...a) { return $.dummy(SceneTree$); }
   GetViewport(...a) { return $.dummy(Viewport$); }
   IsAncestorOf(...a) { return false; }
   IsInsideTree(...a) { return false; }
+  IsNodeReady(...a) { return false; }
   MoveChild(...a) { return undefined; }
   get Name() { return this.$_Name !== undefined ? this.$_Name : null; }
   set Name(v) { this.$_Name = v; }
@@ -1035,6 +1176,10 @@ export class Node_MethodName$ extends GodotObject_MethodName$ {
   static $stub = true;
   static get AddChild() { return Node_MethodName$.$_AddChild !== undefined ? Node_MethodName$.$_AddChild : "AddChild"; }
   static set AddChild(v) { Node_MethodName$.$_AddChild = v; }
+  static get AddSibling() { return Node_MethodName$.$_AddSibling !== undefined ? Node_MethodName$.$_AddSibling : "AddSibling"; }
+  static set AddSibling(v) { Node_MethodName$.$_AddSibling = v; }
+  static get MoveChild() { return Node_MethodName$.$_MoveChild !== undefined ? Node_MethodName$.$_MoveChild : "MoveChild"; }
+  static set MoveChild(v) { Node_MethodName$.$_MoveChild = v; }
   static get QueueFree() { return Node_MethodName$.$_QueueFree !== undefined ? Node_MethodName$.$_QueueFree : "QueueFree"; }
   static set QueueFree(v) { Node_MethodName$.$_QueueFree = v; }
   static get RemoveChild() { return Node_MethodName$.$_RemoveChild !== undefined ? Node_MethodName$.$_RemoveChild : "RemoveChild"; }
@@ -1045,8 +1190,6 @@ export class Node_SignalName$ extends GodotObject_SignalName$ {
   static $name = "SignalName";
   static $fullName = "Godot.Node+SignalName";
   static $stub = true;
-  static get TreeExiting() { return Node_SignalName$.$_TreeExiting !== undefined ? Node_SignalName$.$_TreeExiting : "TreeExiting"; }
-  static set TreeExiting(v) { Node_SignalName$.$_TreeExiting = v; }
 }
 $.stub("Godot.Node+SignalName", Node_SignalName$);
 export class RefCounted$ extends GodotObject$ {
@@ -1068,21 +1211,22 @@ export class RenderingDevice$ extends GodotObject$ {
   GetDeviceName(...a) { return ""; }
 }
 $.stub("Godot.RenderingDevice", RenderingDevice$);
-export class MegaAnimation$ extends MegaSpineBinding$ {
-  static $name = "MegaAnimation";
-  static $fullName = "MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaAnimation";
+export class TextServerManagerInstance$ extends GodotObject$ {
+  static $name = "TextServerManagerInstance";
+  static $fullName = "Godot.TextServerManagerInstance";
   static $stub = true;
-  GetName(...a) { return ""; }
+  GetPrimaryInterface(...a) { return $.dummy(TextServer$); }
 }
-$.stub("MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaAnimation", MegaAnimation$);
+$.stub("Godot.TextServerManagerInstance", TextServerManagerInstance$);
 export class MegaAnimationState$ extends MegaSpineBinding$ {
   static $name = "MegaAnimationState";
   static $fullName = "MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaAnimationState";
   static $stub = true;
-  AddAnimation(...a) { return $.dummy(MegaTrackEntry$); }
+  AddAnimation(...a) { return undefined; }
+  AddAnimationTracked(...a) { return $.dummy(MegaTrackEntry$); }
   Apply(...a) { return undefined; }
   GetCurrent(...a) { return $.dummy(MegaTrackEntry$); }
-  SetAnimation(...a) { return $.dummy(MegaTrackEntry$); }
+  SetAnimation(...a) { return undefined; }
   Update(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaAnimationState", MegaAnimationState$);
@@ -1099,8 +1243,8 @@ export class MegaSkeletonDataResource$ extends MegaSpineBinding$ {
   static $name = "MegaSkeletonDataResource";
   static $fullName = "MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSkeletonDataResource";
   static $stub = true;
-  FindAnimation(...a) { return $.dummy(MegaAnimation$); }
   FindSkin(...a) { return $.dummy(MegaSkin$); }
+  HasAnimation(...a) { return false; }
 }
 $.stub("MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSkeletonDataResource", MegaSkeletonDataResource$);
 export class MegaSkin$ extends MegaSpineBinding$ {
@@ -1120,6 +1264,7 @@ export class MegaSprite$ extends MegaSpineBinding$ {
   GetAnimationState(...a) { return $.dummy(MegaAnimationState$); }
   GetSkeleton(...a) { return $.dummy(MegaSkeleton$); }
   HasAnimation(...a) { return false; }
+  IsAnimationStateReady(...a) { return false; }
   NewSkin(...a) { return $.dummy(MegaSkin$); }
 }
 $.stub("MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSprite", MegaSprite$);
@@ -1127,12 +1272,20 @@ export class MegaTrackEntry$ extends MegaSpineBinding$ {
   static $name = "MegaTrackEntry";
   static $fullName = "MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaTrackEntry";
   static $stub = true;
-  GetAnimation(...a) { return $.dummy(MegaAnimation$); }
   GetAnimationEnd(...a) { return 0; }
+  GetAnimationName(...a) { return ""; }
   SetTimeScale(...a) { return undefined; }
   SetTrackTime(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaTrackEntry", MegaTrackEntry$);
+export class SentryGodotOptions$ extends SentryOptions$ {
+  static $name = "SentryGodotOptions";
+  static $fullName = "Sentry.Godot.SentryGodotOptions";
+  static $stub = true;
+  get Native() { return this.$_Native !== undefined ? this.$_Native : null; }
+  set Native(v) { this.$_Native = v; }
+}
+$.stub("Sentry.Godot.SentryGodotOptions", SentryGodotOptions$);
 export class CallResult$ extends CallResult_Steamworks$ {
   static $name = "CallResult";
   static $fullName = "Steamworks.CallResult`1";
@@ -1161,6 +1314,7 @@ export class CanvasItem$ extends Node$ {
   set Material(v) { this.$_Material = v; }
   get Modulate() { return this.$_Modulate !== undefined ? this.$_Modulate : $.defaultOf(Color$); }
   set Modulate(v) { this.$_Modulate = v; }
+  MoveToFront(...a) { return undefined; }
   get SelfModulate() { return this.$_SelfModulate !== undefined ? this.$_SelfModulate : $.defaultOf(Color$); }
   set SelfModulate(v) { this.$_SelfModulate = v; }
   SetSelfModulate(...a) { return undefined; }
@@ -1177,14 +1331,23 @@ export class CanvasItem_SignalName$ extends Node_SignalName$ {
   static set VisibilityChanged(v) { CanvasItem_SignalName$.$_VisibilityChanged = v; }
 }
 $.stub("Godot.CanvasItem+SignalName", CanvasItem_SignalName$);
+export class CharFXTransform$ extends RefCounted$ {
+  static $name = "CharFXTransform";
+  static $fullName = "Godot.CharFXTransform";
+  static $stub = true;
+  get Font() { return this.$_Font !== undefined ? this.$_Font : null; }
+  set Font(v) { this.$_Font = v; }
+  get GlyphIndex() { return this.$_GlyphIndex !== undefined ? this.$_GlyphIndex : 0; }
+  set GlyphIndex(v) { this.$_GlyphIndex = v; }
+}
+$.stub("Godot.CharFXTransform", CharFXTransform$);
 export class DirAccess$ extends RefCounted$ {
   static $name = "DirAccess";
   static $fullName = "Godot.DirAccess";
   static $stub = true;
+  static CopyAbsolute(...a) { return 0; }
   CurrentIsDir(...a) { return false; }
   static DirExistsAbsolute(...a) { return false; }
-  FileExists(...a) { return false; }
-  GetCurrentDir(...a) { return ""; }
   GetDirectories(...a) { return []; }
   static GetDirectoriesAt(...a) { return []; }
   GetFiles(...a) { return []; }
@@ -1222,11 +1385,13 @@ export class FileAccess$ extends RefCounted$ {
   Flush(...a) { return undefined; }
   GetAsText(...a) { return ""; }
   GetBuffer(...a) { return []; }
+  GetError(...a) { return 0; }
   GetLength(...a) { return 0; }
   GetLine(...a) { return ""; }
   static GetModifiedTime(...a) { return 0; }
   static GetOpenError(...a) { return 0; }
   GetPosition(...a) { return 0; }
+  static GetSize(...a) { return 0; }
   IsOpen(...a) { return false; }
   static Open(...a) { return null; }
   Seek(...a) { return undefined; }
@@ -1259,7 +1424,7 @@ export class SceneTree$ extends MainLoop$ {
   static $name = "SceneTree";
   static $fullName = "Godot.SceneTree";
   static $stub = true;
-  CreateTimer(...a) { return $.dummy(SceneTreeTimer$); }
+  CreateTimer(...a) { return $.dummy(RefCounted$); }
   Quit(...a) { return undefined; }
   get Root() { return this.$_Root !== undefined ? this.$_Root : (this.$_Root = $.dummy(Viewport$)); }
   set Root(v) { this.$_Root = v; }
@@ -1273,14 +1438,6 @@ export class SceneTree_SignalName$ extends MainLoop_SignalName$ {
   static set ProcessFrame(v) { SceneTree_SignalName$.$_ProcessFrame = v; }
 }
 $.stub("Godot.SceneTree+SignalName", SceneTree_SignalName$);
-export class SceneTreeTimer$ extends RefCounted$ {
-  static $name = "SceneTreeTimer";
-  static $fullName = "Godot.SceneTreeTimer";
-  static $stub = true;
-  get Timeout() { return this.$_Timeout !== undefined ? this.$_Timeout : null; }
-  set Timeout(v) { this.$_Timeout = v; }
-}
-$.stub("Godot.SceneTreeTimer", SceneTreeTimer$);
 export class SceneTreeTimer_SignalName$ extends RefCounted_SignalName$ {
   static $name = "SignalName";
   static $fullName = "Godot.SceneTreeTimer+SignalName";
@@ -1316,13 +1473,21 @@ export class TextParagraph$ extends RefCounted$ {
   set Width(v) { this.$_Width = v; }
 }
 $.stub("Godot.TextParagraph", TextParagraph$);
+export class TextServer$ extends RefCounted$ {
+  static $name = "TextServer";
+  static $fullName = "Godot.TextServer";
+  static $stub = true;
+  FontGetCharFromGlyphIndex(...a) { return 0; }
+  FontGetGlyphIndex(...a) { return 0; }
+}
+$.stub("Godot.TextServer", TextServer$);
 export class Tween$ extends RefCounted$ {
   static $name = "Tween";
   static $fullName = "Godot.Tween";
   static $stub = true;
   Chain(...a) { return $.dummy(Tween$); }
   IsRunning(...a) { return false; }
-  IsValid(...a) { return false; }
+  Kill(...a) { return undefined; }
   Parallel(...a) { return $.dummy(Tween$); }
   Play(...a) { return undefined; }
   SetEase(...a) { return $.dummy(Tween$); }
@@ -1333,14 +1498,6 @@ export class Tween$ extends RefCounted$ {
   TweenProperty(...a) { return $.dummy(PropertyTweener$); }
 }
 $.stub("Godot.Tween", Tween$);
-export class Tween_SignalName$ extends RefCounted_SignalName$ {
-  static $name = "SignalName";
-  static $fullName = "Godot.Tween+SignalName";
-  static $stub = true;
-  static get Finished() { return Tween_SignalName$.$_Finished !== undefined ? Tween_SignalName$.$_Finished : "Finished"; }
-  static set Finished(v) { Tween_SignalName$.$_Finished = v; }
-}
-$.stub("Godot.Tween+SignalName", Tween_SignalName$);
 export class Tweener$ extends RefCounted$ {
   static $name = "Tweener";
   static $fullName = "Godot.Tweener";
@@ -1363,6 +1520,7 @@ export class NDebugAudioManager$ extends Node$ {
   static set Instance(v) { NDebugAudioManager$.$_Instance = v; }
   Play(...a) { return 0; }
   Stop(...a) { return undefined; }
+  StopAll(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager", NDebugAudioManager$);
 export class NAudioManager$ extends Node$ {
@@ -1400,18 +1558,17 @@ export class NControllerManager$ extends Node$ {
   static $stub = true;
   static get Instance() { return NControllerManager$.$_Instance !== undefined ? NControllerManager$.$_Instance : null; }
   static set Instance(v) { NControllerManager$.$_Instance = v; }
-  get IsUsingController() { return this.$_IsUsingController !== undefined ? this.$_IsUsingController : false; }
-  set IsUsingController(v) { this.$_IsUsingController = v; }
+  get IsUsingDirectionalNavigation() { return this.$_IsUsingDirectionalNavigation !== undefined ? this.$_IsUsingDirectionalNavigation : false; }
+  set IsUsingDirectionalNavigation(v) { this.$_IsUsingDirectionalNavigation = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.CommonUi.NControllerManager", NControllerManager$);
 export class NHotkeyManager$ extends Node$ {
   static $name = "NHotkeyManager";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.CommonUi.NHotkeyManager";
   static $stub = true;
-  AddBlockingScreen(...a) { return undefined; }
+  ClearHotkeys(...a) { return undefined; }
   static get Instance() { return NHotkeyManager$.$_Instance !== undefined ? NHotkeyManager$.$_Instance : null; }
   static set Instance(v) { NHotkeyManager$.$_Instance = v; }
-  RemoveBlockingScreen(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.CommonUi.NHotkeyManager", NHotkeyManager$);
 export class NAssetLoader$ extends Node$ {
@@ -1423,19 +1580,6 @@ export class NAssetLoader$ extends Node$ {
   LoadInTheBackground(...a) { return $.Task.FromResult(false); }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.NAssetLoader", NAssetLoader$);
-export class NKaiserCrabBossBackground$ extends Node$ {
-  static $name = "NKaiserCrabBossBackground";
-  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Backgrounds.NKaiserCrabBossBackground";
-  static $stub = true;
-  PlayArmDeathAnim(...a) { return undefined; }
-  PlayAttackAnim(...a) { return $.Task.CompletedTask; }
-  PlayBodyDeathAnim(...a) { return undefined; }
-  PlayHurtAnim(...a) { return undefined; }
-  PlayRightRecharge(...a) { return $.Task.CompletedTask; }
-  PlayRightSideChargeUpAnim(...a) { return $.Task.CompletedTask; }
-  PlayRightSideHeavy(...a) { return $.Task.CompletedTask; }
-}
-$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Backgrounds.NKaiserCrabBossBackground", NKaiserCrabBossBackground$);
 export class NDecimillipedeSegmentVfx$ extends Node$ {
   static $name = "NDecimillipedeSegmentVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NDecimillipedeSegmentVfx";
@@ -1775,6 +1919,7 @@ export class NCombatUi$ extends Control$ {
   set PlayContainer(v) { this.$_PlayContainer = v; }
   get PlayQueue() { return this.$_PlayQueue !== undefined ? this.$_PlayQueue : (this.$_PlayQueue = $.dummy(NCardPlayQueue$)); }
   set PlayQueue(v) { this.$_PlayQueue = v; }
+  ProceedWithoutRewards(...a) { return $.Task.CompletedTask; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Combat.NCombatUi", NCombatUi$);
 export class NCreature$ extends Control$ {
@@ -1789,14 +1934,12 @@ export class NCreature$ extends Control$ {
   set Body(v) { this.$_Body = v; }
   get DeathAnimationTask() { return this.$_DeathAnimationTask !== undefined ? this.$_DeathAnimationTask : $.Task.CompletedTask; }
   set DeathAnimationTask(v) { this.$_DeathAnimationTask = v; }
+  DisableInteractionForDeath(...a) { return undefined; }
   get Entity() { return this.$_Entity !== undefined ? this.$_Entity : null; }
   set Entity(v) { this.$_Entity = v; }
   GetBottomOfHitbox(...a) { return $.defaultOf(Vector2$); }
-  GetCurrentAnimationLength(...a) { return 0; }
   static GetOstyOffsetFromPlayer(...a) { return $.defaultOf(Vector2$); }
   GetSpecialNode(...a) { return (typeof a[0] === "function" && a[0].$name ? $.dummy(a[0]) : $.dummy(a[0])); }
-  get HasSpineAnimation() { return this.$_HasSpineAnimation !== undefined ? this.$_HasSpineAnimation : false; }
-  set HasSpineAnimation(v) { this.$_HasSpineAnimation = v; }
   get Hitbox() { return this.$_Hitbox !== undefined ? this.$_Hitbox : (this.$_Hitbox = $.dummy(Control$)); }
   set Hitbox(v) { this.$_Hitbox = v; }
   get IntentContainer() { return this.$_IntentContainer !== undefined ? this.$_IntentContainer : (this.$_IntentContainer = $.dummy(Control$)); }
@@ -1809,10 +1952,12 @@ export class NCreature$ extends Control$ {
   ScaleTo(...a) { return undefined; }
   SetAnimationTrigger(...a) { return undefined; }
   SetDefaultScaleTo(...a) { return undefined; }
-  get SpineController() { return this.$_SpineController !== undefined ? this.$_SpineController : (this.$_SpineController = $.dummy(MegaSprite$)); }
-  set SpineController(v) { this.$_SpineController = v; }
+  get SpineAnimation() { return this.$_SpineAnimation !== undefined ? this.$_SpineAnimation : $.defaultOf(SpineAnimationAccess$); }
+  set SpineAnimation(v) { this.$_SpineAnimation = v; }
   StartDeathAnim(...a) { return 0; }
   StartReviveAnim(...a) { return undefined; }
+  StartSfxLoop(...a) { return undefined; }
+  StopSfxLoop(...a) { return undefined; }
   ToggleIsInteractable(...a) { return undefined; }
   TrackBlockStatus(...a) { return undefined; }
   UpdateIntent(...a) { return $.Task.CompletedTask; }
@@ -1826,9 +1971,12 @@ export class NCreatureVisuals$ extends Node2D$ {
   static $name = "NCreatureVisuals";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals";
   static $stub = true;
-  get Body() { return this.$_Body !== undefined ? this.$_Body : (this.$_Body = $.dummy(Node2D$)); }
-  set Body(v) { this.$_Body = v; }
-  SetUpSkin(...a) { return undefined; }
+  get FormVfxHolder() { return this.$_FormVfxHolder !== undefined ? this.$_FormVfxHolder : (this.$_FormVfxHolder = $.dummy(Control$)); }
+  set FormVfxHolder(v) { this.$_FormVfxHolder = v; }
+  GetCurrentBody(...a) { return $.dummy(Node2D$); }
+  IsPlayingIdleAnimation(...a) { return false; }
+  get IsUsingPhobiaModeBody() { return this.$_IsUsingPhobiaModeBody !== undefined ? this.$_IsUsingPhobiaModeBody : false; }
+  set IsUsingPhobiaModeBody(v) { this.$_IsUsingPhobiaModeBody = v; }
   get SpineBody() { return this.$_SpineBody !== undefined ? this.$_SpineBody : (this.$_SpineBody = $.dummy(MegaSprite$)); }
   set SpineBody(v) { this.$_SpineBody = v; }
 }
@@ -2029,6 +2177,8 @@ export class NFakeMerchant$ extends Control$ {
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant";
   static $stub = true;
   FoulPotionThrown(...a) { return $.Task.CompletedTask; }
+  get Inventory() { return this.$_Inventory !== undefined ? this.$_Inventory : (this.$_Inventory = $.dummy(NMerchantInventory$)); }
+  set Inventory(v) { this.$_Inventory = v; }
   get MerchantButton() { return this.$_MerchantButton !== undefined ? this.$_MerchantButton : (this.$_MerchantButton = $.dummy(NButton$)); }
   set MerchantButton(v) { this.$_MerchantButton = v; }
 }
@@ -2109,16 +2259,20 @@ export class NGame$ extends Control$ {
   get DebugSeedOverride() { return this.$_DebugSeedOverride !== undefined ? this.$_DebugSeedOverride : ""; }
   set DebugSeedOverride(v) { this.$_DebugSeedOverride = v; }
   DoHitStop(...a) { return undefined; }
+  static GetGameVersion(...a) { return ""; }
   static get Instance() { return NGame$.$_Instance !== undefined ? NGame$.$_Instance : null; }
   static set Instance(v) { NGame$.$_Instance = v; }
   static IsMainThread(...a) { return false; }
   static IsReleaseGame(...a) { return false; }
   static get IsTrailerMode() { return NGame$.$_IsTrailerMode !== undefined ? NGame$.$_IsTrailerMode : false; }
   static set IsTrailerMode(v) { NGame$.$_IsTrailerMode = v; }
+  LoadRun(...a) { return $.Task.CompletedTask; }
   get LogoAnimation() { return this.$_LogoAnimation !== undefined ? this.$_LogoAnimation : (this.$_LogoAnimation = $.dummy(NLogoAnimation$)); }
   set LogoAnimation(v) { this.$_LogoAnimation = v; }
   get MainMenu() { return this.$_MainMenu !== undefined ? this.$_MainMenu : (this.$_MainMenu = $.dummy(NMainMenu$)); }
   set MainMenu(v) { this.$_MainMenu = v; }
+  get ReactionContainer() { return this.$_ReactionContainer !== undefined ? this.$_ReactionContainer : (this.$_ReactionContainer = $.dummy(NReactionContainer$)); }
+  set ReactionContainer(v) { this.$_ReactionContainer = v; }
   ReturnToMainMenu(...a) { return $.Task.CompletedTask; }
   ReturnToMainMenuAfterRun(...a) { return $.Task.CompletedTask; }
   get RootSceneContainer() { return this.$_RootSceneContainer !== undefined ? this.$_RootSceneContainer : (this.$_RootSceneContainer = $.dummy(NSceneContainer$)); }
@@ -2178,7 +2332,6 @@ export class NOrbManager$ extends Control$ {
   static set AssetPaths(v) { NOrbManager$.$_AssetPaths = v; }
   EvokeOrbAnim(...a) { return undefined; }
   RemoveSlotAnim(...a) { return undefined; }
-  ReplaceOrb(...a) { return undefined; }
   UpdateVisuals(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Orbs.NOrbManager", NOrbManager$);
@@ -2196,7 +2349,7 @@ export class NPotionContainer$ extends Control$ {
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Potions.NPotionContainer";
   static $stub = true;
   AnimatePotion(...a) { return undefined; }
-  OnPotionUseCanceled(...a) { return undefined; }
+  OnPotionUseOrDiscardCanceled(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Potions.NPotionContainer", NPotionContainer$);
 export class NPotionPopup$ extends Control$ {
@@ -2212,6 +2365,7 @@ export class NReactionContainer$ extends Control$ {
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Reaction.NReactionContainer";
   static $stub = true;
   DoRemoteReaction(...a) { return undefined; }
+  InitializeNetworking(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Reaction.NReactionContainer", NReactionContainer$);
 export class NRelic$ extends Control$ {
@@ -2255,7 +2409,7 @@ export class NCombatRoom$ extends Control$ {
   AddCreature(...a) { return undefined; }
   static get AssetPaths() { return NCombatRoom$.$_AssetPaths !== undefined ? NCombatRoom$.$_AssetPaths : []; }
   static set AssetPaths(v) { NCombatRoom$.$_AssetPaths = v; }
-  get BackCombatVfxContainer() { return this.$_BackCombatVfxContainer !== undefined ? this.$_BackCombatVfxContainer : (this.$_BackCombatVfxContainer = $.dummy(Node$)); }
+  get BackCombatVfxContainer() { return this.$_BackCombatVfxContainer !== undefined ? this.$_BackCombatVfxContainer : (this.$_BackCombatVfxContainer = $.dummy(Control$)); }
   set BackCombatVfxContainer(v) { this.$_BackCombatVfxContainer = v; }
   get Background() { return this.$_Background !== undefined ? this.$_Background : (this.$_Background = $.dummy(NCombatBackground$)); }
   set Background(v) { this.$_Background = v; }
@@ -2273,7 +2427,6 @@ export class NCombatRoom$ extends Control$ {
   RemoveCreatureNode(...a) { return undefined; }
   SetCreatureIsInteractable(...a) { return undefined; }
   SetUpBackground(...a) { return undefined; }
-  SetWaitingForOtherPlayersOverlayVisible(...a) { return undefined; }
   ShakeOstyIfDead(...a) { return undefined; }
   TransitionToActiveCombat(...a) { return undefined; }
   get Ui() { return this.$_Ui !== undefined ? this.$_Ui : (this.$_Ui = $.dummy(NCombatUi$)); }
@@ -2312,7 +2465,6 @@ export class NMerchantRoom$ extends Control$ {
   static $stub = true;
   static get AssetPaths() { return NMerchantRoom$.$_AssetPaths !== undefined ? NMerchantRoom$.$_AssetPaths : []; }
   static set AssetPaths(v) { NMerchantRoom$.$_AssetPaths = v; }
-  BlockInput(...a) { return undefined; }
   static Create(...a) { return $.sdummy(NMerchantRoom$); }
   FoulPotionThrown(...a) { return undefined; }
   static get Instance() { return NMerchantRoom$.$_Instance !== undefined ? NMerchantRoom$.$_Instance : null; }
@@ -2321,7 +2473,6 @@ export class NMerchantRoom$ extends Control$ {
   set Inventory(v) { this.$_Inventory = v; }
   get MerchantButton() { return this.$_MerchantButton !== undefined ? this.$_MerchantButton : (this.$_MerchantButton = $.dummy(NButton$)); }
   set MerchantButton(v) { this.$_MerchantButton = v; }
-  UnblockInput(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Rooms.NMerchantRoom", NMerchantRoom$);
 export class NRestSiteRoom$ extends Control$ {
@@ -2332,6 +2483,7 @@ export class NRestSiteRoom$ extends Control$ {
   AnimateDescriptionUp(...a) { return undefined; }
   static get AssetPaths() { return NRestSiteRoom$.$_AssetPaths !== undefined ? NRestSiteRoom$.$_AssetPaths : []; }
   static set AssetPaths(v) { NRestSiteRoom$.$_AssetPaths = v; }
+  BeforeExitingRoom(...a) { return undefined; }
   get Characters() { return this.$_Characters !== undefined ? this.$_Characters : []; }
   set Characters(v) { this.$_Characters = v; }
   static Create(...a) { return $.sdummy(NRestSiteRoom$); }
@@ -2387,7 +2539,8 @@ export class NCardRewardSelectionScreen$ extends Control$ {
   static $stub = true;
   static get AssetPaths() { return NCardRewardSelectionScreen$.$_AssetPaths !== undefined ? NCardRewardSelectionScreen$.$_AssetPaths : []; }
   static set AssetPaths(v) { NCardRewardSelectionScreen$.$_AssetPaths = v; }
-  CardsSelected(...a) { return $.Task.FromResult(null); }
+  GetCardHolder(...a) { return $.dummy(NCardHolder$); }
+  OptionSelected(...a) { return $.Task.FromResult(null); }
   RefreshOptions(...a) { return undefined; }
   static ShowScreen(...a) { return null; }
 }
@@ -2443,6 +2596,7 @@ export class NMainMenu$ extends Control$ {
   static get AssetPaths() { return NMainMenu$.$_AssetPaths !== undefined ? NMainMenu$.$_AssetPaths : []; }
   static set AssetPaths(v) { NMainMenu$.$_AssetPaths = v; }
   JoinGame(...a) { return $.Task.CompletedTask; }
+  OpenCompendiumSubmenu(...a) { return $.dummy(NCompendiumSubmenu$); }
   OpenMultiplayerSubmenu(...a) { return undefined; }
   get SubmenuStack() { return this.$_SubmenuStack !== undefined ? this.$_SubmenuStack : (this.$_SubmenuStack = $.dummy(NSubmenuStack$)); }
   set SubmenuStack(v) { this.$_SubmenuStack = v; }
@@ -2531,12 +2685,9 @@ export class NRewardsScreen$ extends Control$ {
   static $stub = true;
   static get AssetPaths() { return NRewardsScreen$.$_AssetPaths !== undefined ? NRewardsScreen$.$_AssetPaths : []; }
   static set AssetPaths(v) { NRewardsScreen$.$_AssetPaths = v; }
-  get ClosedTask() { return this.$_ClosedTask !== undefined ? this.$_ClosedTask : $.Task.CompletedTask; }
-  set ClosedTask(v) { this.$_ClosedTask = v; }
   HideWaitingForPlayersScreen(...a) { return undefined; }
   get IsComplete() { return this.$_IsComplete !== undefined ? this.$_IsComplete : false; }
   set IsComplete(v) { this.$_IsComplete = v; }
-  SetRewards(...a) { return undefined; }
   static ShowScreen(...a) { return null; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.NRewardsScreen", NRewardsScreen$);
@@ -2574,8 +2725,12 @@ export class NMerchantInventory$ extends Control$ {
   static $name = "NMerchantInventory";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantInventory";
   static $stub = true;
+  BlockInput(...a) { return undefined; }
+  get IsOpen() { return this.$_IsOpen !== undefined ? this.$_IsOpen : false; }
+  set IsOpen(v) { this.$_IsOpen = v; }
   OnCardRemovalUsed(...a) { return undefined; }
   Open(...a) { return undefined; }
+  UnblockInput(...a) { return undefined; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantInventory", NMerchantInventory$);
 export class NAchievementsGrid$ extends Control$ {
@@ -2586,6 +2741,19 @@ export class NAchievementsGrid$ extends Control$ {
   static set AssetPaths(v) { NAchievementsGrid$.$_AssetPaths = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NAchievementsGrid", NAchievementsGrid$);
+export class NKaiserCrabBossBackground$ extends Node2D$ {
+  static $name = "NKaiserCrabBossBackground";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Backgrounds.NKaiserCrabBossBackground";
+  static $stub = true;
+  PlayArmDeathAnim(...a) { return undefined; }
+  PlayAttackAnim(...a) { return $.Task.CompletedTask; }
+  PlayBodyDeathAnim(...a) { return undefined; }
+  PlayHurtAnim(...a) { return undefined; }
+  PlayRightRecharge(...a) { return $.Task.CompletedTask; }
+  PlayRightSideChargeUpAnim(...a) { return $.Task.CompletedTask; }
+  PlayRightSideHeavy(...a) { return $.Task.CompletedTask; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Backgrounds.NKaiserCrabBossBackground", NKaiserCrabBossBackground$);
 export class NBolasVfx$ extends Node2D$ {
   static $name = "NBolasVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NBolasVfx";
@@ -2595,15 +2763,45 @@ export class NBolasVfx$ extends Node2D$ {
   static Create(...a) { return $.sdummy(NBolasVfx$); }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NBolasVfx", NBolasVfx$);
-export class NExhaustVfx$ extends Node2D$ {
-  static $name = "NExhaustVfx";
-  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NExhaustVfx";
+export class NCardExhaustQuickVfx$ extends Control$ {
+  static $name = "NCardExhaustQuickVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardExhaustQuickVfx";
   static $stub = true;
-  static get AssetPaths() { return NExhaustVfx$.$_AssetPaths !== undefined ? NExhaustVfx$.$_AssetPaths : []; }
-  static set AssetPaths(v) { NExhaustVfx$.$_AssetPaths = v; }
-  static Create(...a) { return $.sdummy(NExhaustVfx$); }
+  static Create(...a) { return $.sdummy(NCardExhaustQuickVfx$); }
+  PlayAnimation(...a) { return $.Task.CompletedTask; }
+  static get scenePath() { return NCardExhaustQuickVfx$.$_scenePath !== undefined ? NCardExhaustQuickVfx$.$_scenePath : ""; }
+  static set scenePath(v) { NCardExhaustQuickVfx$.$_scenePath = v; }
 }
-$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NExhaustVfx", NExhaustVfx$);
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardExhaustQuickVfx", NCardExhaustQuickVfx$);
+export class NCardExhaustVfx$ extends Control$ {
+  static $name = "NCardExhaustVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardExhaustVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NCardExhaustVfx$); }
+  PlayAnimation(...a) { return $.Task.CompletedTask; }
+  static get scenePath() { return NCardExhaustVfx$.$_scenePath !== undefined ? NCardExhaustVfx$.$_scenePath : ""; }
+  static set scenePath(v) { NCardExhaustVfx$.$_scenePath = v; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardExhaustVfx", NCardExhaustVfx$);
+export class NCardRemoveVfx$ extends Control$ {
+  static $name = "NCardRemoveVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardRemoveVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NCardRemoveVfx$); }
+  static get scenePath() { return NCardRemoveVfx$.$_scenePath !== undefined ? NCardRemoveVfx$.$_scenePath : ""; }
+  static set scenePath(v) { NCardRemoveVfx$.$_scenePath = v; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardRemoveVfx", NCardRemoveVfx$);
+export class NCardTransformShineVfx$ extends Control$ {
+  static $name = "NCardTransformShineVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardTransformShineVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NCardTransformShineVfx$); }
+  PlayAnimationWithoutWaitingForEnd(...a) { return $.Task.CompletedTask; }
+  static get scenePath() { return NCardTransformShineVfx$.$_scenePath !== undefined ? NCardTransformShineVfx$.$_scenePath : ""; }
+  static set scenePath(v) { NCardTransformShineVfx$.$_scenePath = v; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardTransformShineVfx", NCardTransformShineVfx$);
 export class NFanOfKnivesVfx$ extends Node2D$ {
   static $name = "NFanOfKnivesVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NFanOfKnivesVfx";
@@ -2638,6 +2836,13 @@ export class NSpikeSplashVfx$ extends Node2D$ {
   static Create(...a) { return $.sdummy(NSpikeSplashVfx$); }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NSpikeSplashVfx", NSpikeSplashVfx$);
+export class NFormVfx$ extends Node2D$ {
+  static $name = "NFormVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NFormVfx";
+  static $stub = true;
+  SetActive(...a) { return undefined; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NFormVfx", NFormVfx$);
 export class NBigSlashImpactVfx$ extends Node2D$ {
   static $name = "NBigSlashImpactVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NBigSlashImpactVfx";
@@ -2721,7 +2926,6 @@ export class NCardTransformVfx$ extends Node2D$ {
   static get AssetPaths() { return NCardTransformVfx$.$_AssetPaths !== undefined ? NCardTransformVfx$.$_AssetPaths : []; }
   static set AssetPaths(v) { NCardTransformVfx$.$_AssetPaths = v; }
   static Create(...a) { return $.sdummy(NCardTransformVfx$); }
-  static PlayAnimOnCardInHand(...a) { return $.Task.CompletedTask; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NCardTransformVfx", NCardTransformVfx$);
 export class NCardUpgradeVfx$ extends Node2D$ {
@@ -2802,6 +3006,8 @@ export class NFireSmokePuffVfx$ extends Node2D$ {
   static $name = "NFireSmokePuffVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NFireSmokePuffVfx";
   static $stub = true;
+  static get AssetPaths() { return NFireSmokePuffVfx$.$_AssetPaths !== undefined ? NFireSmokePuffVfx$.$_AssetPaths : []; }
+  static set AssetPaths(v) { NFireSmokePuffVfx$.$_AssetPaths = v; }
   static Create(...a) { return $.sdummy(NFireSmokePuffVfx$); }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NFireSmokePuffVfx", NFireSmokePuffVfx$);
@@ -2823,6 +3029,22 @@ export class NGoopyImpactVfx$ extends Node2D$ {
   static set scenePath(v) { NGoopyImpactVfx$.$_scenePath = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NGoopyImpactVfx", NGoopyImpactVfx$);
+export class NGrandFinaleImpactVfx$ extends Node2D$ {
+  static $name = "NGrandFinaleImpactVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NGrandFinaleImpactVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NGrandFinaleImpactVfx$); }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NGrandFinaleImpactVfx", NGrandFinaleImpactVfx$);
+export class NGrandFinaleVfx$ extends Node2D$ {
+  static $name = "NGrandFinaleVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NGrandFinaleVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NGrandFinaleVfx$); }
+  static get totalAnticipationDuration() { return NGrandFinaleVfx$.$_totalAnticipationDuration !== undefined ? NGrandFinaleVfx$.$_totalAnticipationDuration : 0; }
+  static set totalAnticipationDuration(v) { NGrandFinaleVfx$.$_totalAnticipationDuration = v; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NGrandFinaleVfx", NGrandFinaleVfx$);
 export class NGroundFireVfx$ extends Node2D$ {
   static $name = "NGroundFireVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NGroundFireVfx";
@@ -3024,6 +3246,8 @@ export class NRollingBoulderVfx_SignalName$ extends Node2D_SignalName$ {
   static $name = "SignalName";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NRollingBoulderVfx+SignalName";
   static $stub = true;
+  static get Finished() { return NRollingBoulderVfx_SignalName$.$_Finished !== undefined ? NRollingBoulderVfx_SignalName$.$_Finished : "Finished"; }
+  static set Finished(v) { NRollingBoulderVfx_SignalName$.$_Finished = v; }
   static get HitCreature() { return NRollingBoulderVfx_SignalName$.$_HitCreature !== undefined ? NRollingBoulderVfx_SignalName$.$_HitCreature : "HitCreature"; }
   static set HitCreature(v) { NRollingBoulderVfx_SignalName$.$_HitCreature = v; }
 }
@@ -3164,6 +3388,8 @@ export class NThinSliceVfx$ extends Node2D$ {
   static $name = "NThinSliceVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NThinSliceVfx";
   static $stub = true;
+  static get AssetPaths() { return NThinSliceVfx$.$_AssetPaths !== undefined ? NThinSliceVfx$.$_AssetPaths : []; }
+  static set AssetPaths(v) { NThinSliceVfx$.$_AssetPaths = v; }
   static Create(...a) { return $.sdummy(NThinSliceVfx$); }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NThinSliceVfx", NThinSliceVfx$);
@@ -3193,6 +3419,22 @@ export class NWormyImpactVfx$ extends Node2D$ {
   static set scenePath(v) { NWormyImpactVfx$.$_scenePath = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NWormyImpactVfx", NWormyImpactVfx$);
+export class NPowerAppliedBuffVfx$ extends Node2D$ {
+  static $name = "NPowerAppliedBuffVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NPowerAppliedBuffVfx";
+  static $stub = true;
+  static get AssetPaths() { return NPowerAppliedBuffVfx$.$_AssetPaths !== undefined ? NPowerAppliedBuffVfx$.$_AssetPaths : []; }
+  static set AssetPaths(v) { NPowerAppliedBuffVfx$.$_AssetPaths = v; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NPowerAppliedBuffVfx", NPowerAppliedBuffVfx$);
+export class NPowerAppliedDebuffVfx$ extends Node2D$ {
+  static $name = "NPowerAppliedDebuffVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NPowerAppliedDebuffVfx";
+  static $stub = true;
+  static get AssetPaths() { return NPowerAppliedDebuffVfx$.$_AssetPaths !== undefined ? NPowerAppliedDebuffVfx$.$_AssetPaths : []; }
+  static set AssetPaths(v) { NPowerAppliedDebuffVfx$.$_AssetPaths = v; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NPowerAppliedDebuffVfx", NPowerAppliedDebuffVfx$);
 export class AtlasTexture$ extends Texture2D$ {
   static $name = "AtlasTexture";
   static $fullName = "Godot.AtlasTexture";
@@ -3270,13 +3512,6 @@ export class NErrorPopup$ extends NVerticalPopup$ {
   static Create(...a) { return $.sdummy(NErrorPopup$); }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.CommonUi.NErrorPopup", NErrorPopup$);
-export class NCommandHistory$ extends Panel$ {
-  static $name = "NCommandHistory";
-  static $fullName = "MegaCrit.Sts2.Core.Nodes.Debug.NCommandHistory";
-  static $stub = true;
-  static GetHistory(...a) { return ""; }
-}
-$.stub("MegaCrit.Sts2.Core.Nodes.Debug.NCommandHistory", NCommandHistory$);
 export class NDevConsole$ extends Panel$ {
   static $name = "NDevConsole";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Debug.NDevConsole";
@@ -3286,8 +3521,17 @@ export class NDevConsole$ extends Panel$ {
   static set Instance(v) { NDevConsole$.$_Instance = v; }
   ProcessNetCommand(...a) { return $.Task.CompletedTask; }
   ShowConsole(...a) { return undefined; }
+  static get assetPath() { return NDevConsole$.$_assetPath !== undefined ? NDevConsole$.$_assetPath : ""; }
+  static set assetPath(v) { NDevConsole$.$_assetPath = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Debug.NDevConsole", NDevConsole$);
+export class NAscensionSingleplayerFtue$ extends NFtue$ {
+  static $name = "NAscensionSingleplayerFtue";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Ftue.NAscensionSingleplayerFtue";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NAscensionSingleplayerFtue$); }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Ftue.NAscensionSingleplayerFtue", NAscensionSingleplayerFtue$);
 export class NCombatRulesFtue$ extends NFtue$ {
   static $name = "NCombatRulesFtue";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Ftue.NCombatRulesFtue";
@@ -3351,6 +3595,17 @@ export class NBestiary$ extends NSubmenu$ {
   static $stub = true;
   static get AssetPaths() { return NBestiary$.$_AssetPaths !== undefined ? NBestiary$.$_AssetPaths : []; }
   static set AssetPaths(v) { NBestiary$.$_AssetPaths = v; }
+  get BackVfxContainer() { return this.$_BackVfxContainer !== undefined ? this.$_BackVfxContainer : (this.$_BackVfxContainer = $.dummy(Control$)); }
+  set BackVfxContainer(v) { this.$_BackVfxContainer = v; }
+  GetCreatureNode(...a) { return $.dummy(NCreature$); }
+  GetSideCenter(...a) { return $.defaultOf(Vector2$); }
+  GetSideFloor(...a) { return $.defaultOf(Vector2$); }
+  static get Instance() { return NBestiary$.$_Instance !== undefined ? NBestiary$.$_Instance : null; }
+  static set Instance(v) { NBestiary$.$_Instance = v; }
+  get Layout() { return this.$_Layout !== undefined ? this.$_Layout : (this.$_Layout = $.dummy(Control$)); }
+  set Layout(v) { this.$_Layout = v; }
+  get VfxContainer() { return this.$_VfxContainer !== undefined ? this.$_VfxContainer : (this.$_VfxContainer = $.dummy(Control$)); }
+  set VfxContainer(v) { this.$_VfxContainer = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiary", NBestiary$);
 export class NCardLibrary$ extends NSubmenu$ {
@@ -3361,6 +3616,15 @@ export class NCardLibrary$ extends NSubmenu$ {
   static set AssetPaths(v) { NCardLibrary$.$_AssetPaths = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardLibrary", NCardLibrary$);
+export class NCombatPileCardSelectScreen$ extends NCardGridSelectionScreen$ {
+  static $name = "NCombatPileCardSelectScreen";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCombatPileCardSelectScreen";
+  static $stub = true;
+  static get AssetPaths() { return NCombatPileCardSelectScreen$.$_AssetPaths !== undefined ? NCombatPileCardSelectScreen$.$_AssetPaths : []; }
+  static set AssetPaths(v) { NCombatPileCardSelectScreen$.$_AssetPaths = v; }
+  static Create(...a) { return $.sdummy(NCombatPileCardSelectScreen$); }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCombatPileCardSelectScreen", NCombatPileCardSelectScreen$);
 export class NDeckCardSelectScreen$ extends NCardGridSelectionScreen$ {
   static $name = "NDeckCardSelectScreen";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckCardSelectScreen";
@@ -3460,6 +3724,13 @@ export class NGameOverScreen$ extends NClickableControl$ {
   static set AssetPaths(v) { NGameOverScreen$.$_AssetPaths = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NGameOverScreen", NGameOverScreen$);
+export class NCompendiumSubmenu$ extends NSubmenu$ {
+  static $name = "NCompendiumSubmenu";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NCompendiumSubmenu";
+  static $stub = true;
+  OpenBestiary(...a) { return $.dummy(NBestiary$); }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NCompendiumSubmenu", NCompendiumSubmenu$);
 export class NModdingScreen$ extends NSubmenu$ {
   static $name = "NModdingScreen";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Screens.ModdingScreen.NModdingScreen";
@@ -3573,6 +3844,46 @@ export class NCardUncommonGlow$ extends GpuParticles2D$ {
   static set AssetPaths(v) { NCardUncommonGlow$.$_AssetPaths = v; }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardUncommonGlow", NCardUncommonGlow$);
+export class NDemonFormVfx$ extends NFormVfx$ {
+  static $name = "NDemonFormVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NDemonFormVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NDemonFormVfx$); }
+  OnEffectTriggered(...a) { return undefined; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NDemonFormVfx", NDemonFormVfx$);
+export class NEchoFormVfx$ extends NFormVfx$ {
+  static $name = "NEchoFormVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NEchoFormVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NEchoFormVfx$); }
+  SetActive(...a) { return undefined; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NEchoFormVfx", NEchoFormVfx$);
+export class NReaperFormVfx$ extends NFormVfx$ {
+  static $name = "NReaperFormVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NReaperFormVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NReaperFormVfx$); }
+  OnEffectTriggered(...a) { return undefined; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NReaperFormVfx", NReaperFormVfx$);
+export class NSerpentFormVfx$ extends NFormVfx$ {
+  static $name = "NSerpentFormVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NSerpentFormVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NSerpentFormVfx$); }
+  OnEffectTriggered(...a) { return undefined; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NSerpentFormVfx", NSerpentFormVfx$);
+export class NVoidFormVfx$ extends NFormVfx$ {
+  static $name = "NVoidFormVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NVoidFormVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NVoidFormVfx$); }
+  SetActive(...a) { return undefined; }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NVoidFormVfx", NVoidFormVfx$);
 export class NBlockBrokenVfx$ extends Sprite2D$ {
   static $name = "NBlockBrokenVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NBlockBrokenVfx";
@@ -3611,6 +3922,13 @@ export class NRainVfx$ extends GpuParticles2D$ {
   static Create(...a) { return $.sdummy(NRainVfx$); }
 }
 $.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NRainVfx", NRainVfx$);
+export class NTestSubjectBurnVfx$ extends ColorRect$ {
+  static $name = "NTestSubjectBurnVfx";
+  static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.NTestSubjectBurnVfx";
+  static $stub = true;
+  static Create(...a) { return $.sdummy(NTestSubjectBurnVfx$); }
+}
+$.stub("MegaCrit.Sts2.Core.Nodes.Vfx.NTestSubjectBurnVfx", NTestSubjectBurnVfx$);
 export class NLowHpBorderVfx$ extends ColorRect$ {
   static $name = "NLowHpBorderVfx";
   static $fullName = "MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NLowHpBorderVfx";

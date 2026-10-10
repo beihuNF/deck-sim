@@ -17,14 +17,14 @@ void fragment()
 {
 	vec2 direction = normalize(vec2(0.5, 0.5) - UV);
 
-	float distortion_mask = texture(TEXTURE, UV).r;	
+	float distortion_mask = texture(TEXTURE, UV).r;
 	float distortion_intensity = vertex_color.a;
-	
+
 	vec4 screen_tex = textureLod(
-		screen_texture, 
-		SCREEN_UV + (distortion_base_intensity * distortion_intensity * distortion_mask * direction), 
+		screen_texture,
+		SCREEN_UV + (distortion_base_intensity * distortion_intensity * distortion_mask * direction),
 		0.0
 		);
-		
+
 	COLOR = screen_tex;
 }

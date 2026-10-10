@@ -21,9 +21,13 @@ export function suspendWhenDetached(a: Application) {
       loss.restoreContext();
     }
   };
-  canvas.addEventListener('webglcontextlost', () => {
+  canvas.addEventListener('webglcontextlost', (event) => {
+    event.preventDefault();
     lossDelivered = true;
-    update();
+    // The browser allows restoration only after it has finished dispatching this
+    // event. A canvas can already be remounted here; restoring inside the event
+    // is rejected and would leave that transparent layer permanently opaque.
+    setTimeout(update, 0);
   });
   canvas.addEventListener('webglcontextrestored', () => {
     suspended = restoring = false;

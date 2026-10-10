@@ -113,7 +113,8 @@ public partial class Emitter
                         double d => FmtNum(d),
                         float f => FmtNum(f),
                         decimal m => m.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        ulong u when u > 9007199254740991UL => u.ToString() + "/*precision*/",
+                        ulong u when u > 9007199254740991UL => u.ToString() + "n",
+                        long i when i > 9007199254740991L || i < -9007199254740991L => i.ToString() + "n",
                         _ => Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture)!,
                     };
                 }
@@ -616,6 +617,8 @@ public partial class Emitter
     string RefArg(ExpressionSyntax e, IParameterSymbol p)
     {
         var ac = argCtx!;
+        // Runtime ref-return APIs already return a mutable reference box.
+        if (e is InvocationExpressionSyntax && Sym(e) is IMethodSymbol { ReturnsByRef: true }) return Expr(e);
         // passing through an existing ref/out parameter box
         if (e is IdentifierNameSyntax id && Sym(id) is IParameterSymbol ps && ps.RefKind is RefKind.Out or RefKind.Ref && symOverride.TryGetValue(ps, out var ov) && ov.EndsWith(".v"))
             return ov[..^2];
@@ -656,6 +659,9 @@ public partial class Emitter
 
     string AssignTo(ExpressionSyntax target, string value)
     {
+        // A ref-returning call is not a JS lvalue. Its reference box writes through to the span.
+        if (target is InvocationExpressionSyntax && Sym(target) is IMethodSymbol { ReturnsByRef: true })
+            return $"{Expr(target)}.v = {value}";
         if (AutoPropBacking(target) is { } bk) return $"{bk} = {value}";
         if (target is ElementAccessExpressionSyntax ea && Sym(ea) is IPropertySymbol ip && !Ctx.IsArrayLike(M.GetTypeInfo(ea.Expression).Type) && M.GetTypeInfo(ea.Expression).Type is not IArrayTypeSymbol)
         {
@@ -892,8 +898,8 @@ public partial class Emitter
             C.UseExt(opm);
             value = $"{TypeRef(opm.ContainingType)}.{C.MethodName(opm)}({L}, {R})";
         }
-        else if (lt != null && Ctx.Unnull(lt).SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64 && op is "&" or "|" or "^" or "<<" or ">>" or ">>>")
-            value = $"$.op64(\"{op}\", {L}, {R})";
+        else if (lt != null && Ctx.Unnull(lt).SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64)
+            value = $"$.op64(\"{op}\", {L}, {R}, {(Ctx.Unnull(lt).SpecialType == SpecialType.System_UInt64 ? "true" : "false")})";
         else value = ArithOp(op, L, R, lt, lt, rt);
         if (isIndexer || isBaseProp) return "(" + AssignTo(left, value) + ")";
         if (value == $"({L} {op} {R})") return $"({L} {op}= {R})";
@@ -918,6 +924,8 @@ public partial class Emitter
     {
         if (op == "+" && (Ctx.IsString(lt) || Ctx.IsString(rt) || Ctx.IsString(resultT)))
             return $"({StrOperand(L, lt)} + {StrOperand(R, rt)})";
+        if (resultT != null && Ctx.Unnull(resultT).SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64)
+            return $"$.op64(\"{op}\", {L}, {R}, {(Ctx.Unnull(resultT).SpecialType == SpecialType.System_UInt64 ? "true" : "false")})";
         if (Ctx.IsDecimal(resultT) && op is "+" or "-" or "*" or "/") return $"$.dm({L} {op} {R})";
         if (op == "/" && Ctx.IsIntLike(lt) && Ctx.IsIntLike(rt) && !Ctx.IsFloat(resultT) && !Ctx.IsDecimal(resultT)) return $"$.idiv({L}, {R})";
         if (resultT?.SpecialType == SpecialType.System_Boolean && op is "&" or "|") return $"!!({L} {op} {R})";
@@ -992,7 +1000,7 @@ public partial class Emitter
         var op = b.OperatorToken.Text;
         var lt64 = Ctx.Unnull(ltc ?? lt ?? rt!).SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64;
         if (lt64 && kind is SyntaxKind.LeftShiftExpression or SyntaxKind.RightShiftExpression or SyntaxKind.UnsignedRightShiftExpression or SyntaxKind.BitwiseAndExpression or SyntaxKind.BitwiseOrExpression or SyntaxKind.ExclusiveOrExpression)
-            return $"$.op64(\"{op}\", {L}, {R})";
+            return $"$.op64(\"{op}\", {L}, {R}, {(Ctx.Unnull(ltc ?? lt ?? rt!).SpecialType == SpecialType.System_UInt64 ? "true" : "false")})";
         bool lifted = IsNullableValue(lt) || IsNullableValue(rt);
         if (lifted && kind is SyntaxKind.LessThanExpression or SyntaxKind.LessThanOrEqualExpression or SyntaxKind.GreaterThanExpression or SyntaxKind.GreaterThanOrEqualExpression)
             return $"$.lift2({L}, {R}, (a, b) => a {op} b, false)";
@@ -1018,6 +1026,14 @@ public partial class Emitter
 
     string Prefix(PrefixUnaryExpressionSyntax pu)
     {
+        var pt = M.GetTypeInfo(pu).Type;
+        if (pt?.SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64)
+        {
+            var unsigned = pt.SpecialType == SpecialType.System_UInt64 ? "true" : "false";
+            if (pu.IsKind(SyntaxKind.BitwiseNotExpression)) return $"$.op64(\"^\", {Expr(pu.Operand)}, -1, {unsigned})";
+            if (pu.IsKind(SyntaxKind.UnaryMinusExpression)) return $"$.op64(\"-\", 0, {Expr(pu.Operand)}, {unsigned})";
+            if (pu.IsKind(SyntaxKind.UnaryPlusExpression)) return Expr(pu.Operand);
+        }
         switch (pu.Kind())
         {
             case SyntaxKind.LogicalNotExpression: return $"!{Expr(pu.Operand)}";
@@ -1039,6 +1055,16 @@ public partial class Emitter
 
     string IncDec(ExpressionSyntax operand, string op, bool prefix)
     {
+        var ot = M.GetTypeInfo(operand).Type;
+        if (ot?.SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64)
+        {
+            var current = Expr(operand);
+            var d64 = op == "++" ? "+" : "-";
+            var unsigned = ot.SpecialType == SpecialType.System_UInt64 ? "true" : "false";
+            if (prefix) return "(" + AssignTo(operand, $"$.op64(\"{d64}\", {current}, 1, {unsigned})") + ")";
+            var tmp64 = Temp();
+            return $"(({tmp64} = {current}), ({AssignTo(operand, $"$.op64(\"{d64}\", {tmp64}, 1, {unsigned})")}), {tmp64})";
+        }
         var sym = Sym(operand);
         bool isIndexer = operand is ElementAccessExpressionSyntax ea && sym is IPropertySymbol && !Ctx.IsArrayLike(M.GetTypeInfo(ea.Expression).Type) && M.GetTypeInfo(ea.Expression).Type is not IArrayTypeSymbol;
         if (isIndexer)
@@ -1076,6 +1102,13 @@ public partial class Emitter
         }
         if (target == null) return e;
         var tt = Ctx.Unnull(target);
+        var src64 = src != null && Ctx.Unnull(src).SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64;
+        if (tt.SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64)
+            return $"$.int64({e}, {(tt.SpecialType == SpecialType.System_UInt64 ? "true" : "false")})";
+        if (src64 && tt.SpecialType is SpecialType.System_Int32 or SpecialType.System_UInt32 or SpecialType.System_Byte or SpecialType.System_SByte or SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_Char)
+            return $"$.narrow64({e}, {(tt.SpecialType is SpecialType.System_Byte or SpecialType.System_SByte ? 8 : tt.SpecialType is SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_Char ? 16 : 32)}, {(tt.SpecialType is SpecialType.System_UInt32 or SpecialType.System_Byte or SpecialType.System_UInt16 or SpecialType.System_Char ? "true" : "false")})";
+        if (src64 && tt.SpecialType is SpecialType.System_Double or SpecialType.System_Decimal) return $"Number({e})";
+        if (src64 && tt.SpecialType == SpecialType.System_Single) return $"Math.fround(Number({e}))";
         if (Ctx.IsIntLike(tt) && tt.TypeKind != TypeKind.Enum && (Ctx.IsFloat(src) || Ctx.IsDecimal(src)))
             return tt.SpecialType == SpecialType.System_UInt32 ? $"($.trunc({e}) >>> 0)" : $"$.trunc({e})";
         // Integer narrowing / sign changes wrap like C# unchecked casts. Enums count as their underlying type

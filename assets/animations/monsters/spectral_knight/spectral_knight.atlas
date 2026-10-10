@@ -1,89 +1,84 @@
 spectral_knight@0.5x.webp
-size:1400,1547
+size:994,532
 filter:Linear,Linear
-scale:0.6
+scale:0.292
 3/4 leg
-bounds:860,966,164,255
+bounds:521,168,80,124
 rotate:90
 arm_f
-bounds:2,2,455,233
+bounds:423,250,222,114
 cape back
-bounds:374,949,484,596
+bounds:185,240,236,290
 cape middle
-bounds:756,375,274,384
-offsets:8,5,377,389
+bounds:2,42,133,187
+offsets:4,2,183,189
+rotate:90
 cape top
-bounds:860,1132,436,413
-offsets:10,9,448,425
+bounds:708,328,213,202
+offsets:4,4,218,207
 chest
-bounds:342,359,412,400
+bounds:191,44,200,194
 debuff_whoosh
-bounds:342,299,501,58
-offsets:9,10,520,79
+bounds:2,12,245,28
+offsets:4,5,253,38
 extra sword hand
-bounds:1242,593,151,156
-offsets:5,3,158,163
+bounds:916,159,74,76
+offsets:2,1,77,79
 rotate:90
 fabric1
-bounds:1032,316,183,197
+bounds:393,2,89,96
 rotate:90
 fabric2
-bounds:1117,975,176,155
-offsets:12,16,197,183
+bounds:767,108,86,75
+offsets:6,8,96,89
 hand_f
-bounds:1242,451,140,153
-offsets:4,4,148,161
-rotate:90
+bounds:923,335,68,74
+offsets:2,2,72,78
 helmet
-bounds:459,38,259,298
-rotate:90
+bounds:393,93,126,145
 hemlet_fill
-bounds:1231,327,122,136
-offsets:0,1,125,139
-rotate:90
+bounds:916,90,60,67
+offsets:0,0,61,67
 leg f
-bounds:1043,722,140,242
-offsets:7,7,155,258
+bounds:923,411,69,119
+offsets:3,3,76,126
 main shadow
-bounds:1298,996,549,100
-offsets:2,1,557,102
-rotate:90
+bounds:647,185,267,48
+offsets:1,1,271,50
 shoulder_f
-bounds:1032,501,219,208
-offsets:4,4,227,216
-rotate:90
+bounds:659,82,106,101
+offsets:2,2,110,105
 skelly arm lower
-bounds:1041,119,121,195
-offsets:9,8,139,212
+bounds:855,88,59,95
+offsets:4,4,67,103
 skelly arm upper
-bounds:1164,103,77,211
-offsets:8,8,93,227
+bounds:757,24,37,103
+offsets:4,4,45,111
+rotate:90
 skelly foot
-bounds:1295,856,138,103
-offsets:8,7,155,112
+bounds:919,21,67,50
+offsets:4,3,75,54
 rotate:90
 skelly hand
-bounds:1243,128,112,197
+bounds:659,25,55,96
+rotate:90
 skelly leg lower
-bounds:1041,12,89,165
-offsets:10,8,107,181
+bounds:767,63,43,80
+offsets:5,4,52,88
 rotate:90
 skelly leg upper
-bounds:1243,3,114,123
-offsets:8,7,130,137
+bounds:862,25,55,61
+offsets:4,3,63,67
 sword
-bounds:374,761,186,667
-offsets:6,6,197,679
+bounds:647,235,91,324
+offsets:3,3,96,330
 rotate:90
 sword arm
-bounds:2,237,581,338
-rotate:90
+bounds:423,366,283,164
 sword shadow
-bounds:1185,746,227,64
-offsets:2,1,230,66
-rotate:90
+bounds:249,11,111,31
+offsets:1,0,112,32
 sword swish
-bounds:2,820,370,725
-offsets:0,0,371,726
+bounds:2,177,181,353
 torso
-bounds:759,24,280,273
+bounds:521,33,136,133

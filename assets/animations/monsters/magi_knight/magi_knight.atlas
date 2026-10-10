@@ -1,59 +1,57 @@
 magi_knight@0.5x.webp
-size:1873,355
+size:1313,252
 filter:Linear,Linear
-scale:0.27
+scale:0.19
 bod
-bounds:1661,185,123,168
+bounds:293,4,86,118
+rotate:90
 bomb
-bounds:1205,217,136,171
+bounds:1095,58,96,121
 rotate:90
 bombsparks
-bounds:740,18,49,41
-rotate:90
+bounds:1244,4,34,29
 bottom leg
-bounds:1205,123,92,152
+bounds:413,26,64,107
 rotate:90
 bottom leg 2
-bounds:1661,131,52,154
+bounds:999,11,37,108
 rotate:90
 cape back
-bounds:456,69,334,284
+bounds:858,50,235,200
 cape top
-bounds:2,14,452,339
+bounds:538,11,318,239
 fire shine
-bounds:1817,142,41,47
+bounds:1218,63,29,33
+rotate:90
 front leg
-bounds:456,2,65,197
+bounds:858,2,46,139
 rotate:90
 front leg 2
-bounds:1661,66,63,151
-offsets:0,0,63,153
-rotate:90
+bounds:1253,143,44,107
+offsets:0,0,44,108
 grate
-bounds:1513,277,33,76
+bounds:1244,35,24,53
+rotate:90
 head
-bounds:1786,239,83,114
+bounds:1253,61,58,80
 head void
-bounds:1786,191,46,85
-rotate:90
+bounds:1218,94,33,60
 head_fire_spark
-bounds:740,10,6,7
-rotate:90
+bounds:522,85,4,5
 hips
-bounds:655,5,83,62
+bounds:1183,13,59,43
 jewel
-bounds:1513,244,28,31
+bounds:413,4,20,22
+rotate:90
 jousting pole
-bounds:792,2,758,114
+bounds:2,170,534,80
 shadow
-bounds:1552,14,339,107
-offsets:7,1,347,109
-rotate:90
+bounds:293,92,238,76
+offsets:5,1,244,77
 shawl bottom
-bounds:1661,6,102,58
+bounds:1109,15,72,41
 shawl top
-bounds:1378,131,222,133
-rotate:90
+bounds:1095,156,156,94
 shield
-bounds:792,118,235,411
+bounds:2,2,166,289
 rotate:90

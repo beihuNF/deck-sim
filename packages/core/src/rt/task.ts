@@ -1,6 +1,6 @@
 // C#-faithful Task: awaiting a completed task continues synchronously; `async` methods are generators driven here.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ext, iter } from './core';
+import { ext, iter, isEx } from './core';
 
 const PENDING = 0, OK = 1, FAULT = 2, CANCEL = 3;
 
@@ -68,6 +68,16 @@ export class Task<T = any> {
   Wait() {
     if (this.status === PENDING) throw new Error('[rt] Task.Wait on pending task');
     return this.Result;
+  }
+  WaitAsync(token: CancellationToken): Task<T> {
+    if (this.IsCompleted || !token?.CanBeCanceled) return this;
+    const result = new Task<T>();
+    const registration = token.Register(() => result.$done(CANCEL));
+    this.$on(() => {
+      registration.Dispose();
+      result.$done(this.status, this.status === OK ? this.result : this.error);
+    });
+    return result;
   }
   Dispose() {}
 
@@ -141,7 +151,7 @@ export function async<T = any>(genFn: (this: any) => Generator<any, T, any>, sel
   try {
     gen = genFn.call(self);
   } catch (e) {
-    task.$done(FAULT, e);
+    task.$done(isEx(e, ext('System.OperationCanceledException')) ? CANCEL : FAULT, e);
     return task;
   }
   step(gen, task, undefined, false);
@@ -153,7 +163,7 @@ function step(gen: Generator<any, any, any>, task: Task, val: any, isErr: boolea
     try {
       r = isErr ? gen.throw(val) : gen.next(val);
     } catch (e) {
-      task.$done(FAULT, e);
+      task.$done(isEx(e, ext('System.OperationCanceledException')) ? CANCEL : FAULT, e);
       return;
     }
     if (r.done) {

@@ -712,6 +712,8 @@ public partial class Emitter
             case float f: return FmtNum(f);
             case double d: return FmtNum(d);
             case decimal m: return m.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            case ulong u when u > 9007199254740991UL: return u.ToString() + "n";
+            case long i when i > 9007199254740991L || i < -9007199254740991L: return i.ToString() + "n";
             default:
                 var num = Convert.ToDecimal(v, System.Globalization.CultureInfo.InvariantCulture).ToString(System.Globalization.CultureInfo.InvariantCulture);
                 if (t is INamedTypeSymbol { TypeKind: TypeKind.Enum } et && C.IsIncluded(et))

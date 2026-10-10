@@ -26,7 +26,11 @@ function fit(f: any, x: number, y: number, w: number, h: number, extra: any = {}
 /** A tip at a point of the bar's left group, or (`rightEdge`) ending at one of its right group: top_bar.tscn LeftAlignedStuff / RightAlignedStuff. */
 const tipAt = (x0: number, y0: number, rightEdge = false) => { const [x, y] = anchored(x0, y0, rightEdge ? 'rt' : 'lt'); return { kind: 'at' as const, x, y, rightEdge }; };
 function staticTip(key: string, x: number, y: number, rightEdge = false) {
-  const ls = (k: string) => safe(() => new G.LocString().$ctor_LocString('static_hover_tips', k).GetFormattedText(), '');
+  const ls = (k: string) => safe(() => {
+    const s = new G.LocString().$ctor_LocString('static_hover_tips', k);
+    s.Add$String_String('Hotkey', ({ MAP: 'M', DECK: 'Tab', SETTINGS: 'Esc' } as Record<string, string>)[key] ?? 'None');
+    return s.GetFormattedText();
+  }, '');
   setTip(ls(`${key}.title`), ls(`${key}.description`), tipAt(x, y, rightEdge));
 }
 /** Keyframes sampled from Godot's easing (Tween TransitionType / EaseType) for one property. */
@@ -199,7 +203,7 @@ function TopButton({ kind, x, y, w, h, frame, open, onClick, tip, count, disable
 // ------------------------------------------------------------------ potions (NPotionContainer / NPotionHolder / NPotionPopup)
 export function potionActions(p: any) {
   const me = p.Owner, c = me?.Creature, cm = G.CombatManager.Instance;
-  const blocked = !p || p.IsQueued || !c || c.IsDead || !me.CanRemovePotions;
+  const blocked = !p || p.IsQueued || !c || c.IsDead || !me.CanUseOrRemovePotions;
   const U = G.PotionUsage;
   let use = !blocked && p.PassesCustomUsabilityCheck !== false;
   if (use && p.Usage === U.CombatOnly) use = cm.IsInProgress && safe(() => c.CombatState.CurrentSide === c.Side, false) && !cm.PlayerActionsDisabled;
@@ -302,7 +306,8 @@ function PotionPopup({ p, i, me }: any) {
       });
       return;
     }
-    safe(() => p.EnqueueManualUse(p.TargetType === G.TargetType.TargetedNoCreature ? null : me.Creature), null);
+    // The model supplies Self when appropriate; area potions require a null target.
+    safe(() => p.EnqueueManualUse(null), null);
     greyAfterUse(p);
     invalidate();
   };

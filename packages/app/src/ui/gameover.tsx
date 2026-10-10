@@ -72,15 +72,13 @@ function scoreBar(score: number, me: any, sr: any): ScorePlan | null {
   const need = threshold(remaining);
   const plan: ScorePlan = { remaining, current, need, unlocked: false, message: '', next: need, after: 'none', final: current + score };
   if (current + score >= need) {
-    const epoch = sm.IncrementUnlock();
+    const epoch = sm.GrantNextUnlock();
     current -= need;
     const next = threshold(remaining - 1);
     Object.assign(plan, { unlocked: true, next, message: go(next === 0 ? 'SCORE.unlockedAllMessage' : 'SCORE.unlockedEpochMessage') });
-    if (epoch != null && !sm.IsEpochRevealed$String(epoch)) {
-      const model = G.EpochModel.Get$String(epoch);
-      sm.ObtainEpoch(epoch);
-      me.DiscoveredEpochs.Add(model.Id);
-      safe(() => G.LocalContext.GetMe$SerializableRun(sr).DiscoveredEpochs.Add(model.Id), undefined);
+    if (epoch != null) {
+      me.DiscoveredEpochs.Add(epoch.Id);
+      safe(() => G.LocalContext.GetMe$SerializableRun(sr).DiscoveredEpochs.Add(epoch.Id), undefined);
     }
     current += score;
     if (next === 0 || current === 0) { p.CurrentScore = 0; plan.after = 'none'; plan.final = 0; }
@@ -181,7 +179,7 @@ export function GameOver({ g }: { g: any }) {
     const score = safe(() => G.ScoreUtility.CalculateScore$SerializableRun_Boolean(sr, win), 0);
     let victory = '';
     if (win) {
-      victory = go('VICTORY_DAMAGE_LOCAL', { PlayerDamage: score, PersonalDamage: safe(() => Number(G.StatsManager.GetPersonalArchitectDamage()).toLocaleString(), '0') });
+      victory = go('VICTORY_DAMAGE_LOCAL', { PlayerDamage: score, PersonalDamage: safe(() => Number(G.StatsManager.GetPersonalArchitectDamage()), 0) });
       const asc = rs.AscensionLevel;
       if (asc < 10 && asc > 0 && asc >= me.MaxAscensionWhenRunStarted) victory += '\n\n' + go('VICTORY_UNLOCKED_ASCENSION', { AscensionLevel: asc + 1 });
     }

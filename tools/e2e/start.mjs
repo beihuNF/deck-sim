@@ -35,7 +35,8 @@ export async function startRun(page, { char } = {}) {
       const q = (s) => document.querySelector(s);
       const click = q('.ftue-confirm') ?? q('.cr-arrow.right');
       const top = window.ui.overlays[window.ui.overlays.length - 1];
-      const pick = !top ? null : top.preview ? q('.grid-preview .confirm-btn.shown')
+      const pick = !top ? null : top.kind === 'bundle' ? (top.picked < 0 ? q('.bundle') : q('.bundle-preview .confirm-btn.shown'))
+        : top.preview ? q('.grid-preview .confirm-btn.shown')
         : q('.grid-screen') ? (top.selected.length < Math.max(1, top.min) ? q('.card-grid .gh-card') : q('.grid-screen > .confirm-btn.shown'))
         : q('.choose-card-screen .gh-card') ?? q('.card-reward-screen .gh-card') ?? q('.reward-btn') ?? q('.proceed-btn.shown');
       const room = window.ui.room;

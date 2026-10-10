@@ -1,18 +1,19 @@
 shader_type canvas_item;
 render_mode blend_mix;
 
+vec2 polar_coordinates(vec2 uv, vec2 center, float zoom, float repeat)
+{
+	vec2 dir = uv - center;
+	float radius = length(dir) * 2.0;
+	float angle = atan(dir.y, dir.x) * 1.0/(3.1416 * 2.0);
+	return mod(vec2(radius * zoom, angle * repeat), 1.0);
+}
+
 uniform sampler2D erosion_curve;
 uniform float erosion_offset = 0.1;
 
 varying float lifetime;
 varying vec4 vertex_color;
-
-vec2 polar_uv(vec2 base_uv, vec2 center, float radial_scale, float length_scale) {
-	vec2 delta = base_uv - center;
-	float radius = 2.0 * radial_scale * length(delta);
-	float angle = atan(delta.x, delta.y) * 1.0/6.28 * length_scale;
-	return vec2(radius, angle);
-}
 
 vec2 polar_uv_twist(vec2 polar_uv, float twist) {
 	return vec2(
@@ -27,10 +28,10 @@ void vertex() {
 }
 
 void fragment() {
-	vec4 texture_color =  texture(TEXTURE, polar_uv(UV, vec2(0.5, 0.5), 1, 1));
-	
+	vec4 texture_color =  texture(TEXTURE, polar_coordinates(UV, vec2(0.5, 0.5), 1, 1));
+
 	float erosion_curve_val = texture(erosion_curve, vec2(lifetime)).r;
 	float erosion_val = smoothstep(erosion_curve_val, erosion_curve_val + erosion_offset, texture_color.r);
-	
+
 	COLOR = vec4(vertex_color.rgb, vertex_color.a * erosion_val);
 }

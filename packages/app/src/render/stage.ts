@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
-import { A, skelSrc, spineIndex } from '../assets';
+import { A, skelSrc, spineIndex, imageSourceSize } from '../assets';
 import { loadScene, attachCreatureFx, particleItem, buildScene, sceneTexture } from './scene';
 import { curveAt } from './cardfx';
 import { orbCentre, type OrbManagerView } from '../ui/orbs';
@@ -229,7 +229,7 @@ function loadSpine(key: string, e: any): Promise<boolean> {
   return p;
 }
 
-interface Actor { root: Container; spine?: Spine; key: string; lastAnimCount: number; dead: boolean; idle?: string; hue?: number; dieEnd?: number; death?: { at: number; phase: 'wait' | 'fade' }; animator?: any }
+interface Actor { root: Container; spine?: Spine; key: string; lastAnimCount: number; dead: boolean; idle?: string; hue?: number; dieEnd?: number; death?: { at: number; phase: 'wait' | 'fade' }; animator?: any; legacyScene?: any; legacyTexture?: string }
 
 /**
  * MegaSprite / MegaAnimationState / MegaTrackEntry over a Pixi Spine: what CreatureAnimator (the model's
@@ -239,17 +239,26 @@ function megaSprite(sp: Spine, name: string) {
   const track = (e: any) => e && {
     SetTimeScale: (v: number) => { e.timeScale = v; },
     GetAnimationEnd: () => e.animationEnd,
+    GetAnimationName: () => e.animation.name,
+    GetAnimationDuration: () => e.animation.duration,
+    GetQueuedAnimationNames: () => { const names = []; for (let x = e.next; x; x = x.next) names.push(x.animation.name); return names; },
     SetTrackTime: (v: number) => { e.trackTime = v; },
+    Dispose() {},
   };
   const state = {
     SetAnimation: (n: string, loop = true, t = 0) => track(sp.state.setAnimation(t, n, loop)),
     AddAnimation: (n: string, delay = 0, loop = true, t = 0) => track(sp.state.addAnimation(t, n, loop, delay)),
+    AddAnimationTracked: (n: string, delay = 0, loop = true, t = 0) => track(sp.state.addAnimation(t, n, loop, delay)),
+    AddEmptyAnimation: (t = 0) => sp.state.addEmptyAnimation(t, 0, 0),
+    SetTimeScale: (v: number) => { sp.state.timeScale = v; },
     GetCurrent: (t: number) => track(sp.state.getCurrent(t)),
     Update: (dt: number) => sp.state.update(dt),
     Apply: () => sp.state.apply(sp.skeleton),
   };
   const on = (kind: 'start' | 'complete' | 'interrupt') => (cb: any) => sp.state.addListener({ [kind]: () => cb?.Call?.(null, null, null) } as any);
   return {
+    get IsValid() { return !sp.destroyed; },
+    SetAnimation: state.SetAnimation, AddAnimation: state.AddAnimation, GetCurrentTrack: (t = 0) => state.GetCurrent(t),
     BoundObject: { Name: name },
     HasAnimation: (n: string) => !!sp.skeleton.data.findAnimation(n),
     GetAnimationState: () => state,
@@ -366,6 +375,24 @@ export class CombatStage {
       a.root.y = s.y;
       a.root.scale.set(s.s * (s.vis ?? 1));
       const node = this.view.creatures.get(c) ?? this.view.removingNodes?.get(c);
+      if (node?.LegacyVisible != null) a.root.visible = node.LegacyVisible;
+      const body = node?.LegacyBody;
+      if (body) {
+        a.root.scale.set(s.s * (s.vis ?? 1) * body.Scale.X, s.s * (s.vis ?? 1) * body.Scale.Y);
+        a.root.alpha = body.Modulate.A;
+        a.root.tint = ((body.Modulate.R * 255) << 16) | ((body.Modulate.G * 255) << 8) | (body.Modulate.B * 255);
+        const src = body.Texture?.ResourcePath;
+        if (src && a.legacyScene && a.legacyTexture !== src) {
+          a.legacyTexture = src;
+          for (const child of a.root.removeChildren()) child.destroy({ children: true });
+          const size = imageSourceSize(src);
+          attachCreatureFx(a.root, { ...a.legacyScene, items: a.legacyScene.items.map((it: any) => {
+            if (it.k !== 'tex' || it.p !== 'Visuals') return it;
+            const [w, h] = size ?? [it.tw, it.th];
+            return { ...it, src, x: -w / 2, y: -h / 2, w, h, tw: w, th: h };
+          }) }, null);
+        }
+      }
       if (node && a.spine) {
         // triggers queued while the body loaded, then direct calls from the node
         for (const t of node.anims.splice(0)) this.trigger(a, t);
@@ -521,7 +548,10 @@ export class CombatStage {
       // sprite-only creatures (doors, the Crusher…): the scene is the body; a placeholder only if it was not converted
       loadScene(a.key).then((s) => {
         if (a.root.destroyed) return;
-        if (s) attachCreatureFx(a.root, s, null);
+        if (s) {
+          if (this.view.creatures.get(c)?.LegacyBody) a.legacyScene = s;
+          attachCreatureFx(a.root, s, null);
+        }
         else a.root.addChild(new Graphics().roundRect(-90, -220, 180, 220, 24).fill({ color: c.IsPlayer ? 0x6b2a2a : 0x3a4a3a, alpha: 0.85 }));
       });
       return;
@@ -541,9 +571,11 @@ export class CombatStage {
       // NCreature._spineAnimator: the model's own animation graph (MonsterModel / CharacterModel.GenerateAnimator)
       try {
         const model = c.Monster ?? c.Player?.Character;
-        a.animator = model?.GenerateAnimator?.(megaSprite(sp, a.key)) ?? undefined;
+        a.animator = model?.GenerateAnimator?.(megaSprite(sp, a.key), c) ?? undefined;
       } catch (e) { console.warn('animator', a.key, e); a.animator = undefined; }
       a.spine = sp;
+      const creatureNode = N('Rooms.NCombatRoom').Instance?.GetCreatureNode(c);
+      if (creatureNode) creatureNode.SpineAnimation = megaSprite(sp, a.key);
       a.root.addChild(sp);
       loadScene(a.key).then((s) => { if (s && !sp.destroyed) attachCreatureFx(a.root, s, sp); });
     });

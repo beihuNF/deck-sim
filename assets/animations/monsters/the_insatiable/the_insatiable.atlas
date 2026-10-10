@@ -1,97 +1,99 @@
 the_insatiable@0.5x.webp
-size:1367,777
+size:2013,885
 filter:Linear,Linear
-scale:0.35
+scale:0.465
 arm a 1
-bounds:2,2,74,27
+bounds:1382,7,99,36
 arm a 2
-bounds:1170,447,142,57
+bounds:1801,277,189,75
 arm b 1
-bounds:286,3,201,57
+bounds:1553,453,267,76
+rotate:90
 arm b 2
-bounds:1183,99,107,75
+bounds:693,9,143,99
+offsets:0,1,143,100
+rotate:90
 arm c 1
-bounds:859,15,81,39
+bounds:1959,726,107,52
+rotate:90
 arm c 2
-bounds:1292,92,112,47
+bounds:187,4,148,62
 rotate:90
 arm c1b
-bounds:942,11,72,43
+bounds:1801,8,96,57
 arm d 1
-bounds:782,11,46,75
-rotate:90
+bounds:1801,67,61,100
 arm d 2
-bounds:1193,176,123,80
-offsets:0,1,123,81
-rotate:90
+bounds:1801,169,164,106
+offsets:0,1,164,107
 arm e 1
-bounds:78,7,22,97
-rotate:90
+bounds:915,23,30,129
 arm e 2
-bounds:585,65,147,36
+bounds:1801,835,196,48
 arm eating a
-bounds:1095,18,69,67
-offsets:0,0,69,69
+bounds:1864,75,92,89
+offsets:0,0,92,92
+rotate:90
 arm eating b
-bounds:1275,206,84,134
+bounds:999,41,111,178
+rotate:90
 arm eating c
-bounds:1266,31,80,59
-offsets:3,0,83,59
+bounds:1790,724,109,77
+offsets:1,0,110,78
+rotate:90
 arm eating d
-bounds:1193,301,80,144
-offsets:0,0,81,144
+bounds:1801,354,106,192
+offsets:0,0,107,192
+rotate:90
 arm eating e
-bounds:489,23,89,37
-offsets:4,0,93,37
+bounds:947,33,119,50
+offsets:5,0,124,50
+rotate:90
 arm eating f
-bounds:585,2,61,130
-rotate:90
+bounds:1396,87,80,173
 arm eating g
-bounds:1016,21,64,77
-offsets:1,1,68,81
-rotate:90
+bounds:1396,337,85,102
+offsets:1,1,90,107
 arm eating h
-bounds:1043,87,113,138
+bounds:2,2,150,183
+offsets:0,0,150,184
 rotate:90
 arm f 1
-bounds:876,56,133,31
+bounds:1204,2,176,41
 arm f 2
-bounds:1275,342,90,103
+bounds:794,16,119,136
 bod
-bounds:876,442,292,333
-offsets:0,1,292,334
+bounds:1163,441,388,442
+offsets:0,2,388,444
 body eating
-bounds:2,226,872,549
-offsets:1,0,873,549
-eater2
-bounds:2,41,282,183
-offsets:22,13,324,211
+bounds:2,154,1159,729
+offsets:1,0,1160,729
 head
-bounds:286,62,162,297
-rotate:90
+bounds:1179,45,215,394
+offsets:0,0,216,394
 mouth 1
-bounds:876,202,238,315
-rotate:90
+bounds:1483,20,316,419
 mouth 3
-bounds:1170,506,194,269
+bounds:1631,462,258,358
+rotate:90
 mouth 4
-bounds:876,89,111,165
+bounds:251,5,147,219
 rotate:90
 mouth 5
-bounds:1183,31,66,81
-rotate:90
+bounds:1869,725,88,108
 mouth 6
-bounds:717,2,55,63
-offsets:0,0,55,64
+bounds:1396,262,73,83
+offsets:0,0,73,85
 rotate:90
 suck streak
-bounds:2,31,280,8
+bounds:794,3,372,11
 teeth retractin
-bounds:764,59,110,165
+bounds:472,6,146,219
+rotate:90
 teeths
-bounds:585,103,121,177
-offsets:0,0,122,177
+bounds:1553,722,161,235
+offsets:0,0,162,235
 rotate:90
 top shoulder
-bounds:177,2,26,27
-offsets:0,1,26,28
+bounds:1168,2,34,37
+offsets:0,1,34,38

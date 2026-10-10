@@ -3,6 +3,8 @@
 // error, throws, or leaves the game busy is reported.
 // Usage: CHROME=<path> [URL=<build>] node tools/e2e/coverage.mjs <outDir> [cards,events,encounters,potions,relics] [filter]
 // Exit code 1 when any item failed. Results also go to <outDir>/coverage.json.
+// LEGACY=1 checks only the retired cards/encounters retained for existing saves.
+// EVENT_FAST_MODE=Instant also checks event animation loops at Instant speed.
 import { chromium } from 'playwright';
 import { startRun } from './start.mjs';
 import fs from 'node:fs';
@@ -120,8 +122,11 @@ function installDriver() {
       const pcs = me().PlayerCombatState;
       if (pcs && cm().IsInProgress) { pcs.Energy = 9; if ('Stars' in pcs) pcs.Stars = 9; }
     },
-    async fight(encounter) {
+    async fight(encounter, legacySetting) {
       const enc = (encounter ?? G.ModelDb.Encounter(G.MockTwoMonsterEncounter)).ToMutable();
+      if (legacySetting != null) enc.LoadCustomState(new G.$.Dictionary([
+        ['Setting', `Setting${legacySetting}`], ['RanOutOfTime', 'False'],
+      ]));
       await rm().EnterRoomDebug(G.RoomType.Monster, G.MapPointType.Unassigned, enc, false);
       const t0 = performance.now();
       while (!(cm().IsInProgress && cm().IsPlayPhase) && performance.now() - t0 < 10000) { d.answer(); await sleep(20); }
@@ -130,7 +135,7 @@ function installDriver() {
     async endTurn() {
       const cs = cm().DebugOnlyGetState();
       const round = cs.RoundNumber;
-      rm().ActionQueueSynchronizer.RequestEnqueue(new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(me(), round));
+      rm().ActionQueueSynchronizer.RequestEnqueue(new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(me(), me().PlayerCombatState.TurnNumber));
       const t0 = performance.now();
       while (cm().IsInProgress && !(cm().IsPlayPhase && cm().DebugOnlyGetState()?.RoundNumber > round) && performance.now() - t0 < 10000) { d.god(); d.answer(); await sleep(20); }
       return !cm().IsInProgress || cm().IsPlayPhase;
@@ -165,7 +170,7 @@ function installDriver() {
       for (const e of cs.Enemies) if (e.IsAlive) e.SetCurrentHpInternal(Math.max(e.CurrentHp, 9000));
       const hand = me().PlayerCombatState.Hand;
       if (hand.Cards.length >= 7) for (const c of [...hand.Cards]) hand.RemoveInternal(c, true);
-      const canonical = [...G.ModelDb.AllCards].find((c) => c.Id.Entry === id);
+      const canonical = G.ModelDb.GetByIdOrNull(G.CardModel, new G.ModelId().$ctor_ModelId$2('CARD', id));
       const card = cs.CreateCard$CardModel_Player(canonical, me());
       hand.AddInternal(card, -1, false);
       let played = card.TryManualPlay(null) || card.TryManualPlay(d.target(card, cs));
@@ -191,7 +196,7 @@ function installDriver() {
       await d.run(G.PotionCmd.TryToProcure$3(canonical.ToMutable(), me(), -1));
       const p = [...me().Potions].filter(Boolean).pop();
       if (!p) return { skip: 'no slot' };
-      const t = p.TargetType === G.TargetType.AnyEnemy ? cs.Enemies.find((e) => e.IsHittable) : p.TargetType === G.TargetType.TargetedNoCreature ? null : me().Creature;
+      const t = p.TargetType === G.TargetType.AnyEnemy ? cs.Enemies.find((e) => e.IsHittable) : p.TargetType === G.TargetType.Self ? me().Creature : null;
       p.EnqueueManualUse(t);
       const settled = await d.settle();
       for (const q of [...me().Potions].filter(Boolean)) { try { await G.PotionCmd.Discard(q); } catch { /* slot already empty */ } }
@@ -199,8 +204,9 @@ function installDriver() {
     },
     async encounter(id) {
       if (cm().IsInProgress) await d.win();
-      const enc = [...G.ModelDb.AllEncounters].find((e) => e.Id.Entry === id);
-      if (!(await d.fight(enc))) return { skip: 'did not start' };
+      const [entry, setting] = id.split('#');
+      const enc = G.ModelDb.GetByIdOrNull(G.EncounterModel, new G.ModelId().$ctor_ModelId$2('ENCOUNTER', entry));
+      if (!(await d.fight(enc, setting == null ? undefined : Number(setting)))) return { skip: 'did not start' };
       const turns = [await d.endTurn(), await d.endTurn(), await d.endTurn()];
       return { turns: turns.every(Boolean), won: await d.win() };
     },
@@ -270,15 +276,20 @@ const bad0 = (r, error) => !!(error || (r && (r.won === false)));
 const results = [];
 const fail = [];
 async function runItem(kind, id, fn, timeout = 30000, arg = id) {
+  if (process.env.PROGRESS) console.log(`checking ${kind} ${id}`);
   logs = [];
   let r, error = null;
   try {
     r = await Promise.race([page.evaluate(fn, arg), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeout))]);
   } catch (e) { error = String(e.message ?? e).split('\n')[0]; }
   const bad = error || logs.length || (r && (r.settled === false || r.turns === false || r.won === false || r.turned === false || r.obtained === false));
-  const why = bad0(r, error) ? await page.evaluate(() => { const w = window.__covWhy; window.__covWhy = null; return w; }).catch(() => null) : null;
+  // A timed-out renderer cannot answer another evaluate; record the failure
+  // and reopen it rather than hanging while trying to collect diagnostics.
+  const why = bad0(r, error) && error !== 'timeout' ? await page.evaluate(() => { const w = window.__covWhy; window.__covWhy = null; return w; }).catch(() => null) : null;
   const row = { kind, id, ...r, error, ...(why ? { why } : {}), logs: logs.slice(0, 5) };
   results.push(row);
+  fs.writeFileSync(`${out}/coverage.partial.json`, JSON.stringify({ results, fail }, null, 1));
+  if (results.length % 50 === 0) console.log(`checked ${results.length}: ${kind} ${id}`);
   if (bad && EXPECTED[`${kind}:${id}`]) { row.expected = EXPECTED[`${kind}:${id}`]; return; }
   if (bad) {
     fail.push(row);
@@ -291,15 +302,26 @@ const list = (expr, arg) => page.evaluate(expr, arg);
 
 await openRun();
 for (const mode of modes) {
+  console.log(`starting ${mode}`);
   const t0 = Date.now();
   if (mode === 'cards') {
-    const ids = await list((own) => [...(own ? window.G.RunManager.Instance.State.Players[0].Character.CardPool.AllCards : window.G.ModelDb.AllCards)].map((c) => c.Id.Entry), !!process.env.CHAR);
+    const ids = await list(({ own, legacy }) => {
+      const G = window.G;
+      const cards = legacy ? G.$legacyModels.filter(t => t.prototype instanceof G.CardModel).map(t => G.ModelDb.Card(t))
+        : [...(own ? G.RunManager.Instance.State.Players[0].Character.CardPool.AllCards : G.ModelDb.AllCards)];
+      return cards.map(c => c.Id.Entry);
+    }, { own: !!process.env.CHAR, legacy: !!process.env.LEGACY });
     for (const id of ids.filter((x) => !filter || filter.test(x))) await runItem('card', id, (x) => window.__cov.card(x));
   } else if (mode === 'potions') {
     const ids = await list(() => [...window.G.ModelDb.AllPotions].map((c) => c.Id.Entry));
     for (const id of ids.filter((x) => !filter || filter.test(x))) await runItem('potion', id, (x) => window.__cov.potion(x));
   } else if (mode === 'encounters') {
-    const ids = await list(() => [...window.G.ModelDb.AllEncounters].map((c) => c.Id.Entry));
+    const ids = await list(legacy => {
+      const G = window.G;
+      const encounters = legacy ? G.$legacyModels.filter(t => t.prototype instanceof G.EncounterModel).map(t => G.ModelDb.Encounter(t)) : [...G.ModelDb.AllEncounters];
+      return encounters.flatMap(c => legacy && c instanceof G.LegacyBattlewornDummyEventEncounter
+        ? [1, 2, 3].map(setting => `${c.Id.Entry}#${setting}`) : [c.Id.Entry]);
+    }, !!process.env.LEGACY);
     for (const id of ids.filter((x) => !filter || filter.test(x))) await runItem('encounter', id, (x) => window.__cov.encounter(x), 60000);
   } else if (mode === 'relics') {
     fastMode = 'Instant';
@@ -308,8 +330,8 @@ for (const mode of modes) {
     for (const id of ids.filter((x) => !filter || filter.test(x))) await runItem('relic', id, (x) => window.__cov.relic(x), 45000);
   } else if (mode === 'events') {
     // Fast, not Instant: event layouts run animation loops (PunchOff) that only yield through real waits
-    fastMode = 'Fast';
-    await page.evaluate(() => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType.Fast; });
+    fastMode = process.env.EVENT_FAST_MODE ?? 'Fast';
+    await page.evaluate(m => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType[m]; }, fastMode);
     const ids = await list(() => [...window.G.ModelDb.AllEvents, ...window.G.ModelDb.AllAncients].map((c) => c.Id.Entry));
     for (const id of ids.filter((x) => !filter || filter.test(x)))
       for (let first = 0; first < 4; first++) {

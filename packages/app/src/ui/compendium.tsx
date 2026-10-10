@@ -37,7 +37,7 @@ function poolPass(pool: string | null, c: any) {
   const R = G.CardRarity;
   if (pool === 'ANCIENT') return c.Rarity === R.Ancient;
   if (pool === 'MISC') return c.Rarity >= R.Event && c.Rarity <= R.Quest;
-  return safe(() => c.Pool.constructor.name === POOL_CLASS[pool], false);
+  return safe(() => c.Pool instanceof G[POOL_CLASS[pool]], false);
 }
 const TYPE_PASS: Record<string, (c: any) => boolean> = {
   ATTACK: (c) => c.Type === G.CardType.Attack, SKILL: (c) => c.Type === G.CardType.Skill, POWER: (c) => c.Type === G.CardType.Power,

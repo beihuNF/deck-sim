@@ -8,7 +8,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 // usage: dotnet run -c Release -- <decompiledRoot> <outDir>
 var root = Path.GetFullPath(args.Length > 0 ? args[0] : "../../ref/decompiled");
 var outDir = Path.GetFullPath(args.Length > 1 ? args[1] : "../../packages/core/src/gen");
-var refDir = "/Applications/SlayTheSpire2.app/Contents/Game/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64";
+var installedRefDir = "/Applications/SlayTheSpire2.app/Contents/Game/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64";
+var refDir = Environment.GetEnvironmentVariable("STS2_GAME_ASSEMBLIES")
+    ?? (Directory.Exists(installedRefDir) ? installedRefDir : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64"));
 Directory.CreateDirectory(outDir);
 var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -123,8 +125,72 @@ foreach (var (t, alias) in ctx.ExtAliases.OrderBy(k => k.Value, StringComparer.O
     sb.Append($"const {alias} = $.ext({Emitter.Q(Ctx.TypeKey(t))});\n");
 sb.Append("\n");
 foreach (var b in bodies) sb.Append(b).Append('\n');
+// Retain shipped model identities for browser saves after upstream removes content.
+// The archive is an immutable excerpt of the previous generated output, never hand-edited.
+var legacyPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../legacy/v0.98.3.ts"));
+var legacyText = File.ReadAllText(legacyPath);
+var legacyNames = new List<string>();
+foreach (Match match in Regex.Matches(legacyText, @"(?m)^export enum (\w+)[^\n]*\n[^\n]*"))
+    if (!ctx.Ordered.Any(t => ctx.TypeId(t) == match.Groups[1].Value)) sb.Append(match.Value).Append('\n');
+foreach (Match match in Regex.Matches(legacyText, @"(?m)^export class (\w+)\b[\s\S]*?(?=^export |\z)"))
+{
+    var name = match.Groups[1].Value;
+    var body = match.Value;
+    if (name == "BattlewornDummyEventEncounter")
+    {
+        // Upstream made the old concrete encounter abstract and split its three settings into new models.
+        // Keep its original identity and behavior only for existing saves/history.
+        body = body.Replace("export class " + name + " ", "export class Legacy" + name + " ")
+            .Replace("new " + name + "()", "new Legacy" + name + "()");
+        name = "Legacy" + name;
+    }
+    if (ctx.Ordered.Any(t => ctx.TypeId(t) == name)) continue;
+    // Adapt archived behavior to beta command signatures without editing the frozen definitions.
+    body = body.Replace("HoverTipFactory.FromPower$_T1(", "HoverTipFactory.FromPower$Int32N_T1(")
+        // Beta no longer references this Godot signal-name alias. Keep the
+        // archived tween await bound to the same Finished signal.
+        .Replace("Tween_SignalName$.Finished", "\"finished\"")
+        .Replace("PowerCmd.SetAmount(", "LegacyPowerCmd.SetAmount(")
+        .Replace("AfterPowerAmountChanged(power, amount, applier, cardSource)", "AfterPowerAmountChanged(choiceContext, power, amount, applier, cardSource)");
+    body = Regex.Replace(body, @"(?m)^  \w+\(([^\n]*)\)[^\n]*\{[\s\S]*?(?=^  (?:\w|\$)|^\}|\z)", method =>
+    {
+        var parameters = method.Groups[1].Value.Split(',').Select(p => p.Trim()).ToHashSet();
+        var choice = parameters.Contains("choiceContext") ? "choiceContext" : parameters.Contains("context") ? "context"
+            : "new ThrowingPlayerChoiceContext().$ctor_ThrowingPlayerChoiceContext()";
+        return Regex.Replace(method.Value, @"PowerCmd\.Apply\$(IEnumerableCreature|Creature)_Decimal_Creature_CardModel_Boolean_T1\((\w+), ",
+            call => $"PowerCmd.Apply$PlayerChoiceContext_{call.Groups[1].Value}_Decimal_Creature_CardModel_Boolean_T1({call.Groups[2].Value}, {choice}, ");
+    });
+    body = body.Replace("Damage$PlayerChoiceContext_Creature_Decimal_ValueProp_Creature_CardModel(", "Damage$PlayerChoiceContext_Creature_Decimal_ValueProp_Creature_CardModel_CardPlay(")
+        .Replace("Damage$PlayerChoiceContext_IEnumerableCreature_Decimal_ValueProp_Creature_CardModel(", "Damage$PlayerChoiceContext_IEnumerableCreature_Decimal_ValueProp_Creature_CardModel_CardPlay(")
+        .Replace("this.Amount, ValueProp.Unpowered, this.Owner, null);", "this.Amount, ValueProp.Unpowered, this.Owner, null, null);");
+    sb.Append(body).Append('\n');
+    legacyNames.Add(name);
+}
+sb.Append($"export const $legacyModels = [{string.Join(", ", legacyNames.Where(n => !n.EndsWith("_Data")))}];\n");
+// Upstream removed SetAmount. Retired Doormaker needs the original absolute
+// amount operation, with beta's explicit non-interactive choice context.
+var setAmount = File.ReadAllText(Path.Combine(Path.GetDirectoryName(legacyPath)!, "v0.98.3-power-set-amount.ts"))
+    .Replace("Apply$Creature_Decimal_Creature_CardModel_Boolean_T1($T_T, target,",
+        "Apply$PlayerChoiceContext_Creature_Decimal_Creature_CardModel_Boolean_T1($T_T, new ThrowingPlayerChoiceContext().$ctor_ThrowingPlayerChoiceContext(), target,")
+    .Replace("PowerCmd.ModifyAmount(existingPower,", "PowerCmd.ModifyAmount(new ThrowingPlayerChoiceContext().$ctor_ThrowingPlayerChoiceContext(), existingPower,");
+sb.Append("export class LegacyPowerCmd {\n").Append(setAmount).Append("}\n");
+// These IDs still exist upstream, but their saved state changed meaning. Keep
+// the shipped behavior only when a saved relic carries its old property name.
+var retainedRelics = File.ReadAllText(Path.Combine(Path.GetDirectoryName(legacyPath)!, "v0.98.3-retained-relics.ts"));
+foreach (Match match in Regex.Matches(retainedRelics, @"(?m)^export class (\w+)\b[\s\S]*?(?=^export |\z)"))
+{
+    var originalName = match.Groups[1].Value;
+    var name = "Legacy" + originalName;
+    var body = Regex.Replace(match.Value, @"\b" + originalName + @"\b", name)
+        .Replace("$name = \"" + name + "\"", "$name = \"" + originalName + "\"")
+        .Replace("MegaCrit.Sts2.Core.Models.Relics." + name, "Web.Legacy.Relics." + originalName);
+    body = body.Replace("$ctor_CardCreationOptions$3(customCardPool, CardCreationSource.Other, creationOptions.RarityOdds)",
+        "$ctor_CardCreationOptions$4(creationOptions.CardPools, CardCreationSource.Other, creationOptions.RarityOdds, ((c) => Enumerable$.Contains(customCardPool, c)))");
+    sb.Append(body).Append('\n');
+    legacyNames.Add(name);
+}
 // static constructors run lazily through each class's $ci() guard (C# type-initializer semantics)
-sb.Append($"\n$.registerTypes({{ {string.Join(", ", ctx.Ordered.Where(t => t.TypeKind is TypeKind.Class or TypeKind.Struct).Select(t => ctx.TypeId(t)))} }});\n");
+sb.Append($"\n$.registerTypes({{ {string.Join(", ", ctx.Ordered.Where(t => t.TypeKind is TypeKind.Class or TypeKind.Struct).Select(t => ctx.TypeId(t)).Concat(legacyNames))} }});\n");
 File.WriteAllText(Path.Combine(outDir, "sts2.ts"), sb.ToString());
 File.WriteAllText(Path.Combine(outDir, "stubs.ts"), Stubs.Generate(ctx, em));
 File.WriteAllText(Path.Combine(outDir, "bcl-uses.txt"), string.Join("\n", ctx.BclUses.Select(kv => $"{kv.Value,6} {kv.Key}")) + "\n");

@@ -265,7 +265,7 @@ function RemovalSlot({ view, e, at }: { view: ShopView; e: any; at: number[] }) 
   }, [used]);
   const src = img(`images/rooms/merchant_room/card_removal_${frame}.png`);
   const tip = () => setTip(loc('merchant_room', 'MERCHANT.cardRemovalService.title'),
-    locv('merchant_room', 'MERCHANT.cardRemovalService.description', { Amount: safe(() => e.CalcPriceIncrease(), 25) }),
+    locv('merchant_room', 'MERCHANT.cardRemovalService.description', { Amount: safe(() => G.MerchantCardRemovalEntry.PriceIncrease, 25) }),
     { kind: 'at', x: at[0] - 218 * 0.4, y: at[1] - 218 * 0.4 - vp.oy, rightEdge: true });
   return (
     <Slot view={view} e={e} at={at} hit={[-157, -126, 311, 300]} disabled={used} tip={tip}

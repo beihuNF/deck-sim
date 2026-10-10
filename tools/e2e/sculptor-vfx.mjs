@@ -55,7 +55,7 @@ try {
       const round = cm.DebugOnlyGetState().RoundNumber;
       window.__sculptorVfx.events = [];
       window.__sculptorVfx.seen = [];
-      rm.ActionQueueSynchronizer.RequestEnqueue(new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(rm.State.Players[0], round));
+      rm.ActionQueueSynchronizer.RequestEnqueue(new G.EndPlayerTurnAction().$ctor_EndPlayerTurnAction(rm.State.Players[0], rm.State.Players[0].PlayerCombatState.TurnNumber));
       return round;
     });
     await page.waitForFunction((particle) => window.__sculptorVfx.active().some((p) => p.endsWith('/' + particle)), particle, { timeout: 15000 });

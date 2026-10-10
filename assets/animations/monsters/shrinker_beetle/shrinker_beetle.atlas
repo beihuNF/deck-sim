@@ -1,116 +1,96 @@
 shrinker_beetle@0.5x.webp
-size:634,1032
+size:253,523
 filter:Linear,Linear
-scale:0.75
+scale:0.332
 bod
-bounds:2,655,375,215
-rotate:90
+bounds:2,375,166,95
 bod_death
-bounds:2,278,375,215
-rotate:90
+bounds:2,278,166,95
 bottom antennea
-bounds:2,3,9,306
+bounds:40,63,4,135
 rotate:90
 top antennea
-bounds:2,3,9,306
+bounds:40,63,4,135
 rotate:90
 bottom back_foot
-bounds:480,374,45,15
-offsets:74,0,119,29
+bounds:162,2,20,7
+offsets:33,0,53,13
 bottom front leg
-bounds:529,794,68,49
-offsets:0,1,68,50
+bounds:162,11,30,22
 rotate:90
 bottom left leg
-bounds:588,235,41,57
-offsets:0,1,41,58
+bounds:131,43,18,26
+rotate:90
 bottom pincher
-bounds:577,294,39,52
-offsets:1,0,40,52
+bounds:159,43,18,23
+rotate:90
 bottom pincher_death
-bounds:588,181,39,52
-offsets:1,0,40,52
+bounds:221,57,18,23
 bottom right leg
-bounds:529,780,12,55
-offsets:1,0,13,55
+bounds:164,69,6,24
 rotate:90
 bottom_front_Foot
-bounds:524,2,98,17
-offsets:0,4,228,21
+bounds:85,53,44,8
+offsets:0,1,101,9
 bottom_middle_foot
-bounds:588,166,36,13
-offsets:0,0,47,30
+bounds:112,45,16,6
+offsets:0,0,21,13
 eye 2
-bounds:420,377,58,53
-offsets:1,0,59,53
+bounds:193,57,26,23
 eye 3
-bounds:480,391,58,53
-offsets:0,0,59,53
+bounds:186,31,26,24
 glowy bits
-bounds:219,291,81,356
+bounds:2,2,36,158
 rotate:90
 glowy bits copy
-bounds:219,374,81,356
+bounds:2,40,36,158
 head
-bounds:2,14,150,175
+bounds:170,270,66,77
 rotate:90
 head_death
-bounds:179,14,150,175
+bounds:170,202,66,77
 rotate:90
 neck
-bounds:356,7,72,166
-offsets:1,0,73,166
-rotate:90
+bounds:136,203,32,73
 neck_death
-bounds:529,864,72,166
-offsets:1,0,73,166
+bounds:164,127,32,73
 shadow
-bounds:2,166,550,110
-offsets:1,1,552,112
+bounds:2,472,244,49
 top foot 1
-bounds:618,294,52,14
-rotate:90
+bounds:214,23,23,6
 top foot 2
-bounds:540,402,42,23
-offsets:1,0,43,23
+bounds:214,2,19,10
 rotate:90
 top foot 3
-bounds:607,108,56,22
-rotate:90
+bounds:85,41,25,10
 top leg 1
-bounds:356,81,149,83
+bounds:198,134,66,37
+rotate:90
 top leg 2 lower
-bounds:577,348,41,96
-offsets:1,0,42,97
+bounds:40,42,19,43
+rotate:90
 top leg 2 upper
-bounds:524,21,59,108
-offsets:1,0,61,108
-rotate:90
+bounds:164,77,27,48
 top leg 3 lower
-bounds:554,171,32,118
-offsets:0,1,32,119
+bounds:237,147,14,53
 top leg 3 upper
-bounds:507,82,82,98
-rotate:90
+bounds:193,82,36,43
 top pincher
-bounds:302,375,57,55
-offsets:1,0,59,55
+bounds:214,31,26,24
 top pincher_death
-bounds:361,375,57,55
-offsets:1,0,59,55
+bounds:186,5,26,24
 wings 2
-bounds:392,739,291,135
-offsets:0,8,296,143
+bounds:40,69,129,60
+offsets:0,3,131,63
 rotate:90
 wings 2_death
-bounds:475,446,291,135
-offsets:0,8,296,143
+bounds:102,69,129,60
+offsets:0,3,131,63
 rotate:90
 wings1
-bounds:219,732,298,171
-offsets:0,0,305,188
+bounds:170,338,132,76
+offsets:0,0,135,83
 rotate:90
 wings1_death
-bounds:302,432,298,171
-offsets:0,0,305,188
-rotate:90
+bounds:2,200,132,76
+offsets:0,0,135,83

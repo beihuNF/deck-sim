@@ -88,6 +88,7 @@ export function CardLayer({ root, hand, skip }: { root: any; hand?: HandView | n
         if (slot) return <canvas key={'fx' + slot.id} class="fx-slot" ref={(c) => { if (c) els.current.set(-slot.id, c); else els.current.delete(-slot.id); slot.canvas = c; }} />;
         return (
           <div key={n.id} class="card-node" ref={(el) => { if (el) els.current.set(n.id, el); else els.current.delete(n.id); }}
+            onDragStart={(ev) => ev.preventDefault()}
             onPointerEnter={h instanceof HolderView ? () => {
               h.focus(true);
               // SetAlignmentForCardHolder: beside the lifted card (hitbox 300 × 422 around the holder)
@@ -106,7 +107,7 @@ export function CardLayer({ root, hand, skip }: { root: any; hand?: HandView | n
             <img class="holder-flash" src={imageUrl('images/packed/card_template/card_flash.png') ?? ''} style={{ display: 'none' }} />
             <div class="card-body">
               <canvas class="card-highlight" width={256} height={256} />
-              <Card card={model} pile={n.pileType} target={n.previewTarget} width={300} mode={n.previewMode || 1} pretend={n.pretend} unpowered={n.unpowered} hideEnch={!n.EnchantmentTab.Visible} style={{ left: '-150px', top: '-211px', position: 'absolute' }} />
+              <Card card={model} visibility={n.Visibility === G.ModelVisibility.Locked ? 'locked' : n.Visibility === G.ModelVisibility.NotSeen ? 'notSeen' : 'visible'} pile={n.pileType} target={n.previewTarget} width={300} mode={n.previewMode || 1} pretend={n.pretend} unpowered={n.unpowered} hideEnch={!n.EnchantmentTab.Visible} style={{ left: '-150px', top: '-211px', position: 'absolute' }} />
               {/* card.tscn EnchantmentVfxOverride (−202, −142, 144 × 108) */}
               {n.EnchantmentVfxOverride.Visible && <canvas width={144} height={108} style={{ position: 'absolute', left: '-202px', top: '-142px' }}
                 ref={(c) => { n.EnchantmentVfxOverride.canvas = c; }} />}

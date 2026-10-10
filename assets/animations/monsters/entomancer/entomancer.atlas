@@ -1,84 +1,74 @@
 entomancer@0.5x.webp
-size:1206,332
+size:952,269
 filter:Linear,Linear
-scale:0.5
+scale:0.399
 arm
-bounds:346,142,276,188
-offsets:0,93,276,281
+bounds:277,118,219,149
 arm_lower
-bounds:624,150,95,163
+bounds:498,125,75,130
 rotate:90
 back arm 1
-bounds:1009,73,50,81
-offsets:2,0,52,81
-back arm 2
-bounds:1061,90,52,66
-big finger 1
-bounds:1051,158,69,86
-offsets:1,0,71,86
-big finger 2
-bounds:969,57,97,38
+bounds:625,2,42,77
 rotate:90
+back arm 2
+bounds:838,5,47,55
+big finger 1
+bounds:749,56,55,68
+rotate:90
+big finger 2
+bounds:822,89,77,30
 big hand
-bounds:789,144,101,149
-offsets:1,0,102,150
+bounds:630,120,80,119
+offsets:1,0,81,119
 rotate:90
 bottom foot
-bounds:1122,154,85,31
-offsets:0,0,86,31
-rotate:90
+bounds:819,62,68,25
+offsets:0,0,69,25
 bottom leg
-bounds:651,21,122,127
-offsets:5,0,128,129
+bounds:526,22,97,101
+offsets:3,0,101,101
 bottom leg 2
-bounds:877,5,90,137
-offsets:0,1,90,138
+bounds:625,46,72,122
+rotate:90
 bug 2
-bounds:2,2,6,7
-rotate:90
-bugs
-bounds:969,2,53,81
-rotate:90
+bounds:498,118,5,5
 fist_l
-bounds:1155,135,49,40
-offsets:11,4,61,45
+bounds:901,87,40,32
+offsets:8,3,49,36
 fist_l_back
-bounds:1120,36,65,40
-offsets:2,10,71,51
+bounds:805,2,52,31
+offsets:1,8,56,40
+rotate:90
 hand
-bounds:1155,177,49,62
-offsets:0,0,49,63
+bounds:704,16,28,43
+rotate:90
 head
-bounds:497,7,133,152
-offsets:0,6,133,158
+bounds:277,11,105,123
+offsets:0,4,105,127
 rotate:90
 hips
-bounds:940,156,109,88
-offsets:5,9,117,97
-neck
-bounds:1153,78,46,55
-offsets:1,0,48,56
-neck_wide
-bounds:1115,111,41,36
+bounds:751,113,87,69
+offsets:4,6,93,76
 rotate:90
+neck
+bounds:916,237,34,30
 shadow
-bounds:624,247,360,83
-offsets:1,0,361,84
+bounds:498,202,286,65
+offsets:1,0,287,66
 shoulder_clump
-bounds:1141,241,89,51
+bounds:889,14,71,41
 rotate:90
 staff
-bounds:2,10,342,320
-offsets:0,1,342,321
+bounds:2,13,273,254
+offsets:0,1,273,255
 top foot
-bounds:1052,2,66,69
-offsets:0,0,67,69
+bounds:749,2,52,54
+rotate:90
 top leg
-bounds:775,2,100,140
+bounds:822,121,80,112
+rotate:90
 top leg 2
-bounds:986,246,84,153
-offsets:0,3,102,156
+bounds:786,203,64,128
 rotate:90
 torso
-bounds:346,2,149,138
-offsets:2,0,152,142
+bounds:402,5,122,111

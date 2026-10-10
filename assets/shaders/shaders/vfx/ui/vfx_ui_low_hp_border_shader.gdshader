@@ -1,6 +1,20 @@
 shader_type canvas_item;
 render_mode blend_mix;
 
+vec2 tiling_and_offset(vec2 base_uv, vec4 st, vec2 initial_offset) {
+	return (
+		(base_uv * st.xy) +
+		((st.zw * TIME) + initial_offset)
+		);
+}
+vec2 polar_coordinates(vec2 uv, vec2 center, float zoom, float repeat)
+{
+	vec2 dir = uv - center;
+	float radius = length(dir) * 2.0;
+	float angle = atan(dir.y, dir.x) * 1.0/(3.1416 * 2.0);
+	return mod(vec2(radius * zoom, angle * repeat), 1.0);
+}
+
 uniform float alpha = 1.0;
 uniform float alpha_multiplier = 1.0;
 uniform float inner_radius = 0.0;
@@ -18,14 +32,6 @@ uniform vec4 main_color : source_color;
 
 varying vec4 vertex_color;
 
-vec2 polar_coordinates(vec2 uv, vec2 center, float zoom, float repeat)
-{
-	vec2 dir = uv - center;
-	float radius = length(dir) * 2.0;
-	float angle = atan(dir.y, dir.x) * 1.0/(3.1416 * 2.0);
-	return mod(vec2(radius * zoom, angle * repeat), 1.0);
-}
-
 void vertex()
 {
 	vertex_color = COLOR;
@@ -34,7 +40,7 @@ void vertex()
 void fragment()
 {
 	vec2 polar_uv = polar_coordinates(UV, vec2(0.5,0.5), 1.0, 1.0);
-	vec4 noise_tex = texture(noise, polar_uv * noise_tiling + (noise_initial_offset + (noise_panning * TIME) + vec2(noise_additional_offset, 0)));
+	vec4 noise_tex = texture(noise, tiling_and_offset(polar_uv, vec4(noise_tiling, noise_panning), vec2(noise_additional_offset, 0)));
 
 	float x = abs(UV.r-.5)*2.0;
 	float y = abs(UV.g-.5)*2.0;
