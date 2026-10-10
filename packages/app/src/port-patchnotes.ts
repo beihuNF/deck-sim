@@ -16,6 +16,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]Quality of Life[/b][/gold]
 • Built in the "Quick SL Button" mod: reload the current room directly from the pause menu, with an option in Settings to toggle it.
+• Added limited retries for temporary game file loading failures, with a reload button when loading fails or takes too long.
 
 [gold][b]Display[/b][/gold]
 • Prevented accidental browser text selection and ghost image dragging during gameplay.
@@ -57,6 +58,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]便利功能[/b][/gold]
 • 内置“快速SL按钮”模组：暂停菜单中可直接原地重新加载当前房间，并可在通用设置中随时开启或关闭。
+• 游戏文件临时加载失败时会有限次数地自动重试；加载失败或等待过久时可直接重新加载。
 
 [gold][b]画面[/b][/gold]
 • 修复游戏内鼠标拖拽时可能误选中文本或拖出图片虚影的问题。

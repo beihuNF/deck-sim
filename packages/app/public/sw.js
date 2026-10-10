@@ -8,6 +8,20 @@
 const params = new URL(self.location.href).searchParams;
 const APP = 'sts2-app-' + (params.get('v') ?? 'dev');
 const ASSETS = 'sts2-assets-' + (params.get('a') ?? 'dev');
+// Retry only read-only resource loads. Keep failures out of the offline cache; a transient edge 5xx must not
+// permanently replace a working asset. Bypass the browser HTTP cache on retries, including cached error responses.
+async function fetchResource(req) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(req, attempt ? { cache: 'reload' } : undefined);
+      if (attempt === 2 || !(res.status >= 500 || res.status === 408 || res.status === 429)) return res;
+      if (res.body) await res.body.cancel();
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+  }
+}
 self.addEventListener('install', (e) => e.waitUntil((async () => {
   try { await (await caches.open(APP)).add('./'); } catch { /* offline install: filled on first fetch */ }
   await self.skipWaiting();
@@ -35,7 +49,7 @@ self.addEventListener('fetch', (e) => {
         // Cloudflare redirects a path with a literal @ (the …@0.5x images) to its %40 form: ask for that one
         url.pathname = url.pathname.replaceAll('@', '%40');
       }
-      const res = await fetch(isAsset && req.mode !== 'navigate' ? new Request(url, req) : req);
+      const res = await fetchResource(isAsset && req.mode !== 'navigate' ? new Request(url, req) : req);
       if (res.ok && res.status === 200) cache.put(req, res.clone());
       return res;
     }

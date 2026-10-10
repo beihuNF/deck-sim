@@ -224,6 +224,7 @@ async function boot() {
   const qs = new URLSearchParams(location.search);
   if (qs.get('unlock') === 'all') unlockAll(true);
   if (qs.get('tutorials') === 'off') { G.SaveManager.Instance.SetFtuesEnabled(false); G.SaveManager.Instance.SettingsSave.SeenEaDisclaimer = true; }
+  window.dispatchEvent(new Event('sts2:boot-ready'));
 }
 // offline cache (production builds only; the dev server serves modules that must not be cached). Boot waits (briefly)
 // for the worker to claim the page when no worker serves this build's asset tree yet: on a first visit, so the assets

@@ -9,6 +9,99 @@
     <meta name="theme-color" content="#0b0d10" />
     <!-- the page is already dark: without this, browsers' forced dark mode (Chrome Android's auto dark theme) recolors it -->
     <meta name="color-scheme" content="dark" />
+    <!-- Keep this guard inline and outside the module bundle: it must work even when the game script cannot load. -->
+    <script>
+      (function () {
+        var ready = false, failed = false, failedSrc, panel, reloadTimer;
+        var retryKey = 'sts2web.boot-retry';
+        var lang = new URLSearchParams(location.search).get('lang');
+        try { lang = lang || localStorage.getItem('sts2web.lang'); } catch (_) {}
+        var zh = /^(zh|zhs|zht)/i.test(lang || navigator.language || '');
+        function resetRetries() { try { sessionStorage.removeItem(retryKey); } catch (_) {} }
+        function nextRetry() {
+          try {
+            var state = JSON.parse(sessionStorage.getItem(retryKey) || 'null');
+            if (!state) state = { used: 0 };
+            if (!(state.used >= 0 && state.used < 2)) return 0;
+            state.used++;
+            sessionStorage.setItem(retryKey, JSON.stringify(state));
+            return state.used;
+          } catch (_) { return 0; } // no session storage: offer manual retry, never loop across reloads
+        }
+        function reloadAfterRefetch(src) {
+          var controller = typeof AbortController === 'function' ? new AbortController() : null;
+          var reloading = false;
+          function reload() {
+            if (ready || reloading) return;
+            reloading = true;
+            clearTimeout(reloadTimer);
+            if (controller) controller.abort();
+            location.reload();
+          }
+          reloadTimer = setTimeout(reload, 15000);
+          // /js/ responses are immutable. Replace a cached error response before a normal reload reads it again.
+          fetch(src, { cache: 'reload', signal: controller ? controller.signal : undefined })
+            .then(function (res) { if (res.ok) return res.arrayBuffer(); })
+            .then(reload, reload);
+        }
+        function show(message, detail) {
+          function draw() {
+            if (ready) return;
+            if (!panel) {
+              panel = document.createElement('div');
+              panel.id = 'boot-recovery';
+              panel.setAttribute('role', 'alert');
+              panel.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#0b0d10;color:#efd174;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;text-align:center;font:20px/1.5 system-ui,sans-serif';
+              var text = document.createElement('div');
+              text.className = 'boot-recovery-message';
+              panel.appendChild(text);
+              var info = document.createElement('div');
+              info.className = 'boot-recovery-detail';
+              info.style.cssText = 'font-size:14px;color:#bbb;overflow-wrap:anywhere';
+              panel.appendChild(info);
+              var button = document.createElement('button');
+              button.textContent = zh ? '重新加载' : 'Reload';
+              button.style.cssText = 'font:inherit;color:#efd174;background:#25282e;border:1px solid #efd174;border-radius:6px;padding:8px 24px;cursor:pointer';
+              button.onclick = function () {
+                button.disabled = true;
+                clearTimeout(reloadTimer);
+                resetRetries();
+                if (failedSrc) reloadAfterRefetch(failedSrc); else location.reload();
+              };
+              panel.appendChild(button);
+              document.body.appendChild(panel);
+            }
+            panel.querySelector('.boot-recovery-message').textContent = message;
+            panel.querySelector('.boot-recovery-detail').textContent = detail || '';
+          }
+          if (document.body) draw(); else document.addEventListener('DOMContentLoaded', draw, { once: true });
+        }
+        var watchdog = setTimeout(function () {
+          show(zh ? '加载时间较长，可继续等待，或重新加载。' : 'Loading is taking longer than usual. You can wait or reload.');
+        }, 45000);
+        window.addEventListener('error', function (event) {
+          var script = event.target;
+          if (ready || failed || !script || script.tagName !== 'SCRIPT' || script.type !== 'module') return;
+          failed = true;
+          failedSrc = script.src;
+          clearTimeout(watchdog);
+          var attempt = navigator.onLine === false ? 0 : nextRetry();
+          var message = attempt
+            ? (zh ? '游戏文件加载失败，正在重新加载' : 'Game files failed to load. Reloading') + ' (' + attempt + '/2)…'
+            : (zh ? '游戏文件加载失败，请稍后重试。' : 'Game files failed to load. Please try again.');
+          show(message, new URL(script.src, location.href).pathname);
+          // A fresh document resets the browser's failed module map, including failed imported chunks.
+          if (attempt) reloadTimer = setTimeout(function () { reloadAfterRefetch(script.src); }, attempt * 1500);
+        }, true);
+        window.addEventListener('sts2:boot-ready', function () {
+          ready = true;
+          clearTimeout(watchdog);
+          clearTimeout(reloadTimer);
+          resetRetries();
+          if (panel) panel.remove();
+        }, { once: true });
+      })();
+    </script>
   </head>
   <body>
     <div id="app"><div class="boot">Loading…</div></div>
