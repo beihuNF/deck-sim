@@ -71,6 +71,10 @@ window.addEventListener('resize', () => { fit(); invalidate(); });
 // a finger captures its pointer to the element it lands on, so a dragged card would never enter the enemy under it:
 // released, touch drags hover what they pass over like the mouse
 window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') (e.target as Element).releasePointerCapture?.(e.pointerId); }, true);
+// Prevent native browser drag-and-drop ghost images on images, links, and text
+window.addEventListener('dragstart', (e) => {
+  if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) e.preventDefault();
+});
 
 /** NInputManager defaults outside Escape: A/S/X/D open the draw/discard/exhaust piles and the deck, M the map. */
 function runHotkey(key: string) {

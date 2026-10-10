@@ -3,6 +3,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_10',
     eng: `[gold][b]Display[/b][/gold]
+• Prevented accidental browser text selection and ghost image dragging during gameplay.
 • Fixed an issue where dragging the settings scrollbar downward would scroll upward.
 • Fixed a white screen that could cover the game after continuing a saved run or changing screens.
 • Fixed played or discarded cards remaining in the hand or on the table and blocking other cards.
@@ -21,6 +22,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Save compatibility[/b][/gold]
 • Preserved the original Doormaker battle and its changing forms in existing runs.`,
     zhs: `[gold][b]画面[/b][/gold]
+• 修复游戏内鼠标拖拽时可能误选中文本或拖出图片虚影的问题。
 • 修复设置界面中向下拖拽滚动条反而向上滚动的问题。
 • 修复继续存档或切换界面后可能遮住游戏的白屏。
 • 修复打出或弃掉的卡牌仍残留在手牌或桌面上、遮挡其他卡牌的问题。
