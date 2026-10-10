@@ -17,18 +17,26 @@ export function setControllerId(id: string) {
   invalidate();
 }
 
-function controllerHint(button: number): string {
+export function getGamepadButtonInfo(button: number | null): { frame: any; label: string; name: string } | null {
+  if (button == null || button < 0 || button >= BUTTON_GLYPHS.length) return null;
   let glyph = BUTTON_GLYPHS[button];
   if (controllerFamily === 'switch' && button < 4) glyph = ['b', 'a', 'y', 'x'][button];
   const name = `${controllerFamily}/${glyph}`;
+  const frame = frameByName('controller_atlas', name);
   const label = controllerFamily === 'ps4'
     ? (['×', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Share', 'Options', 'L3', 'R3'][button] ?? formatGamepadButton(button))
     : controllerFamily === 'switch'
       ? (['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '−', '+', 'L3', 'R3'][button] ?? formatGamepadButton(button))
       : formatGamepadButton(button).replace(/\s*\([^)]*\)/, '');
-  return glyph && frameByName('controller_atlas', name)
-    ? `[img alt=${encodeURIComponent(label)}]res://atlases/controller_atlas.sprites/${name}.tres[/img]`
-    : label;
+  return { frame, label, name };
+}
+
+export function controllerHint(button: number): string {
+  const info = getGamepadButtonInfo(button);
+  if (!info) return formatGamepadButton(button);
+  return info.frame
+    ? `[img alt=${encodeURIComponent(info.label)}]res://atlases/controller_atlas.sprites/${info.name}.tres[/img]`
+    : info.label;
 }
 
 export const getInputDevice = () => device;

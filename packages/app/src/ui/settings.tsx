@@ -35,6 +35,7 @@ import {
   getActionName,
   type ActionId,
 } from '../input/bindings';
+import { getGamepadButtonInfo } from '../input/hints';
 import { listenNextGamepadButton, cancelGamepadListen } from '../input/gamepad';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
@@ -72,6 +73,7 @@ type Row =
       keyText: string;
       keyListening: boolean;
       onListenKey: () => void;
+      gamepadBtn: number | null;
       gamepadText: string;
       gamepadListening: boolean;
       onListenGamepad: () => void;
@@ -181,16 +183,20 @@ function inputRows(
       keyLabel: s('INPUT_SETTINGS.KEYBOARD_HEADER'),
       gamepadLabel: s('INPUT_SETTINGS.CONTROLLER_HEADER'),
     },
-    ...ACTION_LIST.map((a): Row => ({
-      kind: 'bindPair',
-      label: getActionName(a),
-      keyText: formatKeyName(bindings.keys[a.id] ?? a.defaultKey),
-      keyListening: isListening('key', a.id),
-      onListenKey: () => setListenTarget({ type: 'key', action: a.id }),
-      gamepadText: formatGamepadButton(bindings.gamepad[a.id] ?? a.defaultBtn),
-      gamepadListening: isListening('gamepad', a.id),
-      onListenGamepad: () => setListenTarget({ type: 'gamepad', action: a.id }),
-    })),
+    ...ACTION_LIST.map((a): Row => {
+      const gBtn = bindings.gamepad[a.id] ?? a.defaultBtn;
+      return {
+        kind: 'bindPair',
+        label: getActionName(a),
+        keyText: formatKeyName(bindings.keys[a.id] ?? a.defaultKey),
+        keyListening: isListening('key', a.id),
+        onListenKey: () => setListenTarget({ type: 'key', action: a.id }),
+        gamepadBtn: gBtn,
+        gamepadText: formatGamepadButton(gBtn),
+        gamepadListening: isListening('gamepad', a.id),
+        onListenGamepad: () => setListenTarget({ type: 'gamepad', action: a.id }),
+      };
+    }),
     {
       ...RESET,
       label: s('RESET_DEFAULT'),
@@ -370,6 +376,18 @@ function SettingsScroll({ rows }: { rows: Row[] }) {
   );
 }
 
+function GamepadButtonView({ button }: { button: number | null }) {
+  if (button == null) return <span class="st-bind-empty">-</span>;
+  const info = getGamepadButtonInfo(button);
+  if (!info || !info.frame) return <span>{formatGamepadButton(button)}</span>;
+  return (
+    <div class="st-gamepad-btn-content">
+      <div class="st-gamepad-icon" style={frameStyle(info.frame, 32)} />
+      <span class="st-gamepad-label">{info.label}</span>
+    </div>
+  );
+}
+
 function SettingsRow({ r }: { r: Row }) {
   const ref = useRef<HTMLDivElement>(null);
   const tip = 'tip' in r ? r.tip : undefined;
@@ -419,7 +437,7 @@ function SettingsRow({ r }: { r: Row }) {
             }}
           >
             <div class="st-bind-text">
-              {r.gamepadListening ? s('LISTENING_INPUT') : r.gamepadText}
+              {r.gamepadListening ? s('LISTENING_INPUT') : <GamepadButtonView button={r.gamepadBtn} />}
             </div>
           </div>
         </div>

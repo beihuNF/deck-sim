@@ -11,6 +11,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Controls[/b][/gold]
 • Added full gamepad / controller support with console-style combat hand navigation, auto-targeting for single-target cards, and smooth virtual cursor for menus and maps.
 • Unlocked and implemented the Input settings tab with customizable keyboard and controller keybindings and reset support.
+• Controller bindings in Input settings now render original button icons from the controller atlas.
 • Prevented the browser from capturing the Tab key for focus navigation, allowing Tab to be reliably bound and triggered in-game.
 • Enabled opening the deck via hotkey from any room, not just in combat.
 • Fixed deck and map shortcut hints to show the current keyboard bindings; rebinding the deck no longer keeps D as an extra shortcut.
@@ -37,6 +38,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]操作[/b][/gold]
 • 新增完整手柄（控制器）支持：战斗中采用主机版手牌轮盘与指向性卡牌敌人自动吸附切换；菜单、地图与商店支持摇杆虚拟光标与右摇杆滚屏。
 • 解锁并完整实现设置中的“操作设置”：支持自定义键盘按键与手柄按钮绑定，并可一键重置为默认。
+• 操作设置中的手柄按键列现在渲染原作图集专用按键图标。
 • 阻止浏览器默认焦点切换对 Tab 键的截获，确保将查看卡牌组等快捷键绑定至 Tab 时可在游戏内稳定触发。
 • 允许在任意房间（包括地图、事件、商店等）通过快捷键直接打开卡牌组，不再局限于战斗中。
 • 修复查看牌组和地图的按键提示未跟随当前键位的问题；修改牌组快捷键后，D 不再额外触发。
