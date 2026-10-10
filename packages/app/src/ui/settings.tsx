@@ -66,8 +66,17 @@ type Row =
   | { kind: 'lang'; label: string; disabled: boolean }
   | { kind: 'drop'; label: string; options: string[]; get: () => number; set: (i: number) => void }
   | { kind: 'button'; label: string; text: string; hsv: number[]; outline: string; onClick: () => void }
-  | { kind: 'bind'; label: string; keyText: string; listening: boolean; onListen: () => void }
-  | { kind: 'header'; label: string };
+  | {
+      kind: 'bindPair';
+      label: string;
+      keyText: string;
+      keyListening: boolean;
+      onListenKey: () => void;
+      gamepadText: string;
+      gamepadListening: boolean;
+      onListenGamepad: () => void;
+    }
+  | { kind: 'bindHeader'; commandLabel: string; keyLabel: string; gamepadLabel: string };
 
 const prefs = () => sm().PrefsSave, settings = () => sm().SettingsSave;
 /** A tickbox row; `tip` names the hover tip's title key (its description is the key without _HEADER, plus _DESCRIPTION). */
@@ -165,21 +174,21 @@ function inputRows(
   return [
     tick('LONG_PRESS_CONFIRMATION_HEADER', 'LONG_PRESS_CONFIRMATION_HEADER', () => p().IsLongPressEnabled, (v) => { p().IsLongPressEnabled = v; }),
     tick('SHOW_HAND_CARD_COUNT_HEADER', 'SHOW_HAND_CARD_COUNT_HEADER', () => p().ShowCardIndices, (v) => { p().ShowCardIndices = v; }, 'HAND_CARD_COUNT'),
-    { kind: 'header', label: s('INPUT_SETTINGS.KEYBOARD_HEADER') },
+    {
+      kind: 'bindHeader',
+      commandLabel: s('INPUT_SETTINGS.COMMAND_HEADER'),
+      keyLabel: s('INPUT_SETTINGS.KEYBOARD_HEADER'),
+      gamepadLabel: s('INPUT_SETTINGS.CONTROLLER_HEADER'),
+    },
     ...ACTION_LIST.map((a): Row => ({
-      kind: 'bind',
+      kind: 'bindPair',
       label: getActionName(a),
       keyText: formatKeyName(bindings.keys[a.id] ?? a.defaultKey),
-      listening: isListening('key', a.id),
-      onListen: () => setListenTarget({ type: 'key', action: a.id }),
-    })),
-    { kind: 'header', label: s('INPUT_SETTINGS.CONTROLLER_HEADER') },
-    ...ACTION_LIST.filter((a) => a.defaultBtn !== null).map((a): Row => ({
-      kind: 'bind',
-      label: getActionName(a),
-      keyText: formatGamepadButton(bindings.gamepad[a.id] ?? a.defaultBtn),
-      listening: isListening('gamepad', a.id),
-      onListen: () => setListenTarget({ type: 'gamepad', action: a.id }),
+      keyListening: isListening('key', a.id),
+      onListenKey: () => setListenTarget({ type: 'key', action: a.id }),
+      gamepadText: formatGamepadButton(bindings.gamepad[a.id] ?? a.defaultBtn),
+      gamepadListening: isListening('gamepad', a.id),
+      onListenGamepad: () => setListenTarget({ type: 'gamepad', action: a.id }),
     })),
     {
       ...RESET,
@@ -368,10 +377,51 @@ function SettingsRow({ r }: { r: Row }) {
     const rr = ref.current.getBoundingClientRect(), sr = document.querySelector('.stage-root')!.getBoundingClientRect(), k = 1920 / sr.width;
     setTip(tip[0], tip[1], { kind: 'at', x: 1466, y: (rr.top - sr.top) * k - 60 });
   };
-  if (r.kind === 'header') {
+  if (r.kind === 'bindHeader') {
     return (
-      <div class="settings-row header">
-        <div class="sr-header-text"><RichText text={r.label} /></div>
+      <div class="settings-row bind-header">
+        <div class="srb-header-col command">{r.commandLabel}</div>
+        <div class="srb-header-pair">
+          <div class="srb-header-col">{r.keyLabel}</div>
+          <div class="srb-header-col">{r.gamepadLabel}</div>
+        </div>
+      </div>
+    );
+  }
+  if (r.kind === 'bindPair') {
+    return (
+      <div class="settings-row" ref={ref} onPointerEnter={showTip} onPointerLeave={() => tip && setTip(null)}>
+        <div class="sr-label"><RichText text={r.label} /></div>
+        <div class="st-bind-pair">
+          <div
+            class={'st-bind-btn' + (r.keyListening ? ' listening' : '')}
+            data-ctl
+            onPointerDown={(e) => {
+              if (e.button === 0) {
+                click();
+                r.onListenKey();
+              }
+            }}
+          >
+            <div class="st-bind-text">
+              {r.keyListening ? s('LISTENING_INPUT') : r.keyText}
+            </div>
+          </div>
+          <div
+            class={'st-bind-btn' + (r.gamepadListening ? ' listening' : '')}
+            data-ctl
+            onPointerDown={(e) => {
+              if (e.button === 0) {
+                click();
+                r.onListenGamepad();
+              }
+            }}
+          >
+            <div class="st-bind-text">
+              {r.gamepadListening ? s('LISTENING_INPUT') : r.gamepadText}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -384,26 +434,6 @@ function SettingsRow({ r }: { r: Row }) {
       {r.kind === 'lang' && <LanguageDropdown disabled={r.disabled} />}
       {r.kind === 'drop' && <Dropdown label={r.options[safe(r.get, -1)] ?? ''} options={r.options} onPick={(i) => { r.set(i); invalidate(); }} />}
       {r.kind === 'button' && <SettingsButton r={r} />}
-      {r.kind === 'bind' && <KeybindButton r={r} />}
-    </div>
-  );
-}
-
-function KeybindButton({ r }: { r: Extract<Row, { kind: 'bind' }> }) {
-  return (
-    <div
-      class={'st-bind-btn' + (r.listening ? ' listening' : '')}
-      data-ctl
-      onPointerDown={(e) => {
-        if (e.button === 0) {
-          click();
-          r.onListen();
-        }
-      }}
-    >
-      <div class="st-bind-text">
-        {r.listening ? s('LISTENING_INPUT') : r.keyText}
-      </div>
     </div>
   );
 }
