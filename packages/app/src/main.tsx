@@ -81,17 +81,21 @@ window.addEventListener('dragstart', (e) => {
 });
 
 /** NInputManager defaults outside Escape: A/S/X/D open the draw/discard/exhaust piles and the deck, M the map. */
-function runHotkey(key: string) {
-  if (ui.screen !== 'run' || ui.pauseOpen || ui.subscreen || ftueActive()) return;
-  if (combatHotkey(key)) return;
+function runHotkey(key: string): boolean {
+  if (ui.screen !== 'run' || ui.pauseOpen || ui.subscreen || ftueActive()) return false;
+  if (combatHotkey(key)) return true;
   const k = key.toLowerCase();
   const b = getBindings().keys;
   if (k === b.viewDeck.toLowerCase() || k === 'd') {
-    if (document.querySelector('.combat .combat-ui')) toggleCardsView('deck');
+    toggleCardsView('deck');
+    invalidate();
+    return true;
   } else if ((k === b.viewMap.toLowerCase() || k === 'm') && !ui.gameOver && ui.room?.kind !== 'maproom') {
     topBarMapPressed();
-  } else return;
-  invalidate();
+    invalidate();
+    return true;
+  }
+  return false;
 }
 const SCREENS: Partial<Record<Screen, () => any>> = {
   library: CardLibrary, relics: RelicCollection, potions: PotionLab,
@@ -103,17 +107,25 @@ function ScreenView({ s }: { s: Screen }) { const S = SCREENS[s]; return S ? <S 
 window.addEventListener('contextmenu', (e) => e.preventDefault(), true);
 // Escape closes the topmost panel; in a run with nothing open it brings up the pause menu (NHotkeyManager "pause")
 window.addEventListener('keydown', (e) => {
+  const el = e.target as HTMLElement;
+  const isTyping = el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button'].includes((el as HTMLInputElement).type));
+  if (isTyping) return;
+
+  // Tab 键在浏览器中默认会在页面各个可聚焦元素间移动焦点，导致游戏内按键失焦或被截获；只要不在打字输入，一律拦截默认行为
+  if (e.key === 'Tab') e.preventDefault();
+
   // NPeekButton's hotkey (MegaInput.peek = Space) on an overlay screen that has one
   const top = ui.overlays[ui.overlays.length - 1];
   const b = getBindings().keys;
-  if ((e.code === 'Space' || e.key.toLowerCase() === b.peek.toLowerCase()) && ui.screen === 'run' && top?.peekEnabled && !(e.target as HTMLElement)?.closest?.('input, textarea')) {
+  if ((e.code === 'Space' || e.key.toLowerCase() === b.peek.toLowerCase()) && ui.screen === 'run' && top?.peekEnabled) {
     e.preventDefault();
     if (!e.repeat) top.togglePeek();
     return;
   }
-  const el = e.target as HTMLInputElement;
-  if (el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button'].includes(el.type))) return; // typing
-  if (e.key !== 'Escape') { runHotkey(e.key); return; }
+  if (e.key !== 'Escape') {
+    if (runHotkey(e.key)) e.preventDefault();
+    return;
+  }
   const closers = document.querySelectorAll<HTMLElement>('[data-esc]'); // inner modals (card inspect) mark their close control
   const close = closers[closers.length - 1];
   if (close) { close.click(); return; }

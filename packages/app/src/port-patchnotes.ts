@@ -5,16 +5,26 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     eng: `[gold][b]Controls[/b][/gold]
 • Added full gamepad / controller support with console-style combat hand navigation, auto-targeting for single-target cards, and smooth virtual cursor for menus and maps.
 • Unlocked and implemented the Input settings tab with customizable keyboard and controller keybindings and reset support.
+• Prevented the browser from capturing the Tab key for focus navigation, allowing Tab to be reliably bound and triggered in-game.
+• Enabled opening the deck via hotkey from any room, not just in combat.
+
+[gold][b]Quality of Life[/b][/gold]
+• Built in the "Quick SL Button" mod: reload the current room directly from the pause menu, with an option in Settings to toggle it.
 
 [gold][b]Display[/b][/gold]
 • Prevented accidental browser text selection and ghost image dragging during gameplay.
+• Fixed missing cursor images (404) when drawing or erasing on the map.
+• Fixed a localization formatting error when hovering over the Act Boss icon.
 • Fixed an issue where dragging the settings scrollbar downward would scroll upward.
+• Fixed the settings language dropdown scrolling the entire settings panel together.
+• Fixed black block artifacts on the corners of the settings toast notification.
 • Fixed a white screen that could cover the game after continuing a saved run or changing screens.
 • Fixed played or discarded cards remaining in the hand or on the table and blocking other cards.
 • Fixed dragging cards from icons in their text being canceled.
 • Fixed the Punch-Off event freezing the game at Instant speed.
 • Fixed Defect beam effects and Architect damage text on the victory screen.
 • Fixed a rendering error after Necrobinder's Doom kill animation.
+• Adjusted pause menu title line height and spacing to prevent overlapping with buttons.
 
 [gold][b]Community[/b][/gold]
 • Updated the QQ group QR code.
@@ -28,16 +38,26 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     zhs: `[gold][b]操作[/b][/gold]
 • 新增完整手柄（控制器）支持：战斗中采用主机版手牌轮盘与指向性卡牌敌人自动吸附切换；菜单、地图与商店支持摇杆虚拟光标与右摇杆滚屏。
 • 解锁并完整实现设置中的“操作设置”：支持自定义键盘按键与手柄按钮绑定，并可一键重置为默认。
+• 阻止浏览器默认焦点切换对 Tab 键的截获，确保将查看卡牌组等快捷键绑定至 Tab 时可在游戏内稳定触发。
+• 允许在任意房间（包括地图、事件、商店等）通过快捷键直接打开卡牌组，不再局限于战斗中。
+
+[gold][b]便利功能[/b][/gold]
+• 内置“快速SL按钮”模组：暂停菜单中可直接原地重新加载当前房间，并可在通用设置中随时开启或关闭。
 
 [gold][b]画面[/b][/gold]
 • 修复游戏内鼠标拖拽时可能误选中文本或拖出图片虚影的问题。
+• 修复地图绘画和擦除时鼠标光标图片加载失败（404）的问题。
+• 修复鼠标悬停在顶栏幕 Boss 图标上时的本地化文本格式化报错。
 • 修复设置界面中向下拖拽滚动条反而向上滚动的问题。
+• 修复设置中滚动语言下拉列表时带动整个面板一起滚动的问题。
+• 修复设置提示气泡（Toast）边缘出现黑色色块的问题。
 • 修复继续存档或切换界面后可能遮住游戏的白屏。
 • 修复打出或弃掉的卡牌仍残留在手牌或桌面上、遮挡其他卡牌的问题。
 • 修复从卡牌文字中的图标位置拖动时，出牌操作被取消的问题。
 • 修复选择“瞬间”速度时，拳击比赛事件卡住游戏的问题。
 • 修复故障机器人的光束特效及胜利结算的建筑师伤害文本。
 • 修复死灵契约师的灾厄击杀动画结束后可能出现的渲染错误。
+• 优化暂停菜单布局与标题行高，修复“已暂停”标题与继续按钮过于靠近重叠的问题。
 
 [gold][b]社区[/b][/gold]
 • 更新 QQ 群二维码。

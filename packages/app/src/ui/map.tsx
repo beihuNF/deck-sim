@@ -647,10 +647,12 @@ function toggleMode(m: Mode) {
 let buttonDown = false;
 function updateCursor() {
   const kind = S.mode === 'draw' ? 'quill' : S.mode === 'erase' ? 'eraser' : null;
-  const url = kind ? imageUrl(`images/packed/common_ui/cursor_${kind}${buttonDown ? '_tilted' : ''}.png`) : null;
+  const rel = kind ? imageUrl(`images/packed/common_ui/cursor_${kind}${buttonDown ? '_tilted' : ''}.png`) : null;
+  const url = rel ? new URL(rel, document.baseURI).href : null;
   const root = document.documentElement;
   root.classList.toggle('draw-cursor', !!url);
-  if (url) root.style.setProperty('--draw-cursor', `url(${url}) ${kind === 'quill' ? '2 56' : '24 58'}, auto`);
+  if (url) root.style.setProperty('--draw-cursor', `url("${url}") ${kind === 'quill' ? '2 56' : '24 58'}, auto`);
+  else root.style.removeProperty('--draw-cursor');
 }
 for (const [ev, down] of [['mousedown', true], ['mouseup', false]] as const) {
   window.addEventListener(ev, (e) => { if (e.button <= 2 && buttonDown !== down) { buttonDown = down; updateCursor(); } }, true);

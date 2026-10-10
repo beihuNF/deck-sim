@@ -22,9 +22,18 @@ export async function loadAudioIndex() {
   } catch { files = []; }
   try { db = JSON.parse((await import('../../../assets/audio/events.json?raw')).default); } catch { db = null; } // a js/ chunk, see loadAssetIndex
   (window as any).__audio = audioState;
-  const unlock = () => { ensureCtx()?.resume(); };
-  window.addEventListener('pointerdown', unlock, true);
-  window.addEventListener('keydown', unlock, true);
+  const gestureEvents = ['pointerdown', 'keydown', 'click', 'touchstart', 'touchend'] as const;
+  const unlock = () => {
+    const c = ensureCtx();
+    if (c && c.state === 'suspended') {
+      c.resume().then(() => {
+        if (c.state === 'running') {
+          for (const ev of gestureEvents) window.removeEventListener(ev, unlock, true);
+        }
+      }).catch(() => {});
+    }
+  };
+  for (const ev of gestureEvents) window.addEventListener(ev, unlock, true);
 }
 function ensureCtx(): AudioContext | null {
   if (ctx) return ctx;

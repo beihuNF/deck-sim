@@ -931,7 +931,7 @@ button { font-family: var(--font); cursor: pointer; }
 .capstone { position: absolute; inset: 0; z-index: 30; }
 .pause-menu { position: absolute; inset: 0; }
 .pm-title { position: absolute; left: 774px; width: 372px; height: 64px; display: grid; place-items: center; white-space: nowrap; font: 700 64px 'Spectral', var(--font);
-  color: #EFC851; -webkit-text-stroke: 6px rgba(0, 0, 0, .5); paint-order: stroke fill; line-height: 99px; }
+  color: #EFC851; -webkit-text-stroke: 6px rgba(0, 0, 0, .5); paint-order: stroke fill; line-height: 1; }
 .pause-btn { position: absolute; left: 774px; width: 372px; height: 80px; }
 .pause-btn.disabled { filter: brightness(.5); }
 .pb-img { position: absolute; inset: 0; width: 372px; height: 80px; pointer-events: none; }
@@ -974,7 +974,7 @@ button { font-family: var(--font); cursor: pointer; }
 .std-label { position: absolute; inset: 0; display: grid; place-items: center; white-space: nowrap; font: 700 28px 'Kreon', var(--font); letter-spacing: 1px; color: #EFC851;
   text-shadow: 3px 2px 0 rgba(0, 0, 0, .251); pointer-events: none; }
 .std-arrow { position: absolute; left: 281px; top: 17px; rotate: -90deg; transform-origin: 16px 13px; pointer-events: none; }
-.std-list { position: absolute; left: 0; top: 64px; width: 320px; max-height: 600px; overflow: hidden auto; scrollbar-width: none; background: #122129; }
+.std-list { position: absolute; left: 0; top: 64px; width: 320px; max-height: 600px; overflow: hidden auto; scrollbar-width: none; overscroll-behavior: contain; background: #122129; }
 .std-item { height: 44px; display: grid; place-items: center; white-space: nowrap; font: 700 24px 'Kreon', var(--font); color: #FFF6E2; }
 .std-item:hover { background: #2C5870; }
 .st-button { position: relative; width: 320px; height: 64px; }
@@ -989,7 +989,7 @@ button { font-family: var(--font); cursor: pointer; }
 .stab-label { position: absolute; left: 0; top: -5px; width: 256px; height: 100px; display: grid; place-items: center; white-space: nowrap; font: 700 32px 'Kreon', var(--font);
   letter-spacing: 2px; -webkit-text-stroke: 8px rgba(0, 0, 0, .25); paint-order: stroke fill; pointer-events: none; }
 .settings-toast { position: absolute; left: 50%; translate: -50% 0; top: 1088px; width: fit-content; max-width: 900px; height: 64px; opacity: 0; pointer-events: none; }
-.stt-bg { position: absolute; inset: 0; box-sizing: border-box; border-style: solid; border-width: 16px 32px; border-image-slice: 16 32 fill; filter: brightness(0); opacity: .75; }
+.stt-bg { position: absolute; inset: 0; box-sizing: border-box; border: 14px solid transparent; border-image-slice: 14 fill; border-image-width: 14px; filter: brightness(0); opacity: .75; }
 .stt-text { position: relative; z-index: 1; height: 64px; padding: 0 44px; display: flex; align-items: center; justify-content: center; font: 400 28px 'Kreon', var(--font); color: #EFC851; white-space: nowrap; }
 
 /* Settings Input Tab Keybinding (Side-by-side keyboard & controller) */

@@ -124,6 +124,7 @@ function generalRows(inRun: boolean): Row[] {
     tick('LIMIT_FPS_IN_BACKGROUND_HEADER', 'LIMIT_FPS_IN_BACKGROUND_HEADER', () => settings().LimitFpsInBackground, (v) => { settings().LimitFpsInBackground = v; }, 'LIMIT_FPS_IN_BACKGROUND'),
     tick('UPLOAD_GAMEPLAY_DATA', 'UPLOAD_GAMEPLAY_DATA_HEADER', () => p().UploadData, (v) => { p().UploadData = v; }, 'GAMEPLAY_DATA'),
     tick('TEXT_EFFECTS', 'TEXT_EFFECTS', () => p().TextEffectsEnabled, (v) => { p().TextEffectsEnabled = v; }, 'TEXT_EFFECTS'),
+    { kind: 'tick', label: appText('quickSlSetting'), tip: [appText('quickSlSetting'), appText('quickSlTip')], get: () => localStorage.getItem('sts2web.quickSl') !== 'false', set: (v) => { localStorage.setItem('sts2web.quickSl', String(v)); invalidate(); } },
     { kind: 'button', label: s('SEND_FEEDBACK'), text: s('SEND_FEEDBACK_BUTTON_LABEL'), hsv: [0.82, 1.4, 0.8], outline: 'rgb(32, 66, 36)', onClick: openFeedback },
     { kind: 'button', label: s('CREDITS'), text: s('CREDITS_BUTTON_LABEL'), hsv: [0.61, 1.6, 1.3], outline: 'rgb(51, 40, 25)', onClick: openCredits },
     ...unlock,
@@ -565,7 +566,7 @@ function Dropdown({ label, options, disabled = false, onPick }: { label: string;
         <div class="std-arrow" style={frameStyle(frameByName('ui_atlas', 'settings_tiny_left_arrow'), 26, 26)} />
       </div>
       {open && (
-        <div class="std-list">
+        <div class="std-list" onWheel={(e) => e.stopPropagation()}>
           {options.map((o, i) => <div class="std-item" onPointerEnter={hover} onPointerUp={() => { setOpen(false); onPick(i); }}>{o}</div>)}
         </div>
       )}

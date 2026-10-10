@@ -135,6 +135,14 @@ const APP: Record<string, Record<string, string>> = {
       + '[gray]免责声明：本项目仅供学习与技术交流，不作任何盈利用途，与 Mega Crit 没有任何关联。游戏的美术、音乐、文本等全部内容的版权均归 Mega Crit 所有。喜欢这款游戏的话，请前往 Steam 购买正版支持原作者！[/gray]\n\n'
       + '好啦，让我们，在高塔的攀爬中相见！',
   },
+  // Quick SL mod functionality
+  quickSl: { eng: 'Quick SL', zhs: '快速SL', zht: '快速SL' },
+  quickSlSetting: { eng: 'Quick SL Button', zhs: '快速SL按钮', zht: '快速SL按鈕' },
+  quickSlTip: {
+    eng: 'Show a Quick SL button in the pause menu to reload the current room without returning to the main menu.',
+    zhs: '在暂停菜单中显示“快速SL”按钮，可原地重新加载当前房间，无需返回主菜单。',
+    zht: '在暫停選單中顯示「快速SL」按鈕，可原地重新載入目前房間，無需返回主選單。',
+  },
 };
 export function appText(k: keyof typeof APP, language?: string): string {
   const lang = language ?? (() => { try { return G.LocManager.Instance.Language; } catch { return 'eng'; } })();

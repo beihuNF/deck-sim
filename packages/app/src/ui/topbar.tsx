@@ -9,7 +9,7 @@ import { setTip, setTips, hoverTipsOf, tipBlock, pinTips } from './tooltip';
 import { view, anchored } from '../view';
 import { RichText } from './richtext';
 import { hsvFilter } from '../filters';
-import { loc } from '../i18n';
+import { loc, locv } from '../i18n';
 import { playOneShot } from '../audio';
 import { targetManager } from '../cardnodes';
 import { topBarMapPressed } from './map';
@@ -489,7 +489,12 @@ export function TopBar({ rs }: { rs: any }) {
           </div>
           {bossIcon && !inBoss && (
             <div class="tb-hit" style={{ left: `${bossX}px`, top: '17.5px', width: '44px', height: '44px' }}
-              onPointerEnter={() => { const l = new G.LocString().$ctor_LocString('static_hover_tips', 'BOSS.description'); safe(() => l.Add$String_String('BossName', rs.Act.BossEncounter.Title.GetFormattedText()), null); setTip(loc('static_hover_tips', 'BOSS.title'), safe(() => l.GetFormattedText(), ''), tipAt(bossX, 103)); }}
+              onPointerEnter={() => {
+                const bossName = safe(() => rs.Act.BossEncounter.Title.GetFormattedText(), '') ?? '';
+                const title = locv('static_hover_tips', 'BOSS.title', { BossName: bossName });
+                const desc = locv('static_hover_tips', 'BOSS.description', { BossName: bossName });
+                setTip(title, desc, tipAt(bossX, 103));
+              }}
               onPointerLeave={() => setTip(null)}>
               {bossOutline && <img class="tb-room outline" src={imageUrl(bossOutline) ?? ''} />}
               <img class="tb-room" src={imageUrl(bossIcon) ?? ''} />

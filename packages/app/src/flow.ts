@@ -1,6 +1,6 @@
 // App-level flow: starting runs, returning to menu. Mirrors NGame without scene loading.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { G, list } from './game';
+import { G, $, list } from './game';
 import { ui, invalidate } from './store';
 import { attachRun } from './bridge';
 import { loc } from './i18n';
@@ -83,6 +83,35 @@ export async function continueRun() {
   if (!rs) { ui.screen = 'menu'; ui.toast = loc('main_menu_ui', 'INVALID_SAVE_POPUP.description_run'); }
   invalidate();
   await transitionView.FadeIn();
+}
+/** 快速SL：保存当前进度并原地重新进入当前房间，无需返回主菜单。 */
+export async function quickReloadRun(): Promise<boolean> {
+  const rm = G.RunManager.Instance;
+  if (!rm.IsInProgress) return false;
+  try {
+    // 等待当前存档写入完成并同步到 VFS
+    await G.SaveManager.Instance.CurrentRunSaveTask;
+    await $.vfs.flush();
+    safe(() => rm.ActionQueueSet.Reset());
+    stopAudio();
+    await transitionView.FadeOut(0.4);
+    try { rm.CleanUp(true); } catch (e) { console.warn(e); }
+    run = null;
+    resetUi();
+    const rs = await G.continueSavedRun((runState: any) => { run = runState; attachRun(runState); });
+    if (!rs) {
+      ui.screen = 'menu';
+      ui.toast = loc('main_menu_ui', 'INVALID_SAVE_POPUP.description_run');
+    }
+    invalidate();
+    await transitionView.FadeIn(0.4);
+    return !!rs;
+  } catch (e) {
+    console.error('Quick reload run failed', e);
+    invalidate();
+    await transitionView.FadeIn(0.4);
+    return false;
+  }
 }
 export function abandonRun() { G.abandonSavedRun(); invalidate(); }
 /** NGame.ReturnToMainMenu: fade to black, clean up the run, load the main menu (which fades itself in). */

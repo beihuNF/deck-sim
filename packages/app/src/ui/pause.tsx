@@ -13,7 +13,7 @@ import { BackButton } from './buttons';
 import { SettingsScreen } from './settings';
 import { CompendiumSubmenu } from './compendium-menu';
 import { abandonRunPopup } from './modal';
-import { toMenu } from '../flow';
+import { toMenu, quickReloadRun } from '../flow';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const EXPO_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
@@ -111,6 +111,24 @@ function PauseMenu() {
   // OnBackOrResumeButtonPressed
   const resume = () => { playOneShot('event:/sfx/ui/map/map_close'); closePauseMenu(); };
   const giveUp = async () => { if (await abandonRunPopup()) { closePauseMenu(); rm.Abandon(); } };
+  const quickSlEnabled = safe(() => localStorage.getItem('sts2web.quickSl') !== 'false', true);
+  // Quick SL: 原地快速重开当前房间
+  const quickSl = async () => {
+    setQuitting(true);
+    try {
+      submenus.length = 0;
+      ui.pauseOpen = false;
+      capstone.A = 0;
+      capstone.fade = false;
+      const ok = await quickReloadRun();
+      if (!ok) {
+        ui.toast = appText('storageFull');
+        invalidate();
+      }
+    } finally {
+      setQuitting(false);
+    }
+  };
   // CloseToMenu: the menu stays up (disabled) through NGame.ReturnToMainMenu's fade
   const saveAndQuit = async () => {
     setQuitting(true);
@@ -130,15 +148,17 @@ function PauseMenu() {
     [p('RESUME'), resume, [1, 0.8, 0.9], '#25545C', true],
     [p('SETTINGS'), () => pushSubmenu('settings'), [1, 1, 1], '#25545C', true],
     ...(compendium ? [[p('COMPENDIUM'), () => pushSubmenu('compendium'), [1, 1, 1], '#25545C', true] as [string, () => void, number[], string, boolean]] : []),
-    [p('GIVE_UP'), () => void giveUp(), [0.5, 1, 1], '#5C3225', canGiveUp],
+    ...(quickSlEnabled ? [[appText('quickSl'), () => void quickSl(), [1, 1, 1], '#25545C', canGiveUp] as [string, () => void, number[], string, boolean]] : []),
     [p('SAVE_AND_QUIT'), saveAndQuit, [1, 1, 1], '#25545C', true],
+    [p('GIVE_UP'), () => void giveUp(), [0.5, 1, 1], '#5C3225', canGiveUp],
   ];
-  const top = compendium ? 306 : 340;
+  // 标题高度 64px，标题与第一个按钮之间留出 36px 优雅间距（合计 100px），每个按钮高度 80px
+  const titleTop = Math.round((1080 - (100 + 80 * buttons.length)) / 2);
   return (
     <div class="pause-menu">
-      <div class="pm-title" style={{ top: `${top}px` }}>{p('PAUSED')}</div>
+      <div class="pm-title" style={{ top: `${titleTop}px` }}>{p('PAUSED')}</div>
       {buttons.map(([label, onClick, hsv, outline, enabled], i) => (
-        <PauseButton label={label} y={top + 68 + 80 * i} hsv={hsv} outline={outline} enabled={enabled && !quitting} onClick={onClick} />
+        <PauseButton label={label} y={titleTop + 100 + 80 * i} hsv={hsv} outline={outline} enabled={enabled && !quitting} onClick={onClick} key={label} />
       ))}
       <BackButton enabled={!quitting} onClick={resume} />
     </div>
