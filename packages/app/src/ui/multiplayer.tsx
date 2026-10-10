@@ -92,10 +92,9 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const custom = epochRevealed(G.CustomAndSeedsEpoch);
   const hasMpSave = false; // 当前暂无断线续玩联机存档
 
-  // 房主启程判定：至少 2 人，所有客机玩家均已就绪且保持连接
+  // 房主与全员就绪判定：至少 2 人，所有玩家（包括房主自身）全部就绪且在线
   const isHost = mp.id === 1;
-  const guestPlayers = mp.players.filter(p => p.id !== 1);
-  const canEmbark = isHost && mp.players.length >= 2 && guestPlayers.length > 0 && guestPlayers.every(p => p.ready && p.connected);
+  const allReady = mp.players.length >= 2 && mp.players.every(p => p.ready && p.connected);
 
   return (
     <div class="mp-screen-container">
@@ -302,8 +301,8 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                         src={imageUrl(`images/ui/top_panel/character_icon_${pChar}.png`) ?? ''}
                         alt={player.character}
                       />
-                      {/* 准备状态打勾：房主天生常备就绪，客机准备后打勾 */}
-                      {(isSlotHost || player.ready) && (
+                      {/* 准备状态打勾：遵循原版，只有准备好的玩家才打勾 */}
+                      {player.ready && (
                         <div
                           class="rlp-ready-tick"
                           style={{
@@ -363,33 +362,28 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             )}
           </div>
 
-          {/* 房主等待全员就绪提示 */}
-          {isHost && (
-            <div class={`mp-host-waiting-tip ${canEmbark ? 'can-embark' : ''}`}>
-              {mp.players.length < 2
-                ? tr('正在等待其他玩家加入...', 'Waiting for other players to join...')
-                : !canEmbark
-                  ? tr('等待其他玩家就绪后方可启程...', 'Waiting for all players to be ready...')
-                  : tr('全员已就绪 · 点击右下角启程！', 'All players ready · Click bottom right to embark!')}
-            </div>
-          )}
-
-          {/* 非房主准备提示 */}
-          {!isHost && (
-            <div class={`mp-client-ready-tip ${me?.ready ? 'is-ready' : ''}`}>
-              {me?.ready ? tr('已就绪 · 点击右下角取消', 'Ready · Click bottom right to cancel') : tr('点击右下角按钮准备就绪', 'Click bottom right button to ready up')}
-            </div>
-          )}
+          {/* 大厅就绪与启程提示 */}
+          <div class={`mp-lobby-ready-tip ${allReady ? 'all-ready' : me?.ready ? 'is-ready' : ''}`}>
+            {mp.players.length === 1
+              ? loc('main_menu_ui', 'MULTIPLAYER_CHAR_SELECT.SOLO')
+              : allReady
+                ? isHost
+                  ? tr('全员已就绪 · 点击右下角启程！', 'All players ready · Click bottom right to embark!')
+                  : tr('全员已就绪 · 等待房主启程...', 'All players ready · Waiting for host to embark...')
+                : me?.ready
+                  ? tr('已就绪 · 等待其他玩家就绪...', 'Ready · Waiting for other players...')
+                  : tr('点击右下角按钮准备就绪', 'Click bottom right button to ready up')}
+          </div>
 
           {/* 左下角原版返回按钮 */}
           <BackButton enabled onClick={exit} />
 
           {/* 右下角原版确认/启程按钮 */}
           <ConfirmButton
-            enabled={isHost ? canEmbark : true}
+            enabled={true}
             onClick={() => {
-              if (isHost) {
-                if (canEmbark) beginMultiplayer();
+              if (isHost && allReady) {
+                beginMultiplayer();
               } else {
                 readyMultiplayer(!me?.ready);
               }

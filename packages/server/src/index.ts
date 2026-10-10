@@ -99,7 +99,7 @@ export class WebRoom extends DurableObject<Env> {
       while (usedIds.has(id) && id <= this.room.maxPlayers) id++;
       if (id > this.room.maxPlayers) return json({ error: 'full' }, 409);
       const token = crypto.randomUUID();
-      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: id === 1 });
+      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false });
       await this.ctx.storage.put('room', this.room);
       await this.ctx.storage.setAlarm(this.room.created + 24 * 60 * 60_000);
       this.broadcast();
@@ -190,15 +190,13 @@ export class WebRoom extends DurableObject<Env> {
       if (!['IRONCLAD', 'SILENT', 'REGENT', 'NECROBINDER', 'DEFECT'].includes(msg.character)
         || typeof msg.unlock !== 'string' || msg.unlock.length > 48_000) return ws.close(1008, 'Invalid selection');
       me.character = msg.character; me.unlock = msg.unlock;
-      // 房主作为主持人默认就绪，客机切换角色时重置准备状态
-      me.ready = id === 1;
+      // 遵循原版规则：切换角色必须重置准备状态
+      me.ready = false;
     } else if (msg.type === 'ready' && !this.room.started && me.unlock) {
       me.ready = msg.ready === true;
     } else if (msg.type === 'start' && id === 1 && !this.room.started) {
-      // 房主启程判定：至少 2 人，所有客机玩家均已就绪且保持连接，房主自身已连接
-      const guestPlayers = this.room.players.filter(p => p.id !== 1);
-      const allGuestsReady = guestPlayers.length >= 1 && guestPlayers.every(p => p.ready && this.ctx.getWebSockets(String(p.id)).length > 0);
-      if (!allGuestsReady || !this.ctx.getWebSockets('1').length) return;
+      // 全员就绪判定：至少 2 人，所有玩家（包括房主自身）全部就绪且连接在线
+      if (this.room.players.length < 2 || this.room.players.some(p => !p.ready || !this.ctx.getWebSockets(String(p.id)).length)) return;
       this.room.started = true;
       this.room.seed = crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
       await this.ctx.storage.put('room', this.room);

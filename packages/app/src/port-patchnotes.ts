@@ -8,7 +8,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Rebuilt multiplayer screens and lobby using original game assets and layouts: SubmenuButton cards, nine-patch fuzzy dialogs, CharacterSelectScreen background and RemotePlayerContainer.
 • Added room code invitations and one-click link sharing, with lobby hero selection and ready status.
 • Implemented session persistence and seamless reconnects on page refresh, preventing slot shifts or phantom players.
-• Streamlined lobby ready checks: hosts are naturally ready, and the embark button highlights as soon as all guest players ready up.
+• Restored authentic lobby character selection and ready flow: all players (including the host) can pick characters freely and toggle ready status. Switching hero resets ready status, and the run embarks when all players are ready.
 • Added host kick player support with instant optimistic UI removal and resilient server broadcast.
 • Multiplayer runs run in isolated ephemeral sessions, keeping your singleplayer profile and saves completely intact.
 
@@ -42,7 +42,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 全面以原作素材与布局重构多人模式界面：复用原版大卡片子菜单、九宫格弹窗、角色选择场景与左上角远程玩家状态面板（RemotePlayerContainer）。
 • 支持房间号邀请与一键复制邀请链接，进入大厅可自由选择角色并准备就绪。
 • 增加大厅会话恢复（Session Persistence）与断线重连机制，解决移动端与浏览器刷新页面时槽位递增或判定为新玩家的问题。
-• 优化大厅就绪与启程判定：房主作为主持人默认就绪，客机玩家全部就绪后启程按钮即刻亮起，点击即可顺利启程。
+• 还原原作大厅选人与就绪流程：所有玩家（包含房主）均可在选好角色后自主点击准备/取消就绪，切换角色自动重置准备状态，全员就绪后由房主启程。
 • 房主可在大厅中踢出客机玩家：支持乐观即时响应与安全广播，房主界面卡片立刻移除，被踢玩家准确显示通知。
 • 多人对局采用独立临时会话存储，不破坏或覆盖单人本地存档。
 

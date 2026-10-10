@@ -342,26 +342,9 @@
 }
 
 /* 房主等待全员就绪提示 */
-.mp-host-waiting-tip {
-  position: absolute;
-  right: 170px;
-  bottom: 120px;
-  font-size: 20px;
-  font-weight: 700;
-  color: #e5b95a;
-  -webkit-text-stroke: 3px #261f17;
-  paint-order: stroke fill;
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
-  pointer-events: none;
-  animation: mp-pulse 1.6s ease-in-out infinite;
-}
-.mp-host-waiting-tip.can-embark {
-  color: #7fff00;
-  -webkit-text-stroke: 3px #122805;
-  filter: drop-shadow(0 0 6px rgba(127, 255, 0, 0.4));
-}
-
-/* 非房主准备提示 */
+/* 大厅准备/就绪提示（房主与客机通用） */
+.mp-lobby-ready-tip,
+.mp-host-waiting-tip,
 .mp-client-ready-tip {
   position: absolute;
   right: 170px;
@@ -373,10 +356,19 @@
   paint-order: stroke fill;
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
   pointer-events: none;
+  animation: mp-pulse 1.6s ease-in-out infinite;
 }
 
+.mp-lobby-ready-tip.is-ready,
 .mp-client-ready-tip.is-ready {
+  color: #e5b95a;
+}
+
+.mp-lobby-ready-tip.all-ready,
+.mp-host-waiting-tip.can-embark {
   color: #7fff00;
+  -webkit-text-stroke: 3px #122805;
+  filter: drop-shadow(0 0 6px rgba(127, 255, 0, 0.4));
 }
 
 @keyframes mp-pulse {
