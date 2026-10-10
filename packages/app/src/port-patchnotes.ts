@@ -7,6 +7,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Supported hosting rooms for Standard, Daily, and Custom modes with up to 4 players.
 • Rebuilt multiplayer screens and lobby using original game assets and layouts: SubmenuButton cards, nine-patch fuzzy dialogs, CharacterSelectScreen background and RemotePlayerContainer.
 • Added room code invitations and one-click link sharing, with lobby hero selection and ready status.
+• Implemented session persistence and seamless reconnects on page refresh, preventing slot shifts or phantom players.
+• Added host kick player support in lobby with original icon indicators.
 • Multiplayer runs run in isolated ephemeral sessions, keeping your singleplayer profile and saves completely intact.
 
 [gold][b]Controls[/b][/gold]
@@ -38,6 +40,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 完整提供原版“标准模式”、“多人每日挑战”与“自定模式”多人建房选项。
 • 全面以原作素材与布局重构多人模式界面：复用原版大卡片子菜单、九宫格弹窗、角色选择场景与左上角远程玩家状态面板（RemotePlayerContainer）。
 • 支持房间号邀请与一键复制邀请链接，进入大厅可自由选择角色并准备就绪。
+• 增加大厅会话恢复（Session Persistence）与断线重连机制，解决移动端与浏览器刷新页面时槽位递增或判定为新玩家的问题。
+• 房主可在大厅中直接踢出客机玩家，被踢出的玩家即刻退出并提示官方通知。
 • 多人对局采用独立临时会话存储，不破坏或覆盖单人本地存档。
 
 [gold][b]操作[/b][/gold]

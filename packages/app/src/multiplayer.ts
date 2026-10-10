@@ -1,6 +1,7 @@
 import { G, $, GAME_VERSION, list } from './game';
 import { ui, invalidate } from './store';
 import { startCoopRun } from './flow';
+import { loc } from './i18n';
 
 export const multiplayer = {
   phase: 'idle' as 'idle' | 'connecting' | 'lobby' | 'starting' | 'playing' | 'ended',
@@ -13,6 +14,20 @@ let socket: WebSocket | null = null;
 let net: any = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let lastSeen = 0;
+
+const SESSION_KEY = (c: string) => `sts2_mp_${c.toUpperCase()}`;
+function getSession(code: string): { id: number; token: string } | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY(code));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function setSession(code: string, id: number, token: string) {
+  try { sessionStorage.setItem(SESSION_KEY(code), JSON.stringify({ id, token })); } catch {}
+}
+function clearSession(code: string) {
+  try { sessionStorage.removeItem(SESSION_KEY(code)); } catch {}
+}
 
 export function mpText(zhs: string, eng: string) { return G.LocManager.Instance.Language?.startsWith('zh') ? zhs : eng; }
 function changed() { invalidate(); }
@@ -29,6 +44,9 @@ function failed(error: string) {
   changed();
 }
 export function leaveMultiplayer() {
+  const code = multiplayer.code;
+  if (code) clearSession(code);
+  try { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'leave' })); } catch {}
   if ($.vfs.ephemeral) { socket?.close(); location.reload(); return; }
   if (timer) clearInterval(timer); timer = null;
   socket?.close(); socket = null;
@@ -46,16 +64,27 @@ export function selectMultiplayerCharacter(character: string) {
 }
 export function readyMultiplayer(ready: boolean) { send({ type: 'ready', ready }); }
 export function beginMultiplayer() { send({ type: 'start' }); }
+export function kickMultiplayerPlayer(targetId: number) {
+  if (multiplayer.id !== 1 || multiplayer.phase !== 'lobby') return;
+  try { send({ type: 'kick', targetId }); } catch {}
+}
 export async function connectMultiplayer(code?: string, mode: 'standard' | 'daily' | 'custom' = 'standard') {
   if (multiplayer.phase !== 'idle') return;
   multiplayer.phase = 'connecting'; multiplayer.error = ''; multiplayer.mode = mode; changed();
   try {
-    const body = code ? { version } : { version, mode, maxPlayers: 4 };
+    const saved = code ? getSession(code) : null;
+    const body = code
+      ? { version, token: saved?.token }
+      : { version, mode, maxPlayers: 4 };
     const res = await fetch(code ? `${API}/${code.toUpperCase()}` : API, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15_000),
     });
     const result = await res.json();
-    if (!res.ok) throw new Error(result.error ?? 'network');
+    if (!res.ok) {
+      if (code) clearSession(code);
+      throw new Error(result.error ?? 'network');
+    }
+    setSession(result.code, result.id, result.token);
     Object.assign(multiplayer, { code: result.code, id: result.id, mode: result.mode ?? mode, maxPlayers: result.maxPlayers ?? 4 });
     const url = new URL(`${API}/${result.code}/socket`, location.href);
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -75,7 +104,8 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
     ws.onopen = () => {
       if (socket !== ws) return;
       multiplayer.phase = 'lobby';
-      selectMultiplayerCharacter(list(G.SaveManager.Instance.GenerateUnlockStateFromProgress().Characters)[0].Id.Entry);
+      const myExistingChar = multiplayer.players.find(p => p.id === result.id)?.character;
+      selectMultiplayerCharacter(myExistingChar ?? list(G.SaveManager.Instance.GenerateUnlockStateFromProgress().Characters)[0].Id.Entry);
       changed();
     };
     ws.onmessage = e => {
@@ -90,6 +120,9 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           multiplayer.players = msg.players;
           if (msg.mode) multiplayer.mode = msg.mode;
           if (msg.maxPlayers) multiplayer.maxPlayers = msg.maxPlayers;
+        } else if (msg.type === 'kicked') {
+          clearSession(multiplayer.code);
+          failed('kicked');
         } else if (msg.type === 'start') {
           multiplayer.phase = 'starting';
           void startCoopRun(msg.players, msg.seed, net, msg.mode ?? multiplayer.mode).then(() => {
@@ -106,6 +139,7 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
 
 export function multiplayerError() {
   const e = multiplayer.error;
+  if (e === 'kicked') return loc('main_menu_ui', 'NETWORK_ERROR.KICKED.body');
   if (e === 'version') return mpText('双方网页版本不同，请刷新后重新建房。', 'Different game builds. Refresh both browsers and create a new room.');
   if (e === 'full') return mpText('房间已满或已开始。', 'The room is full or has already started.');
   if (e === 'room' || e === 'expired') return mpText('房间不存在或已过期。', 'Room not found or expired.');

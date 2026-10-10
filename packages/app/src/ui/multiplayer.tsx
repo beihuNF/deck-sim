@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { G, $, list } from '../game';
 import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
-  readyMultiplayer, beginMultiplayer, leaveMultiplayer, multiplayerError,
+  readyMultiplayer, beginMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError,
 } from '../multiplayer';
 import { BackButton, ConfirmButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
@@ -329,6 +329,24 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                         {loc('characters', `${player.character}.title`)}
                       </div>
                     </div>
+
+                    {/* 房主踢人操作 */}
+                    {isHost && !isSlotHost && (
+                      <button
+                        class="rlp-kick-btn"
+                        title={tr('踢出玩家', 'Kick Player')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playOneShot('event:/sfx/ui/clicks/ui_click');
+                          kickMultiplayerPlayer(slotId);
+                        }}
+                      >
+                        <div
+                          class="rlp-kick-icon"
+                          style={frameStyle(frameByName('compressed', 'back_button_x'), 20, 20)}
+                        />
+                      </button>
+                    )}
                   </div>
                 );
               })}

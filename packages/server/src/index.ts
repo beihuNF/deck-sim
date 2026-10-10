@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 
 interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<WebRoom> }
-interface Player { id: number; token: string; character: string; unlock: string; ready: boolean }
+interface Player { id: number; token: string; character: string; unlock: string; ready: boolean; disconnectedAt?: number }
 interface Room { code: string; version: string; mode: string; maxPlayers: number; created: number; started: boolean; seed: string; players: Player[] }
 const PREFIX = '/api/multiplayer/rooms';
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -67,7 +67,33 @@ export class WebRoom extends DurableObject<Env> {
         this.room = { code, version: body.version, mode, maxPlayers, created: Date.now(), started: false, seed: '', players: [] };
       }
       if (this.room.version !== body.version) return json({ error: 'version' }, 409);
-      if (this.room.started || this.room.players.length >= this.room.maxPlayers) return json({ error: 'full' }, 409);
+      if (this.room.started) return json({ error: 'full' }, 409);
+
+      // 携带原有 token 时支持刷新重连恢复槽位
+      if (typeof body.token === 'string') {
+        const existing = this.room.players.find(p => p.token === body.token);
+        if (existing) {
+          existing.disconnectedAt = undefined;
+          await this.ctx.storage.put('room', this.room);
+          return json({ code, id: existing.id, token: existing.token, mode: this.room.mode, maxPlayers: this.room.maxPlayers });
+        }
+      }
+
+      // 清理超时离线（超过 45 秒且无连接）的非房主槽位
+      const now = Date.now();
+      const active = this.room.players.filter(p => {
+        if (p.id === 1) return true;
+        const sockets = this.ctx.getWebSockets(String(p.id));
+        if (sockets.length > 0) return true;
+        if (p.disconnectedAt && now - p.disconnectedAt > 45_000) return false;
+        return true;
+      });
+      if (active.length !== this.room.players.length) {
+        this.room.players = active;
+        await this.ctx.storage.put('room', this.room);
+      }
+
+      if (this.room.players.length >= this.room.maxPlayers) return json({ error: 'full' }, 409);
       const usedIds = new Set(this.room.players.map(p => p.id));
       let id = 1;
       while (usedIds.has(id) && id <= this.room.maxPlayers) id++;
@@ -83,7 +109,11 @@ export class WebRoom extends DurableObject<Env> {
     if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'socket' }, 400);
     const player = this.room.players.find(p => p.token === url.searchParams.get('token'));
     if (!player || this.room.started) return json({ error: 'closed' }, 403);
-    if (this.ctx.getWebSockets(String(player.id)).length) return json({ error: 'connected' }, 409);
+    const existingSockets = this.ctx.getWebSockets(String(player.id));
+    if (existingSockets.length) {
+      for (const old of existingSockets) old.close(1000, 'Replaced');
+    }
+    player.disconnectedAt = undefined;
     const pair = new WebSocketPair();
     pair[1].serializeAttachment({ id: player.id });
     this.ctx.acceptWebSocket(pair[1], [String(player.id)]);
@@ -123,6 +153,34 @@ export class WebRoom extends DurableObject<Env> {
     const me = this.room.players.find(p => p.id === id);
     if (!me) return ws.close(1008, 'Invalid player');
     if (msg.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); return; }
+    if (msg.type === 'leave' && !this.room.started) {
+      if (id === 1) {
+        for (const other of this.ctx.getWebSockets()) if (other !== ws) other.close(1000, 'Host left');
+        await this.ctx.storage.deleteAll(); this.room = undefined;
+      } else {
+        this.room.players = this.room.players.filter(p => p.id !== id);
+        await this.ctx.storage.put('room', this.room); this.broadcast();
+      }
+      ws.close(1000, 'Left');
+      return;
+    }
+    if (msg.type === 'kick' && id === 1 && !this.room.started) {
+      const targetId = Number(msg.targetId);
+      if (targetId && targetId !== 1) {
+        const targetPlayer = this.room.players.find(p => p.id === targetId);
+        if (targetPlayer) {
+          const sockets = this.ctx.getWebSockets(String(targetId));
+          for (const s of sockets) {
+            s.send(JSON.stringify({ type: 'kicked' }));
+            s.close(4003, 'Kicked by host');
+          }
+          this.room.players = this.room.players.filter(p => p.id !== targetId);
+          await this.ctx.storage.put('room', this.room);
+          this.broadcast();
+        }
+      }
+      return;
+    }
     if (msg.type === 'select' && !this.room.started) {
       if (!['IRONCLAD', 'SILENT', 'REGENT', 'NECROBINDER', 'DEFECT'].includes(msg.character)
         || typeof msg.unlock !== 'string' || msg.unlock.length > 48_000) return ws.close(1008, 'Invalid selection');
@@ -152,14 +210,12 @@ export class WebRoom extends DurableObject<Env> {
       // Never silently continue alone: all simulations stop on a missing peer.
       for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(JSON.stringify({ type: 'ended' }));
     } else {
-      // Host leaving closes the invitation; guest leaving frees slot.
       const id = ws.deserializeAttachment().id;
-      if (id === 1) {
-        for (const other of this.ctx.getWebSockets()) if (other !== ws) other.close(1000, 'Host left');
-        await this.ctx.storage.deleteAll(); this.room = undefined;
-      } else {
-        this.room.players = this.room.players.filter(p => p.id !== id);
-        await this.ctx.storage.put('room', this.room); this.broadcast();
+      const player = this.room.players.find(p => p.id === id);
+      if (player) {
+        player.disconnectedAt = Date.now();
+        await this.ctx.storage.put('room', this.room);
+        this.broadcast();
       }
     }
   }
