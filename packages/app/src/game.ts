@@ -7,3 +7,5 @@ export const $: any = Core.$;
 export const N = (path: string): any => $.ext('MegaCrit.Sts2.Core.Nodes.' + path);
 export const enumName = (e: any, v: number) => $.enumStr(e, v);
 export const list = <T = any>(x: any): T[] => (x == null ? [] : Array.from($.iter(x)));
+/** Local player's controls must never fall back to the host's character in a multiplayer run. */
+export const localPlayer = (collection: any): any => list(collection?.Players ?? collection).find((p: any) => p.NetId === (G.LocalContext.NetId ?? 1)) ?? null;

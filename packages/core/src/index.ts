@@ -3,3 +3,4 @@ export * from './gen/sts2';
 export * from './shell';
 export * from './version';
 export * from './backup';
+export * from './multiplayer';

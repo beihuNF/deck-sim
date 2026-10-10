@@ -2,7 +2,7 @@
 // (NCardPileScreen), both on NCardGrid.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { G, $, list } from '../game';
+import { localPlayer, G, $, list } from '../game';
 import { ui, invalidate } from '../store';
 import { loc } from '../i18n';
 import { imageUrl, frameByName, frameStyle } from '../assets';
@@ -61,7 +61,7 @@ const FRAME_H: Record<string, number> = { ironclad: 0.025, silent: 0.32, defect:
 /** NCardPileScreen (draw / discard / exhaust) and NDeckViewScreen, over the capstone backstop. */
 export function CardsView() {
   const v = ui.cardsView!;
-  const me = G.RunManager.Instance.State?.Players?.[0];
+  const me = localPlayer(G.RunManager.Instance.State);
   if (!me) return null;
   const [pileName, info] = PILE[v.kind];
   const pile = safe(() => G.PileTypeExtensions.GetPile(G.PileType[pileName], me), null);

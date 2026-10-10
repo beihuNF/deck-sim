@@ -1,6 +1,6 @@
 // Run shell: top bar, current room, map overlay, stacked overlays (rewards, card choices), game over.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { G, $, N, list } from '../game';
+import { localPlayer, G, $, N, list } from '../game';
 import { ui, invalidate } from '../store';
 import { imageUrl, anyImage } from '../assets';
 import { CombatScreen, staticTip } from './combat';
@@ -28,6 +28,7 @@ import { TopBar } from './topbar';
 import { targetManager } from '../cardnodes';
 import { CardLayer } from './cardlayer';
 import { CardFxCanvas } from '../render/cardfx';
+import { MultiplayerStatus } from './multiplayer';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 
@@ -60,6 +61,7 @@ export function RunScreen() {
       <HurtVignette />
       <GlobalCards />
       {ftueChecks(rs)}
+      <MultiplayerStatus />
     </div>
   );
 }
@@ -88,7 +90,7 @@ function ftueChecks(rs: any): null {
   if (!rs) return null;
   const once = (id: string, key: string, when: boolean) => { if (when && !seenFtue(id)) showFtue(id, key); };
   const top = ui.overlays[ui.overlays.length - 1];
-  once('obtain_potion_ftue', 'POTION_FTUE', safe(() => list(rs.Players[0].PotionSlots).some(Boolean), false));
+  once('obtain_potion_ftue', 'POTION_FTUE', safe(() => list(localPlayer(rs).PotionSlots).some(Boolean), false));
   once('obtain_relic_ftue', 'RELIC_FTUE', top?.kind === 'rewards' && top.buttons.some((r: any) => r instanceof G.RelicReward));
   return null;
 }

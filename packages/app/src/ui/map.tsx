@@ -7,7 +7,7 @@ import { closeCardsView } from './pause';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Application, Assets, ColorMatrixFilter, Container } from 'pixi.js';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
-import { G, $, N, list } from '../game';
+import { localPlayer, G, $, N, list } from '../game';
 import { ui, invalidate } from '../store';
 import { A, frameByName, frameStyle, imageUrl, skelSrc } from '../assets';
 import { playOneShot } from '../audio';
@@ -301,7 +301,7 @@ export function initMarker(coord: any) { setMarker(nodeAt(coord)); }
 
 /** NMapScreen.OnMapPointSelectedLocally: vote for the point (single player: travel). */
 function selectLocally(n: MapNode) {
-  const r = rs(), me = r.Players[0];
+  const r = rs(), me = localPlayer(r);
   const vote = new G.MapVote().$zero_MapVote();
   vote.coord = n.p.coord;
   vote.mapGenerationCount = G.RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount;
@@ -541,7 +541,7 @@ function focus(n: MapNode) {
       let floor = n.p.coord.row + 1;
       const hist = list(r.MapPointHistory);
       for (let i = 0; i < hist.length - 1; i++) floor += list(hist[i]).length;
-      S.floorTip = { d: floorTipData(entry, floor, safe(() => r.Players[0].NetId, 1)), cell: [n.x, n.y + fx.MapY], w: n.w };
+      S.floorTip = { d: floorTipData(entry, floor, safe(() => localPlayer(r).NetId, 1)), cell: [n.x, n.y + fx.MapY], w: n.w };
     }
   }
   invalidate();
@@ -619,7 +619,7 @@ const drawings = {
     const c = canvas?.getContext('2d');
     if (!c) return;
     c.clearRect(0, 0, 960, 1620);
-    const color = safe(() => css(rs().Players[0].Character.MapDrawingColor), '#000');
+    const color = safe(() => css(localPlayer(rs()).Character.MapDrawingColor), '#000');
     for (const l of this.lines()) {
       c.globalCompositeOperation = l.e ? 'destination-out' : 'source-over';
       c.strokeStyle = l.e ? '#000' : color;
@@ -953,7 +953,7 @@ export function MapScreen() {
   const act = r.Act;
   const paper = ['MapTopBgPath', 'MapMidBgPath', 'MapBotBgPath'].map((k) => imageUrl(safe(() => act[k], '')));
   const dot = (d: Dot) => url(tinted('compressed', 'map/map_dot', d.color));
-  const me = safe(() => r.Players[0].Character.Id.Entry.toLowerCase(), '');
+  const me = safe(() => localPlayer(r).Character.Id.Entry.toLowerCase(), '');
   return (
     <div class={'map-screen' + (S.mode !== 'none' ? ` drawing-${S.mode}` : '')}
       onPointerDown={onPointerDown} onWheel={onWheel}>

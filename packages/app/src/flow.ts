@@ -12,6 +12,14 @@ import { transitionView } from './ui/transition';
 const stopAudio = () => { stopMusic(); stopAmbience(); stopAllLoops(); };
 
 export let run: any = null;
+export async function startCoopRun(players: any[], seed: string, net: any, mode = 'standard') {
+  await G.SaveManager.Instance.CurrentRunSaveTask;
+  await $.vfs.beginEphemeralSession();
+  resetUi();
+  ui.menuStack = [];
+  await G.startWebMultiplayerRun(players, seed, net, (rs: any) => { run = rs; attachRun(rs); }, mode);
+  invalidate();
+}
 function resetUi() {
   ui.screen = 'run';
   ui.room = null;
@@ -86,6 +94,7 @@ export async function continueRun() {
 }
 /** 快速SL：保存当前进度并原地重新进入当前房间，无需返回主菜单。 */
 export async function quickReloadRun(): Promise<boolean> {
+  if ($.vfs.ephemeral) return false;
   const rm = G.RunManager.Instance;
   if (!rm.IsInProgress) return false;
   try {
@@ -116,6 +125,7 @@ export async function quickReloadRun(): Promise<boolean> {
 export function abandonRun() { G.abandonSavedRun(); invalidate(); }
 /** NGame.ReturnToMainMenu: fade to black, clean up the run, load the main menu (which fades itself in). */
 export async function toMenu() {
+  if ($.vfs.ephemeral) { location.reload(); return; }
   await transitionView.FadeOut();
   try { G.RunManager.Instance.CleanUp(true); } catch (e) { console.warn(e); }
   run = null;

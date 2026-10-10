@@ -26,6 +26,7 @@ import { CharSelect } from './charselect';
 import { transitionView } from './transition';
 import { showEarlyAccessDisclaimer, showAboutDialog, showQQGroupDialog } from './disclaimer';
 import { openFeedback } from './feedback';
+import { MultiplayerLobby } from './multiplayer';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const m = (k: string) => loc('main_menu_ui', k);
@@ -90,6 +91,7 @@ export function MainMenu() {
       {top === 'daily' && <DailyRun />}
       {top === 'custom' && <CustomRun />}
       {top === 'profile' && <Profiles />}
+      {top === 'multiplayer' && <MultiplayerLobby onBack={popMenu} />}
       {/* NDebugInfoLabelManager's ReleaseInfo: version and today's date */}
       <div class="mm-release">{`v${GAME_VERSION}\n` + netDate('yyyy-MM-dd', new Date())}</div>
     </div>
@@ -103,7 +105,7 @@ let continuing = false;
 /**
  * MainMenuTextButtons (VBox (642, 609)–(911, 1059), rows 200 × 50 centred vertically) in node order Continue,
  * Abandon Run, Singleplayer, Multiplayer, Timeline, Settings, Compendium, Wiki (Quit is hidden on the web), with
- * RefreshButtons / UpdateTimelineButtonBehavior's visibility rules. Multiplayer stays disabled: no netcode.
+ * RefreshButtons / UpdateTimelineButtonBehavior's visibility rules.
  */
 function MainMenuTextButtons() {
   const sm = G.SaveManager.Instance;
@@ -123,7 +125,7 @@ function MainMenuTextButtons() {
       // SingleplayerButtonPressed: the first run goes straight to character select
       { key: 'SINGLE_PLAYER', enabled: !forced, onClick: () => pushMenu(safe(() => sm.Progress.NumberOfRuns, 0) > 0 ? 'singleplayer' : 'charselect') },
     ]),
-    { key: 'MULTIPLAYER', enabled: false, onClick: () => {} },
+    { key: 'MULTIPLAYER', enabled: true, onClick: () => pushMenu('multiplayer') },
     ...(timeline !== null ? [{ key: 'TIMELINE', enabled: timeline, dot, onClick: openTimeline }] : []),
     { key: 'SETTINGS', enabled: true, onClick: () => pushMenu('settings') },
     ...(compendium ? [{ key: 'COMPENDIUM', enabled: !forced, onClick: () => pushMenu('compendium') }] : []),

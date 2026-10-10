@@ -4,7 +4,7 @@ import { $ } from './game';
 import { reportError } from './analytics';
 export type Screen = 'boot' | 'menu' | 'run' | 'gameover' | 'library' | 'relics' | 'potions' | 'history'
   | 'stats' | 'credits';
-export type MenuSubmenu = 'singleplayer' | 'charselect' | 'settings' | 'compendium' | 'timeline' | 'daily' | 'custom' | 'profile';
+export type MenuSubmenu = 'singleplayer' | 'charselect' | 'settings' | 'compendium' | 'timeline' | 'daily' | 'custom' | 'profile' | 'multiplayer';
 export const ui = {
   screen: 'boot' as Screen,
   room: null as any,         // current room view (bridge object)

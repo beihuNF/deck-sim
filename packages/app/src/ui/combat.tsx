@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CombatBanners, clearCombatBanners } from './banners';
 import { useEffect, useRef } from 'preact/hooks';
-import { G, $, N, list } from '../game';
+import { localPlayer, G, $, N, list } from '../game';
 import { ui } from '../store';
 import { CombatStage, layoutCreatures } from '../render/stage';
 import { combatBackdropFor } from '../render/scene';
@@ -108,7 +108,7 @@ export function CombatScreen({ view, visualOnly = false }: { view: any; visualOn
   usePointer(() => view.Ui?.Hand ?? null);
   const cs = view.combatState;
   const cm = G.CombatManager.Instance;
-  const me = cs?.Players?.[0] ?? G.RunManager.Instance.State?.Players?.[0];
+  const me = localPlayer(cs ?? G.RunManager.Instance.State);
   const pcs = me?.PlayerCombatState;
   const slots = cs ? layoutCreatures(cs) : new Map();
   hotkeys = { hand: visualOnly ? null : view.Ui?.Hand ?? null };

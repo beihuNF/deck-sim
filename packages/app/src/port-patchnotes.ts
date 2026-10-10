@@ -2,7 +2,13 @@
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_10',
-    eng: `[gold][b]Controls[/b][/gold]
+    eng: `[gold][b]Multiplayer[/b][/gold]
+• Added multiplayer co-op between web players, adhering to the original game's 4-player cap and mode structure.
+• Supported hosting rooms for Standard, Daily, and Custom modes with up to 4 players.
+• Added room code invitations and one-click link sharing, with lobby hero selection and ready status.
+• Multiplayer runs run in isolated ephemeral sessions, keeping your singleplayer profile and saves completely intact.
+
+[gold][b]Controls[/b][/gold]
 • Added full gamepad / controller support with console-style combat hand navigation, auto-targeting for single-target cards, and smooth virtual cursor for menus and maps.
 • Unlocked and implemented the Input settings tab with customizable keyboard and controller keybindings and reset support.
 • Prevented the browser from capturing the Tab key for focus navigation, allowing Tab to be reliably bound and triggered in-game.
@@ -17,34 +23,18 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Quality of Life[/b][/gold]
 • Built in the "Quick SL Button" mod: reload the current room directly from the pause menu, with an option in Settings to toggle it.
 • Added limited retries for temporary game file loading failures, with a reload button when loading fails or takes too long.
-
-[gold][b]Display[/b][/gold]
-• Prevented accidental browser text selection and ghost image dragging during gameplay.
-• Fixed missing cursor images (404) when drawing or erasing on the map.
-• Fixed a localization formatting error when hovering over the Act Boss icon.
-• Fixed an issue where dragging the settings scrollbar downward would scroll upward.
-• Fixed the settings language dropdown scrolling the entire settings panel together.
-• Fixed black block artifacts on the corners of the settings toast notification.
-• Fixed a white screen that could cover the game after continuing a saved run or changing screens.
-• Fixed played or discarded cards remaining in the hand or on the table and blocking other cards.
-• Fixed dragging cards from icons in their text being canceled.
-• Fixed the Punch-Off event freezing the game at Instant speed.
-• Fixed Defect beam effects and Architect damage text on the victory screen.
-• Fixed a rendering error after Necrobinder's Doom kill animation.
 • Adjusted pause menu title line height and spacing to prevent overlapping with buttons.
 • Fixed a black screen issue when traveling to the next room on the map.
 
 [gold][b]Community[/b][/gold]
-• Updated the QQ group QR code.
+• Updated the QQ group QR code.`,
+    zhs: `[gold][b]多人模式[/b][/gold]
+• 实现网页版玩家之间多人联机合作功能，遵循原版最高 4 人联机与模式设定。
+• 完整提供原版“标准模式”、“多人每日挑战”与“自定模式”多人建房选项。
+• 支持房间号邀请与一键复制邀请链接，进入大厅可自由选择角色并准备就绪。
+• 多人对局采用独立临时会话存储，不破坏或覆盖单人本地存档。
 
-[gold][b]Combat[/b][/gold]
-• Fixed ending extra player turns and displaying their turn numbers.
-• Fixed area potions being canceled instead of used from the potion belt.
-• Fixed the final killing card lingering in the center of the screen upon combat victory.
-
-[gold][b]Save compatibility[/b][/gold]
-• Preserved the original Doormaker battle and its changing forms in existing runs.`,
-    zhs: `[gold][b]操作[/b][/gold]
+[gold][b]操作[/b][/gold]
 • 新增完整手柄（控制器）支持：战斗中采用主机版手牌轮盘与指向性卡牌敌人自动吸附切换；菜单、地图与商店支持摇杆虚拟光标与右摇杆滚屏。
 • 解锁并完整实现设置中的“操作设置”：支持自定义键盘按键与手柄按钮绑定，并可一键重置为默认。
 • 阻止浏览器默认焦点切换对 Tab 键的截获，确保将查看卡牌组等快捷键绑定至 Tab 时可在游戏内稳定触发。
@@ -59,8 +49,50 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]便利功能[/b][/gold]
 • 内置“快速SL按钮”模组：暂停菜单中可直接原地重新加载当前房间，并可在通用设置中随时开启或关闭。
 • 游戏文件临时加载失败时会有限次数地自动重试；加载失败或等待过久时可直接重新加载。
+• 优化暂停菜单布局与标题行高，修复“已暂停”标题与继续按钮过于靠近重叠的问题。
+• 修复在地图上选择节点进入下一关/房间时黑屏的问题。
 
-[gold][b]画面[/b][/gold]
+[gold][b]社区[/b][/gold]
+• 更新 QQ 群二维码。`,
+  },
+  {
+    date: '2026_10_09',
+    eng: `[gold][b]Main menu[/b][/gold]
+• Temporarily hidden the notice about the game being taken offline soon.
+
+[gold][b]Game update[/b][/gold]
+• Updated rules and game assets to public-beta v0.111.0.
+• Added Traditional Chinese and Indonesian localization.
+
+[gold][b]Combat & Display[/b][/gold]
+• Prevented accidental browser text selection and ghost image dragging during gameplay.
+• Fixed missing cursor images (404) when drawing or erasing on the map.
+• Fixed a localization formatting error when hovering over the Act Boss icon.
+• Fixed an issue where dragging the settings scrollbar downward would scroll upward.
+• Fixed the settings language dropdown scrolling the entire settings panel together.
+• Fixed black block artifacts on the corners of the settings toast notification.
+• Fixed a white screen that could cover the game after continuing a saved run or changing screens.
+• Fixed played or discarded cards remaining in the hand or on the table and blocking other cards.
+• Fixed dragging cards from icons in their text being canceled.
+• Fixed the Punch-Off event freezing the game at Instant speed.
+• Fixed Defect beam effects and Architect damage text on the victory screen.
+• Fixed a rendering error after Necrobinder's Doom kill animation.
+• Fixed ending extra player turns and displaying their turn numbers.
+• Fixed area potions being canceled instead of used from the potion belt.
+• Fixed the final killing card lingering in the center of the screen upon combat victory.
+
+[gold][b]Save compatibility[/b][/gold]
+• Preserved existing v0.98.3 runs, including retired cards, when loading and re-saving with the public-beta rules.
+• Existing Lasting Candy and Pumpkin Candle keep their original counters and effects.
+• Preserved the original Doormaker battle and its changing forms in existing runs.`,
+    zhs: `[gold][b]主菜单[/b][/gold]
+• 暂时隐藏游戏近期下线提示。
+
+[gold][b]游戏更新[/b][/gold]
+• 游戏规则与资源更新至 public-beta v0.111.0。
+• 新增繁体中文和印度尼西亚语。
+
+[gold][b]战斗与画面[/b][/gold]
 • 修复游戏内鼠标拖拽时可能误选中文本或拖出图片虚影的问题。
 • 修复地图绘画和擦除时鼠标光标图片加载失败（404）的问题。
 • 修复鼠标悬停在顶栏幕 Boss 图标上时的本地化文本格式化报错。
@@ -73,42 +105,14 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 修复选择“瞬间”速度时，拳击比赛事件卡住游戏的问题。
 • 修复故障机器人的光束特效及胜利结算的建筑师伤害文本。
 • 修复死灵契约师的灾厄击杀动画结束后可能出现的渲染错误。
-• 优化暂停菜单布局与标题行高，修复“已暂停”标题与继续按钮过于靠近重叠的问题。
-• 修复在地图上选择节点进入下一关/房间时黑屏的问题。
-
-[gold][b]社区[/b][/gold]
-• 更新 QQ 群二维码。
-
-[gold][b]战斗[/b][/gold]
 • 修复额外回合中结束回合可能失效及回合编号显示错误的问题。
 • 修复从药水栏使用范围药水时，操作被取消的问题。
 • 修复战斗胜利（打出最后一击斩杀）后打出的卡牌依然悬浮残留在屏幕正中央的问题。
 
 [gold][b]存档兼容[/b][/gold]
-• 保留旧对局中的门扉制造者战斗及其形态变化。`,
-  },
-  {
-    date: '2026_10_09',
-    eng: `[gold][b]Main menu[/b][/gold]
-• Temporarily hidden the notice about the game being taken offline soon.
-
-[gold][b]Game update[/b][/gold]
-• Updated rules and game assets to public-beta v0.111.0.
-• Added Traditional Chinese and Indonesian localization.
-
-[gold][b]Save compatibility[/b][/gold]
-• Preserved existing v0.98.3 runs, including retired cards, when loading and re-saving with the public-beta rules.
-• Existing Lasting Candy and Pumpkin Candle keep their original counters and effects.`,
-    zhs: `[gold][b]主菜单[/b][/gold]
-• 暂时隐藏游戏近期下线提示。
-
-[gold][b]游戏更新[/b][/gold]
-• 游戏规则与资源更新至 public-beta v0.111.0。
-• 新增繁体中文和印度尼西亚语。
-
-[gold][b]存档兼容[/b][/gold]
 • 升级 public-beta 规则后仍可继续、重新保存 v0.98.3 的旧对局，保留旧牌组中的已移除卡牌。
-• 旧存档中的持久糖果和南瓜蜡烛保留原来的计数与效果。`,
+• 旧存档中的持久糖果和南瓜蜡烛保留原来的计数与效果。
+• 保留旧对局中的门扉制造者战斗及其形态变化。`,
   },
   {
     date: '2026_10_08',

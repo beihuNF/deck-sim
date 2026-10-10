@@ -20,7 +20,7 @@ const gen = read('packages/core/src/gen/sts2.ts'), stubs = read('packages/core/s
 const hand = [...walk('packages/app/src'), ...walk('packages/core/src/rt'), 'packages/core/src/shell.ts', OVERRIDES, ...walk('packages/core/test'), ...walk('tools/e2e'), ...walk('packages/wiki/src')]
   .filter((f) => /\.(ts|tsx|mjs)$/.test(f));
 const exported = new Set(['$']);
-for (const f of ['packages/core/src/gen/sts2.ts', 'packages/core/src/shell.ts'])
+for (const f of ['packages/core/src/gen/sts2.ts', 'packages/core/src/shell.ts', 'packages/core/src/multiplayer.ts'])
   for (const m of read(f).matchAll(/^export (?:abstract )?(?:class|enum|const|function|interface) (\w+)/gm)) exported.add(m[1]);
 // declared by the rule layer or its stubs, or asked of the runtime by the rule layer ($.ext: what rt provides)
 const fullNames = new Set([...gen.matchAll(/\$fullName = "([^"]+)"/g), ...stubs.matchAll(/\$fullName = "([^"]+)"/g), ...stubs.matchAll(/\$\.stub\("([^"]+)"/g), ...gen.matchAll(/\$\.ext\("([^"]+)"\)/g)].map((m) => m[1]));

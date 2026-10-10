@@ -1,0 +1,7 @@
+{
+  "name": "@sts2/server",
+  "private": true,
+  "type": "module",
+  "scripts": { "check": "tsc -p . --noEmit" },
+  "devDependencies": { "typescript": "^5.9.0" }
+}

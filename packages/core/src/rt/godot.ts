@@ -232,6 +232,9 @@ let committed = new Map<string, string>();
 const pending: PendingWrite[] = [];
 const failures = new Map<string, unknown>();
 let restored = false;
+// Opt-in multiplayer sandbox. Existing persistent files and unload journals remain untouched; leave by reloading
+// so stale SaveManager objects can never start writing multiplayer progress back into the singleplayer profile.
+let sessionFiles: Map<string, string> | null = null;
 function apply(files: Map<string, string>, changes: Change[]) {
   for (const [p, s] of changes) { if (s === null) files.delete(p); else files.set(p, s); }
 }
@@ -276,6 +279,7 @@ function drainWrites() {
 }
 function writeFiles(changes: PendingWrite['changes']): Promise<void> {
   if (restored) throw new Error('Saves restored; reload before writing');
+  if (sessionFiles) { apply(sessionFiles, changes(sessionFiles)); return Promise.resolve(); }
   if (!db) {
     const files = storage ? new Map(lsKeys().map(k => [k.slice(LS_PREFIX.length), storage.getItem(k)!])) : mem;
     // Backup first, primary second: a failed localStorage write never removes the old primary.
@@ -302,7 +306,13 @@ export const vfs = {
   get persistent() { return db !== null || storage !== null; },
   get backend() { return db ? 'indexeddb' : storage ? 'localstorage' : 'memory'; },
   get restored() { return restored; },
-  read(p: string): string | null { return !db && storage ? storage.getItem(LS_PREFIX + p) : mem.get(p) ?? null; },
+  get ephemeral() { return sessionFiles !== null; },
+  async beginEphemeralSession() {
+    if (restored || sessionFiles) throw new Error('Cannot start temporary save session');
+    await this.flush();
+    sessionFiles = !db && storage ? new Map(lsKeys().map(k => [k.slice(LS_PREFIX.length), storage.getItem(k)!])) : new Map(mem);
+  },
+  read(p: string): string | null { return sessionFiles ? sessionFiles.get(p) ?? null : !db && storage ? storage.getItem(LS_PREFIX + p) : mem.get(p) ?? null; },
   write(p: string, s: string) { void writeFiles(() => [[p, s]]); },
   remove(p: string) { void writeFiles(() => [[p, null]]); },
   rename(a: string, b: string) { const s = this.read(a); if (s === null) return 7; void writeFiles(() => [[b, s], [a, null]]); return 0; },
@@ -316,6 +326,7 @@ export const vfs = {
   },
   /** Restore only with a backend that can replace the complete snapshot atomically. */
   async restore(files: [string, string][]) {
+    if (sessionFiles) throw new Error('Cannot restore saves during multiplayer');
     if (!db) throw new Error('Restore requires IndexedDB');
     await this.flush();
     // Import is all-or-nothing, including across page termination: do not split it into legacy journal entries.
@@ -336,7 +347,7 @@ export const vfs = {
   },
   list(dir: string): string[] {
     const pre = dir.endsWith('/') ? dir : dir + '/';
-    const keys = !db && storage ? lsKeys().map((k) => k.slice(LS_PREFIX.length)) : [...mem.keys()];
+    const keys = sessionFiles ? [...sessionFiles.keys()] : !db && storage ? lsKeys().map((k) => k.slice(LS_PREFIX.length)) : [...mem.keys()];
     return keys.filter((k) => k.startsWith(pre));
   },
   /** Switch to IndexedDB (all files read into memory); saves kept in localStorage by earlier versions move over once. */

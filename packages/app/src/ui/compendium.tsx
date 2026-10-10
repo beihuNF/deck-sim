@@ -3,7 +3,7 @@
 // backstop) with the shared back button; what is shown follows the progress save and the unlock state.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { G, list } from '../game';
+import { localPlayer, G, list } from '../game';
 import { ui, invalidate, leaveScreen } from '../store';
 import { imageUrl, frameByName, frameStyle, atlasFrame } from '../assets';
 import { loc, locv } from '../i18n';
@@ -84,7 +84,7 @@ export function CardLibrary() {
     const unlocked = new Set(list(G.ModelDb.AllCardPools).flatMap((p: any) => safe(() => list(p.GetUnlockedCards(un, G.CardMultiplayerConstraint.None)), [])));
     const seen = ids(progress().DiscoveredCards);
     const all = list(G.ModelDb.AllCards).filter((c: any) => safe(() => c.ShouldShowInCardLibrary, true));
-    const me = ui.screen === 'run' ? safe(() => String(G.RunManager.Instance.State.Players[0].Character.Id.Entry), null) : null;
+    const me = ui.screen === 'run' ? safe(() => String(localPlayer(G.RunManager.Instance.State).Character.Id.Entry), null) : null;
     return { unlockedChars, unlocked, seen, all, me };
   }, []);
   const f = useRef<Filters>({

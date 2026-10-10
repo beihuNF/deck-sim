@@ -2,7 +2,7 @@
 // timer and the Map / Deck / Settings buttons; NRelicInventory under it; NPotionPopup. Fixed positions from the scene.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { G, $, N, list } from '../game';
+import { localPlayer, G, $, N, list } from '../game';
 import { ui, invalidate, acquired } from '../store';
 import { atlasFrame, frameByName, frameStyle, frameUrl, imageUrl } from '../assets';
 import { setTip, setTips, hoverTipsOf, tipBlock, pinTips } from './tooltip';
@@ -417,7 +417,7 @@ function usePotionBelt(me: any) {
 // ------------------------------------------------------------------ the bar
 export function TopBar({ rs }: { rs: any }) {
   useEffect(() => { const h = setInterval(() => { if (timerShown()) invalidate(); }, 1000); return () => clearInterval(h); }, []);
-  const me = rs.Players[0];
+  const me = localPlayer(rs);
   const buttons = N('NRun').Instance?.GlobalUi.TopBar;
   const c = me.Creature;
   const gold = useGoldLabel(me);

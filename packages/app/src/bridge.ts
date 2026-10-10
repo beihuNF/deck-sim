@@ -1,7 +1,7 @@
 // Bridge: web implementations of the Godot scene nodes the rule layer talks to (NRun, rooms, screens, selectors).
 // Each view extends the generated stub so every member we do not implement stays an inert default.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { G, $, N, list } from './game';
+import { localPlayer, G, $, N, list } from './game';
 import * as audio from './audio';
 import { ui, invalidate, pushOverlay, popOverlay, hideBackstop, showBackstop } from './store';
 import { loc, locv } from './i18n';
@@ -2003,7 +2003,7 @@ export function installBridge() {
       const num = deathAnimRemaining();
       if (room.RoomType === G.RoomType.Boss) await G.Cmd.CustomScaledWait(num * 0.5, num + 1);
       else await G.Cmd.CustomScaledWait(0.5, num + 1);
-      const me = room.CombatState?.Players?.[0] ?? G.RunManager.Instance.State.Players[0];
+      const me = localPlayer(room.CombatState ?? G.RunManager.Instance.State);
       await G.RewardsCmd.OfferForRoomEnd(me, room);
     };
     run().catch((e) => console.error(e));
