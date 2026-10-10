@@ -111,12 +111,30 @@ export function resetBindings(): BindingsData {
 
 export function setKeyBinding(action: ActionId, key: string) {
   const b = getBindings();
+  const oldKey = b.keys[action];
+
+  // 若其他动作已占用此按键，与原动作按键互换（与原版游戏行为一致）
+  for (const act of Object.keys(b.keys) as ActionId[]) {
+    if (act !== action && b.keys[act]?.toLowerCase() === key.toLowerCase()) {
+      b.keys[act] = oldKey;
+    }
+  }
   b.keys[action] = key;
   saveBindings(b);
 }
 
 export function setGamepadBinding(action: ActionId, btn: number | null) {
   const b = getBindings();
+  const oldBtn = b.gamepad[action];
+
+  // 若其他动作已占用此手柄按钮，与原动作按钮互换
+  if (btn !== null) {
+    for (const act of Object.keys(b.gamepad) as ActionId[]) {
+      if (act !== action && b.gamepad[act] === btn) {
+        b.gamepad[act] = oldBtn;
+      }
+    }
+  }
   b.gamepad[action] = btn;
   saveBindings(b);
 }
