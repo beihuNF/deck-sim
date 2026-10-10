@@ -10,10 +10,10 @@ export function NScrollbar({ x, y, w, h, value, onSet, style }: { x: number; y: 
   };
   const edge = frameByName('ui_atlas', 'scrollbar_track_edge2');
   return (
-    <div class="nscrollbar" style={{ left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, ...style }}
-      onPointerDown={(e) => { if (e.button !== 0) return; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); set(e, true); }}
-      onPointerMove={(e) => { if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) set(e, true); }}
-      onPointerUp={(e) => set(e, false)}>
+    <div class="nscrollbar" data-ctl="" style={{ left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, ...style }}
+      onPointerDown={(e) => { if (e.button !== 0) return; e.stopPropagation(); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); set(e, true); }}
+      onPointerMove={(e) => { if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) { e.stopPropagation(); set(e, true); } }}
+      onPointerUp={(e) => { e.stopPropagation(); set(e, false); }}>
       <div class="nsb-track" style={{ ...frameStyle(edge, w, 48), top: '-48px' }} />
       <div class="nsb-track" style={{ ...frameStyle(frameByName('ui_atlas', 'scrollbar_track_center'), w, h), top: 0 }} />
       <div class="nsb-track" style={{ ...frameStyle(edge, w, 48), top: `${h}px`, scale: '1 -1' }} />

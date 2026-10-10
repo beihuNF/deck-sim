@@ -193,22 +193,24 @@ function SettingsScroll({ rows }: { rows: Row[] }) {
     return true;
   }), []);
   return (
-    <div class="settings-scroll"
-      onWheel={(e) => { st.current.target += wheelDrag(e); }}
-      onPointerDown={(e) => { if (e.button !== 0 || (e.target as Element).closest('[data-ctl]')) return; st.current.drag = true; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
-      onPointerMove={(e) => { if (st.current.drag) st.current.target += e.movementY / (safe(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')), 1) || 1); }}
-      onPointerUp={() => { st.current.drag = false; }}>
-      <div class="settings-mask">
-        <div class="settings-panel" ref={content} style={{ top: `${187 + PAD_T}px` }}>
-          <div class="settings-rows" ref={box}>
-            {rows.map((r, i) => <>{i > 0 && <div class="settings-divider" />}<SettingsRow r={r} /></>)}
+    <>
+      <div class="settings-scroll"
+        onWheel={(e) => { st.current.target += wheelDrag(e); }}
+        onPointerDown={(e) => { if (e.button !== 0 || (e.target as Element).closest('.nscrollbar, [data-ctl]')) return; st.current.drag = true; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }}
+        onPointerMove={(e) => { if (st.current.drag) st.current.target += e.movementY / (safe(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')), 1) || 1); }}
+        onPointerUp={() => { st.current.drag = false; }}>
+        <div class="settings-mask">
+          <div class="settings-panel" ref={content} style={{ top: `${187 + PAD_T}px` }}>
+            <div class="settings-rows" ref={box}>
+              {rows.map((r, i) => <>{i > 0 && <div class="settings-divider" />}<SettingsRow r={r} /></>)}
+            </div>
           </div>
         </div>
       </div>
       {/* Scrollbar: anchored at 0.794 of the width, 0.187 … 0.947 of the height */}
       {bar.on && <NScrollbar x={1524 + 0.5875 * view.ox} y={202 - 0.626 * view.oy} w={47} h={821 + 1.52 * view.oy} value={bar.v} style={{ filter: undefined }}
         onSet={(v) => { st.current.target = v * st.current.limit; }} />}
-    </div>
+    </>
   );
 }
 
