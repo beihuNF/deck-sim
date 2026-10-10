@@ -337,7 +337,11 @@ export async function travelToMapCoord(coord: any) {
   }
   setMarker(node);
   await fade;
-  await G.RunManager.Instance.EnterMapCoord(coord);
+  try {
+    await G.RunManager.Instance.EnterMapCoord(coord);
+  } finally {
+    void G.RunManager.Instance.FadeIn();
+  }
   refreshAllPointVisuals();
 }
 /** NMapPoint.OnSelected. */

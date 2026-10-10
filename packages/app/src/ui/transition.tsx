@@ -37,8 +37,19 @@ function thresholdLoop(time: number, f: (left: number) => number, onProgress?: (
 const fastMode = () => { try { return G.SaveManager.Instance.PrefsSave.FastMode; } catch { return G.FastModeType.Normal; } };
 function play(t: any): Promise<void> {
   tween = t;
-  const stop = $.onFrame(() => { paint?.(); return t === tween && t.IsValid(); });
-  return new Promise((done) => t.whenFinished(() => { stop(); paint?.(); done(); }));
+  let finished = false;
+  const stop = $.onFrame(() => { paint?.(); return !finished && t === tween && t.IsValid(); });
+  return new Promise((done) => {
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      stop();
+      paint?.();
+      done();
+    };
+    t.whenFinished(finish);
+    setTimeout(finish, 2000);
+  });
 }
 
 export const transitionView = {
@@ -58,12 +69,21 @@ export const transitionView = {
     else t.TweenInterval(0);
     await play(t);
   },
-  async RoomFadeIn(_showTransition = true) {
+  async RoomFadeIn(showTransition = true) {
     const F = G.FastModeType, mode = fastMode();
-    s.visible = mode !== F.Instant;
+    if (!showTransition || mode === F.Instant) {
+      s.visible = false;
+      s.SimpleA = 0;
+      s.GradA = 0;
+      s.Th = 0;
+      this.InTransition = false;
+      paint?.();
+      return;
+    }
+    s.visible = true;
     s.Th = 0;
     s.GradA = 0;
-    s.SimpleA = 1; // unconditionally, as the original does after its showTransition check
+    s.SimpleA = 1;
     tween?.Kill();
     const t = new $.WebTween().SetParallel();
     if (mode === F.Fast) t.TweenProperty(s, 'simple_a', 0, 0.3);
@@ -73,6 +93,7 @@ export const transitionView = {
     }
     await play(t);
     this.InTransition = false;
+    paint?.();
   },
   /** NTransition.FadeOut: the flat black fades in (QuadIn) while the material's threshold runs 1 − (time − t). */
   async FadeOut(time = 0.8, mat = FADE) {

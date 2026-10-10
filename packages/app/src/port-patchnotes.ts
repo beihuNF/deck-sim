@@ -25,6 +25,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Fixed Defect beam effects and Architect damage text on the victory screen.
 • Fixed a rendering error after Necrobinder's Doom kill animation.
 • Adjusted pause menu title line height and spacing to prevent overlapping with buttons.
+• Fixed a black screen issue when traveling to the next room on the map.
 
 [gold][b]Community[/b][/gold]
 • Updated the QQ group QR code.
@@ -59,6 +60,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 修复故障机器人的光束特效及胜利结算的建筑师伤害文本。
 • 修复死灵契约师的灾厄击杀动画结束后可能出现的渲染错误。
 • 优化暂停菜单布局与标题行高，修复“已暂停”标题与继续按钮过于靠近重叠的问题。
+• 修复在地图上选择节点进入下一关/房间时黑屏的问题。
 
 [gold][b]社区[/b][/gold]
 • 更新 QQ 群二维码。
