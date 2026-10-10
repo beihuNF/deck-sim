@@ -2,7 +2,7 @@
 // dividers) — tickboxes, paginators, volume sliders, the language dropdown and buttons — with row hover tips at the
 // panel's right edge and a toast at the bottom. Values live in the game's own SettingsSave / PrefsSave.
 // Web: the window rows a browser cannot honour (display, resolution, window resizing, vsync) are left out, the Input
-// tab (key rebinding) is disabled, and Feedback sends to the port's author (ui/feedback.tsx).
+// tab uses browser input devices, and Feedback sends to the port's author (ui/feedback.tsx).
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { G, $ } from '../game';
@@ -35,7 +35,7 @@ import {
   getActionName,
   type ActionId,
 } from '../input/bindings';
-import { getGamepadButtonInfo } from '../input/hints';
+import { getGamepadButtonInfo, getInputDevice, setInputDevice, actionHint } from '../input/hints';
 import { listenNextGamepadButton, cancelGamepadListen } from '../input/gamepad';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
@@ -73,12 +73,18 @@ type Row =
       keyText: string;
       keyListening: boolean;
       onListenKey: () => void;
+      keyboardOnlyText: string;
+      keyboardOnlyListening: boolean;
+      onListenKeyboardOnly: () => void;
+      keyEnabled: boolean;
+      gamepadEnabled: boolean;
       gamepadBtn: number | null;
       gamepadText: string;
       gamepadListening: boolean;
       onListenGamepad: () => void;
     }
-  | { kind: 'bindHeader'; commandLabel: string; keyLabel: string; gamepadLabel: string };
+  | { kind: 'bindHeader'; commandLabel: string; keyLabel: string; gamepadLabel: string; keyboardOnlyLabel: string }
+  | { kind: 'inputReset'; onClick: () => void };
 
 const prefs = () => sm().PrefsSave, settings = () => sm().SettingsSave;
 /** A tickbox row; `tip` names the hover tip's title key (its description is the key without _HEADER, plus _DESCRIPTION). */
@@ -165,30 +171,36 @@ function soundRows(): Row[] {
   ];
 }
 function inputRows(
-  listenTarget: { type: 'key' | 'gamepad'; action: ActionId } | null,
-  setListenTarget: (t: { type: 'key' | 'gamepad'; action: ActionId } | null) => void,
+  listenTarget: { type: 'key' | 'gamepad' | 'keyboardOnly'; action: ActionId } | null,
+  setListenTarget: (t: { type: 'key' | 'gamepad' | 'keyboardOnly'; action: ActionId } | null) => void,
   onReset: () => void,
 ): Row[] {
   const p = prefs;
   const bindings = getBindings();
-  const isListening = (type: 'key' | 'gamepad', act: ActionId) =>
+  const isListening = (type: 'key' | 'gamepad' | 'keyboardOnly', act: ActionId) =>
     listenTarget?.type === type && listenTarget?.action === act;
 
   return [
-    tick('LONG_PRESS_CONFIRMATION_HEADER', 'LONG_PRESS_CONFIRMATION_HEADER', () => p().IsLongPressEnabled, (v) => { p().IsLongPressEnabled = v; }),
-    tick('SHOW_HAND_CARD_COUNT_HEADER', 'SHOW_HAND_CARD_COUNT_HEADER', () => p().ShowCardIndices, (v) => { p().ShowCardIndices = v; }, 'HAND_CARD_COUNT'),
+    tick('KEYBOARD_ONLY_MODE_HEADER', 'KEYBOARD_ONLY_MODE_HEADER', () => p().KeyboardMode, (v) => { p().KeyboardMode = v; if (!v && getInputDevice() === 'keyboardOnly') setInputDevice('keyboard'); }),
+    { kind: 'inputReset', onClick: onReset },
     {
       kind: 'bindHeader',
       commandLabel: s('INPUT_SETTINGS.COMMAND_HEADER'),
-      keyLabel: s('INPUT_SETTINGS.KEYBOARD_HEADER'),
+      keyLabel: s('INPUT_SETTINGS.MOUSE_KEYBOARD_HEADER'),
+      keyboardOnlyLabel: s('INPUT_SETTINGS.KEYBOARD_ONLY_MODE_HEADER'),
       gamepadLabel: s('INPUT_SETTINGS.CONTROLLER_HEADER'),
     },
     ...ACTION_LIST.map((a): Row => {
-      const gBtn = bindings.gamepad[a.id] ?? a.defaultBtn;
+      const gBtn = bindings.gamepad[a.id];
       return {
         kind: 'bindPair',
         label: getActionName(a),
-        keyText: formatKeyName(bindings.keys[a.id] ?? a.defaultKey),
+        keyText: formatKeyName(bindings.keys[a.id]),
+        keyEnabled: !!a.defaultKey,
+        gamepadEnabled: a.defaultBtn !== null,
+        keyboardOnlyText: formatKeyName(bindings.keyboardOnly[a.id]),
+        keyboardOnlyListening: isListening('keyboardOnly', a.id),
+        onListenKeyboardOnly: () => setListenTarget({ type: 'keyboardOnly', action: a.id }),
         keyListening: isListening('key', a.id),
         onListenKey: () => setListenTarget({ type: 'key', action: a.id }),
         gamepadBtn: gBtn,
@@ -197,12 +209,7 @@ function inputRows(
         onListenGamepad: () => setListenTarget({ type: 'gamepad', action: a.id }),
       };
     }),
-    {
-      ...RESET,
-      label: s('RESET_DEFAULT'),
-      text: s('INPUT_SETTINGS.RESET_TO_DEFAULT'),
-      onClick: onReset,
-    },
+
   ];
 }
 
@@ -214,8 +221,8 @@ function showToast(key: string) { toast.text = s(key); toast.gen++; invalidate()
 
 export function SettingsScreen({ inRun, onBack }: { inRun: boolean; onBack: () => void }) {
   const [tab, setTab] = useState(0);
-  const [listenTarget, setListenTarget] = useState<{ type: 'key' | 'gamepad'; action: ActionId } | null>(null);
-  const [rebindGen, setRebindGen] = useState(0);
+  const [listenTarget, setListenTarget] = useState<{ type: 'key' | 'gamepad' | 'keyboardOnly'; action: ActionId } | null>(null);
+  const [, setRebindGen] = useState(0);
 
   useEffect(() => () => {
     safe(() => { sm().SaveSettings(); sm().SavePrefsFile(); }, null);
@@ -224,20 +231,20 @@ export function SettingsScreen({ inRun, onBack }: { inRun: boolean; onBack: () =
   }, []);
 
   // Listen for keyboard input when rebinding
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!listenTarget) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       e.preventDefault();
-      e.stopPropagation();
+      e.stopImmediatePropagation();
       if (e.key === 'Escape') {
         cancelGamepadListen();
         setListenTarget(null);
         playOneShot('event:/sfx/ui/clicks/ui_click');
         return;
       }
-      if (listenTarget.type === 'key') {
-        setKeyBinding(listenTarget.action, e.key);
+      if (listenTarget.type !== 'gamepad') {
+        setKeyBinding(listenTarget.action, e.key, listenTarget.type === 'keyboardOnly');
         playOneShot('event:/sfx/ui/clicks/ui_click');
         setListenTarget(null);
         setRebindGen((g) => g + 1);
@@ -250,7 +257,7 @@ export function SettingsScreen({ inRun, onBack }: { inRun: boolean; onBack: () =
   }, [listenTarget]);
 
   // Listen for gamepad button when rebinding
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!listenTarget || listenTarget.type !== 'gamepad') {
       cancelGamepadListen();
       return;
@@ -269,19 +276,21 @@ export function SettingsScreen({ inRun, onBack }: { inRun: boolean; onBack: () =
     };
   }, [listenTarget]);
 
-  const onResetBindings = async () => {
-    const yes = await confirmPopup({
-      header: s('RESET_CONFIRMATION.header'),
-      body: s('RESET_GAMEPLAY_CONFIRMATION.body'),
-      yes: loc('main_menu_ui', 'GENERIC_POPUP.confirm'),
-      no: loc('main_menu_ui', 'GENERIC_POPUP.cancel'),
-    });
-    if (yes) {
-      resetBindings();
-      setRebindGen((g) => g + 1);
-      invalidate();
-    }
+  const onResetBindings = () => {
+    setListenTarget(null);
+    cancelGamepadListen();
+    resetBindings();
+    setRebindGen((g) => g + 1);
+    invalidate();
   };
+  const switchTab = (i: number) => {
+    setTip(null); setListenTarget(null); cancelGamepadListen(); setTab((i + TABS.length) % TABS.length);
+  };
+  useLayoutEffect(() => {
+    const onPage = (e: Event) => { if (!listenTarget) switchTab(tab + (e as CustomEvent<number>).detail); };
+    window.addEventListener('input-page', onPage);
+    return () => window.removeEventListener('input-page', onPage);
+  }, [tab, listenTarget]);
 
   const rows =
     tab === 0
@@ -293,18 +302,18 @@ export function SettingsScreen({ inRun, onBack }: { inRun: boolean; onBack: () =
       : inputRows(listenTarget, setListenTarget, () => void onResetBindings());
 
   return (
-    <div class="settings-screen">
-      <SettingsScroll key={tab} rows={rows} />
+    <div class={"settings-screen" + (tab === 3 ? " input-settings" : "")} data-rebinding={listenTarget ? "true" : undefined}>
+      <SettingsScroll key={tab} rows={rows} input={tab === 3} />
       <div class="settings-tabs">
+        <span class="settings-page-hint left"><RichText text={getInputDevice() === 'keyboard' ? '' : actionHint('viewDeck').replace('[img ', '[img size=64 ')} /></span>
+        <span class="settings-page-hint right"><RichText text={getInputDevice() === 'keyboard' ? '' : actionHint('viewExhaust').replace('[img ', '[img size=64 ')} /></span>
         {TABS.map((k, i) => (
           <SettingsTab
             label={s(k)}
             x={442 + 260 * i}
             selected={tab === i}
             onClick={() => {
-              setListenTarget(null);
-              cancelGamepadListen();
-              setTab(i);
+              switchTab(i);
             }}
           />
         ))}
@@ -328,7 +337,7 @@ export function SettingsScreen({ inRun, onBack }: { inRun: boolean; onBack: () =
  * above y 184–200 and at the bottom, follows its target at lerp 15·dt, wheel ±40, drag; past the ends it springs back
  * at 12·dt. The panel is its rows' height plus 40 % of the view when that overflows. It fades in from black on show.
  */
-function SettingsScroll({ rows }: { rows: Row[] }) {
+function SettingsScroll({ rows, input }: { rows: Row[]; input: boolean }) {
   const content = useRef<HTMLDivElement>(null), box = useRef<HTMLDivElement>(null);
   const st = useRef({ pos: 0, target: 0, drag: false, limit: 0, value: 0 });
   const [bar, setBar] = useState<{ on: boolean; v: number }>({ on: false, v: 0 });
@@ -340,6 +349,11 @@ function SettingsScroll({ rows }: { rows: Row[] }) {
     setBar({ on: size + PAD_T + PAD_B > VIEW, v: 0 });
     content.current?.animate([{ filter: 'brightness(0)', opacity: 0 }, { filter: 'brightness(1)', opacity: 1 }], { duration: 500, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' });
   }, [VIEW]);
+  useEffect(() => {
+    const onScroll = (e: Event) => { st.current.target -= (e as CustomEvent<number>).detail; };
+    window.addEventListener('input-scroll', onScroll);
+    return () => window.removeEventListener('input-scroll', onScroll);
+  }, []);
   useEffect(() => $.onFrame((dt: number) => {
     const s0 = st.current, lim = s0.limit;
     if (lim >= 0) return true; // DisableScrollingIfContentFits
@@ -364,13 +378,13 @@ function SettingsScroll({ rows }: { rows: Row[] }) {
         <div class="settings-mask">
           <div class="settings-panel" ref={content} style={{ top: `${187 + PAD_T}px` }}>
             <div class="settings-rows" ref={box}>
-              {rows.map((r, i) => <>{i > 0 && <div class="settings-divider" />}<SettingsRow r={r} /></>)}
+              {rows.map((r, i) => <>{i > 0 && (!input || i < 3) && <div class="settings-divider" />}<SettingsRow r={r} /></>)}
             </div>
           </div>
         </div>
       </div>
       {/* Scrollbar: anchored at 0.794 of the width, 0.187 … 0.947 of the height */}
-      {bar.on && <NScrollbar x={1524 + 0.5875 * view.ox} y={202 - 0.626 * view.oy} w={47} h={821 + 1.52 * view.oy} value={bar.v} style={{ filter: undefined }}
+      {bar.on && <NScrollbar x={1524 + 0.5875 * view.ox} y={202 - 0.626 * view.oy} w={47} h={821 + 1.52 * view.oy} value={bar.v} style={{ filter: undefined }} trackFilter={input ? tint(0.165, 0.29, 0.322) : undefined}
         onSet={(v) => { st.current.target = v * st.current.limit; }} />}
     </>
   );
@@ -382,8 +396,7 @@ function GamepadButtonView({ button }: { button: number | null }) {
   if (!info || !info.frame) return <span>{formatGamepadButton(button)}</span>;
   return (
     <div class="st-gamepad-btn-content">
-      <div class="st-gamepad-icon" style={frameStyle(info.frame, 32)} />
-      <span class="st-gamepad-label">{info.label}</span>
+      <div class="st-gamepad-icon" role="img" aria-label={info.label} data-glyph={info.name} style={frameStyle(info.frame, 48, 48)} />
     </div>
   );
 }
@@ -394,56 +407,31 @@ function SettingsRow({ r }: { r: Row }) {
   const showTip = () => {
     if (!tip || !ref.current) return;
     const rr = ref.current.getBoundingClientRect(), sr = document.querySelector('.stage-root')!.getBoundingClientRect(), k = 1920 / sr.width;
-    setTip(tip[0], tip[1], { kind: 'at', x: 1466, y: (rr.top - sr.top) * k - 60 });
+    setTip(tip[0], tip[1], { kind: 'at', x: 1466 + view.ox, y: (rr.top - sr.top) * k - 60 });
   };
-  if (r.kind === 'bindHeader') {
-    return (
-      <div class="settings-row bind-header">
-        <div class="srb-header-col command">{r.commandLabel}</div>
-        <div class="srb-header-pair">
-          <div class="srb-header-col">{r.keyLabel}</div>
-          <div class="srb-header-col">{r.gamepadLabel}</div>
-        </div>
-      </div>
-    );
-  }
+  if (r.kind === 'inputReset') return <div class="settings-row input-reset">
+    <div class="input-device-note">{appText('browserControllerRebinding')}</div>
+    <SettingsButton r={{ ...RESET, label: '', text: s('INPUT_SETTINGS.RESET_TO_DEFAULT'), onClick: r.onClick }} />
+  </div>;
+  if (r.kind === 'bindHeader') return <div class="settings-row bind-header input-grid">
+    {[r.commandLabel, r.keyLabel, r.gamepadLabel, r.keyboardOnlyLabel].map(label => <div class="srb-header-col">{label}</div>)}
+  </div>;
   if (r.kind === 'bindPair') {
-    return (
-      <div class="settings-row" ref={ref} onPointerEnter={showTip} onPointerLeave={() => tip && setTip(null)}>
-        <div class="sr-label"><RichText text={r.label} /></div>
-        <div class="st-bind-pair">
-          <div
-            class={'st-bind-btn' + (r.keyListening ? ' listening' : '')}
-            data-ctl
-            onPointerDown={(e) => {
-              if (e.button === 0) {
-                click();
-                r.onListenKey();
-              }
-            }}
-          >
-            <div class="st-bind-text">
-              {r.keyListening ? s('LISTENING_INPUT') : r.keyText}
-            </div>
-          </div>
-          <div
-            class={'st-bind-btn' + (r.gamepadListening ? ' listening' : '')}
-            data-ctl
-            onPointerDown={(e) => {
-              if (e.button === 0) {
-                click();
-                r.onListenGamepad();
-              }
-            }}
-          >
-            <div class="st-bind-text">
-              {r.gamepadListening ? s('LISTENING_INPUT') : <GamepadButtonView button={r.gamepadBtn} />}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    const device = getInputDevice();
+    const cells = [
+      { text: r.keyText, listening: r.keyListening, listen: r.onListenKey, enabled: r.keyEnabled, active: device === 'keyboard' },
+      { text: <GamepadButtonView button={r.gamepadBtn} />, listening: r.gamepadListening, listen: r.onListenGamepad, enabled: r.gamepadEnabled, active: device === 'gamepad' },
+      { text: r.keyboardOnlyText, listening: r.keyboardOnlyListening, listen: r.onListenKeyboardOnly, enabled: true, active: device === 'keyboardOnly' },
+    ];
+    return <div class="settings-row input-grid bind-row" ref={ref}>
+      <div class="sr-label"><RichText text={r.label} /></div>
+      {cells.map(cell => <button type="button" class={'st-bind-btn' + (cell.listening ? ' listening' : '') + (cell.active ? ' active' : '')}
+        data-ctl disabled={!cell.enabled} aria-label={r.label} onClick={() => { click(); cell.listen(); }}>
+        {cell.listening ? s('LISTENING_INPUT') : cell.text}
+      </button>)}
+    </div>;
   }
+
   return (
     <div class="settings-row" ref={ref} onPointerEnter={showTip} onPointerLeave={() => tip && setTip(null)}>
       <div class={'sr-label' + (r.kind === 'lang' && r.disabled ? ' disabled' : '')}><RichText text={r.label} /></div>

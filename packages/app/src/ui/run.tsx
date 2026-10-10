@@ -29,6 +29,7 @@ import { targetManager } from '../cardnodes';
 import { CardLayer } from './cardlayer';
 import { CardFxCanvas } from '../render/cardfx';
 import { MultiplayerStatus } from './multiplayer';
+import { MultiplayerPlayerStates } from './multiplayer-state';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 
@@ -58,6 +59,7 @@ export function RunScreen() {
       {ui.cardsView && rs && <CardsView />}
       <CapstoneStack />
       {rs && <TopBar rs={rs} />}
+      {rs && <MultiplayerPlayerStates rs={rs} />}
       <HurtVignette />
       <GlobalCards />
       {ftueChecks(rs)}

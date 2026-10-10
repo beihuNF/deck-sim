@@ -1036,6 +1036,7 @@ button { font-family: var(--font); cursor: pointer; }
 
 /* NSettingsScreen (ui/settings.tsx) */
 .settings-screen { position: absolute; inset: 0; }
+.settings-screen::before { content: ''; position: absolute; inset: calc(-1 * var(--oy)) calc(-1 * var(--ox)); background: rgba(0, 0, 0, .78); pointer-events: none; }
 .settings-scroll { position: absolute; inset: 0; }
 .settings-mask { position: absolute; inset: 0; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, transparent 184px, #000 200px, #000 1040.7px, transparent 1080px);
   mask-image: linear-gradient(to bottom, transparent 184px, #000 200px, #000 1040.7px, transparent 1080px); clip-path: inset(187px 0 0 0); }
@@ -1088,24 +1089,38 @@ button { font-family: var(--font); cursor: pointer; }
 .stt-bg { position: absolute; inset: 0; box-sizing: border-box; border: 14px solid transparent; border-image-slice: 14 fill; border-image-width: 14px; filter: brightness(0); opacity: .75; }
 .stt-text { position: relative; z-index: 1; height: 64px; padding: 0 44px; display: flex; align-items: center; justify-content: center; font: 400 28px 'Kreon', var(--font); color: #EFC851; white-space: nowrap; }
 
-/* Settings Input Tab Keybinding (Side-by-side keyboard & controller) */
-.settings-row.bind-header { height: 48px; padding-top: 10px; border-bottom: 2px solid rgba(232, 220, 190, 0.25); }
-.srb-header-col { font: 700 24px 'Kreon', var(--font); color: #EFC851; letter-spacing: 1px; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6); }
-.srb-header-col.command { font-size: 26px; }
-.srb-header-pair { display: flex; align-items: center; gap: 16px; width: 480px; justify-content: flex-end; }
-.srb-header-pair .srb-header-col { width: 232px; text-align: center; }
-
-.st-bind-pair { display: flex; align-items: center; gap: 16px; width: 480px; justify-content: flex-end; }
-.st-bind-btn { position: relative; width: 232px; height: 52px; background: rgba(18, 33, 41, 0.85); border: 2px solid rgba(232, 220, 190, 0.4); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; user-select: none; }
-.st-bind-btn:hover { background: rgba(44, 88, 112, 0.85); border-color: #EFC851; transform: scale(1.02); }
-.st-bind-btn.listening { background: rgba(85, 45, 20, 0.95); border-color: #FFAE19; box-shadow: 0 0 14px rgba(255, 174, 25, 0.7); animation: bind-pulse 0.8s infinite alternate ease-in-out; }
-.st-bind-text { font: 700 22px 'Kreon', var(--font); color: #FFF6E2; letter-spacing: 1px; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6); pointer-events: none; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
-.st-bind-btn.listening .st-bind-text { color: #FFAE19; font-size: 18px; }
-.st-gamepad-btn-content { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 100%; }
-.st-gamepad-icon { display: inline-block; vertical-align: middle; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)); }
-.st-gamepad-label { font: 700 20px 'Kreon', var(--font); color: #FFF6E2; letter-spacing: 1px; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6); }
-.st-bind-empty { color: #8C8C8C; font-size: 24px; }
-@keyframes bind-pulse { from { box-shadow: 0 0 4px rgba(255, 174, 25, 0.4); transform: scale(1.01); } to { box-shadow: 0 0 16px rgba(255, 174, 25, 0.85); transform: scale(1.04); } }
+/* NInputSettingsPanel: three independent binding columns, original atlas glyphs. */
+.input-settings .settings-panel { left: 410px; width: 1112px; }
+.input-settings .settings-rows { gap: 0; padding-top: 32px; }
+.input-settings .settings-divider { margin: 12px 0; }
+.input-settings .st-tick { right: 150px; }
+.settings-row.input-grid { display: grid; grid-template-columns: 340px repeat(3, 1fr); gap: 0; padding: 0 12px; height: 64px; }
+.input-grid .sr-label { width: auto; font-size: 28px; white-space: normal; line-height: 1.15; }
+.srb-header-col { font: 400 28px var(--font); color: #EFC851; text-align: center; }
+.srb-header-col:first-child { text-align: left; }
+.settings-row.bind-header { height: 76px; }
+.st-bind-btn { padding: 0; height: 62px; border: 0; border-radius: 0; background: transparent; color: #a7352c; font: 400 28px 'Kreon', var(--font); cursor: pointer; display: grid; place-items: center; }
+.st-bind-btn.active { color: #FFF6E2; }
+.st-bind-btn:hover, .st-bind-btn:focus-visible { background: rgba(255, 246, 226, .12); outline: 2px solid #EFC851; outline-offset: -2px; }
+.st-bind-btn:disabled { cursor: default; color: #777; }
+.st-bind-btn.listening { color: #EFC851; background: rgba(255, 246, 226, .12); font-size: 22px; }
+.st-gamepad-btn-content { display: grid; place-items: center; width: 100%; height: 100%; }
+.st-gamepad-icon { pointer-events: none; }
+.st-bind-empty { color: #8C8C8C; }
+.input-device-note { width: 760px; font: 400 24px var(--font); color: #8ecee6; }
+.input-reset .st-button { right: 12px; }
+.settings-page-hint { position: absolute; top: 21px; width: 64px; text-align: center; font: 400 24px var(--font); }
+.settings-page-hint.left { left: 352px; }
+.settings-page-hint.right { left: 1500px; }
+.settings-page-hint .rt-controller-icon { width: 64px; height: 48px; }
+.input-focus { outline: 3px solid #EFC851 !important; outline-offset: 3px; }
+.game-btn .input-button-hint { position: absolute; top: 87px; left: 60px; pointer-events: none; font: 400 24px var(--font); }
+.game-btn.confirm-btn .input-button-hint { left: 112px; }
+.input-button-hint .rt-controller-icon { width: 48px; height: 48px; }
+.chs-page-hint { position: absolute; top: 780px; pointer-events: none; font: 400 24px var(--font); }
+.chs-page-hint.left { left: 530px; }
+.chs-page-hint.right { left: 1340px; }
+.chs-page-hint .rt-controller-icon { width: 64px; height: 48px; }
 
 .nscrollbar { position: absolute; }
 .nsb-track, .nsb-train { position: absolute; left: 0; pointer-events: none; }

@@ -92,6 +92,7 @@ export function t(k: keyof typeof UI): string {
 
 /** App-only strings the game has no text for (it uses visuals instead); English fallback. */
 const APP: Record<string, Record<string, string>> = {
+  browserControllerRebinding: { eng: 'Controller button rebinding is available in this browser.', zhs: '可在浏览器中更改控制器按键绑定。' },
   portPatchNotesHeader: { eng: 'Web Port Updates', zhs: '移植版更新' },
   storageFull: { eng: 'Saving failed. Your previous save is kept; check browser storage and try again.', zhs: '保存失败，已保留上一次存档。请检查浏览器存储后重试。' },
   exportSaves: { eng: 'Save backup', zhs: '存档备份' },

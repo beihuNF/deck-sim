@@ -9,8 +9,7 @@ import { loc } from '../i18n';
 import { hsvFilter, tint } from '../filters';
 import { RichText } from './richtext';
 import { view } from '../view';
-import { getBindings } from '../input/bindings';
-import { actionHint } from '../input/hints';
+import { getKeyboardBindings, actionHint } from '../input/hints';
 import { setDynamicTip, setTip } from './tooltip';
 
 let modal: { key: number; render: () => any; holes?: () => number[][] } | null = null;
@@ -54,7 +53,7 @@ window.addEventListener('keydown', (e) => {
   if (typing) return;
   // a modal takes the keyboard: nothing under it reacts
   e.stopImmediatePropagation();
-  const keys = getBindings().keys, key = e.key.toLowerCase();
+  const keys = getKeyboardBindings(), key = e.key.toLowerCase();
   const f = key === keys.confirm.toLowerCase() ? popupKeys.yes : key === keys.cancel.toLowerCase() ? popupKeys.no : undefined;
   if (!f) return;
   e.preventDefault();

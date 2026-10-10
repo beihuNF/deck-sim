@@ -1,8 +1,9 @@
 import { DurableObject } from 'cloudflare:workers';
+import { validCharacterSelection } from './selection';
 
 interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<WebRoom> }
-interface Player { id: number; token: string; character: string; unlock: string; ready: boolean; disconnectedAt?: number }
-interface Room { code: string; version: string; mode: string; maxPlayers: number; created: number; started: boolean; seed: string; players: Player[] }
+interface Player { id: number; token: string; character: string; unlock: string; ready: boolean; maxAscension: number; disconnectedAt?: number }
+interface Room { code: string; version: string; mode: string; maxPlayers: number; created: number; started: boolean; seed: string; ascension: number; modifiers: string[]; dailyDate: string; players: Player[] }
 const PREFIX = '/api/multiplayer/rooms';
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 function sameOrigin(req: Request) {
@@ -61,10 +62,10 @@ export class WebRoom extends DurableObject<Env> {
       try { body = await req.json(); } catch { return json({ error: 'request' }, 400); }
       if (typeof body.version !== 'string' || body.version.length > 100) return json({ error: 'version' }, 400);
       const mode = typeof body.mode === 'string' && ['standard', 'daily', 'custom'].includes(body.mode) ? body.mode : 'standard';
-      const maxPlayers = typeof body.maxPlayers === 'number' && body.maxPlayers >= 2 && body.maxPlayers <= 4 ? body.maxPlayers : 4;
+      const maxPlayers = Number.isInteger(body.maxPlayers) && body.maxPlayers >= 2 && body.maxPlayers <= 4 ? body.maxPlayers : 4;
       if (!this.room) {
         if (req.headers.get('X-Create-Room') !== '1') return json({ error: 'room' }, 404);
-        this.room = { code, version: body.version, mode, maxPlayers, created: Date.now(), started: false, seed: '', players: [] };
+        this.room = { code, version: body.version, mode, maxPlayers, created: Date.now(), started: false, seed: '', ascension: 0, modifiers: [], dailyDate: new Date().toISOString().slice(0, 10), players: [] };
       }
       if (this.room.version !== body.version) return json({ error: 'version' }, 409);
       if (this.room.started) return json({ error: 'full' }, 409);
@@ -99,7 +100,8 @@ export class WebRoom extends DurableObject<Env> {
       while (usedIds.has(id) && id <= this.room.maxPlayers) id++;
       if (id > this.room.maxPlayers) return json({ error: 'full' }, 409);
       const token = crypto.randomUUID();
-      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false });
+      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false, maxAscension: 0 });
+      if (this.room.mode === 'daily') for (const p of this.room.players) p.ready = false;
       await this.ctx.storage.put('room', this.room);
       await this.ctx.storage.setAlarm(this.room.created + 24 * 60 * 60_000);
       this.broadcast();
@@ -128,6 +130,8 @@ export class WebRoom extends DurableObject<Env> {
       mode: this.room.mode,
       maxPlayers: this.room.maxPlayers,
       started: this.room.started,
+      settings: { ascension: this.room.ascension ?? 0, modifiers: this.room.modifiers ?? [], seed: this.room.seed, dailyDate: this.room.dailyDate ?? new Date(this.room.created).toISOString().slice(0, 10) },
+      maxAscension: Math.min(...this.room.players.map(p => p.maxAscension ?? 0)),
       players: this.room.players.map(({ token: _, unlock: __, ...p }) => ({
         ...p,
         connected: this.ctx.getWebSockets(String(p.id)).length > 0,
@@ -141,12 +145,13 @@ export class WebRoom extends DurableObject<Env> {
     const id: number = ws.deserializeAttachment().id;
     if (!this.room) return ws.close(1008, 'Missing room');
     if (typeof data !== 'string') {
-      if (!this.room.started || data.byteLength < 9 || data.byteLength > 128 * 1024) return ws.close(1008, 'Invalid packet');
+      if (!this.room.started || data.byteLength < 10 || data.byteLength > 128 * 1024) return ws.close(1008, 'Invalid packet');
       // Original bus header: one-byte message type followed by little-endian uint64 sender.
-      const bytes = new Uint8Array(data);
+      const envelope = new Uint8Array(data), to = envelope[0], bytes = envelope.subarray(1);
+      if (to !== 0 && !this.room.players.some(p => p.id === to)) return ws.close(1008, 'Invalid recipient');
       if (bytes[1] !== id || bytes.slice(2, 9).some(x => x !== 0)) return ws.close(1008, 'Invalid sender');
       const out = new Uint8Array(bytes.length + 1); out[0] = id; out.set(bytes, 1);
-      for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(out.buffer);
+      for (const other of this.ctx.getWebSockets()) if (other !== ws && (to === 0 || other.deserializeAttachment().id === to)) other.send(out.buffer);
       return;
     }
     if (data.length > 64 * 1024) return ws.close(1009, 'Too large');
@@ -186,28 +191,39 @@ export class WebRoom extends DurableObject<Env> {
       }
       return;
     }
-    if (msg.type === 'select' && !this.room.started) {
-      if (!['IRONCLAD', 'SILENT', 'REGENT', 'NECROBINDER', 'DEFECT'].includes(msg.character)
-        || typeof msg.unlock !== 'string' || msg.unlock.length > 48_000) return ws.close(1008, 'Invalid selection');
+    if (msg.type === 'settings' && id === 1 && !this.room.started && this.room.mode !== 'daily') {
+      if (!Number.isInteger(msg.ascension) || msg.ascension < 0 || msg.ascension > Math.min(...this.room.players.map(p => p.maxAscension ?? 0))
+        || typeof msg.seed !== 'string' || !/^[A-Z0-9_]{0,40}$/.test(msg.seed)
+        || !Array.isArray(msg.modifiers) || msg.modifiers.length > 40 || msg.modifiers.some((m: unknown) => typeof m !== 'string' || !/^[A-Z0-9_]+(:[A-Z0-9_]+)?$/.test(m))
+        || (this.room.mode !== 'custom' && msg.modifiers.length)) return;
+      this.room.ascension = msg.ascension; this.room.seed = msg.seed; this.room.modifiers = msg.modifiers;
+      for (const p of this.room.players) p.ready = false;
+    } else if (msg.type === 'select' && !this.room.started) {
+      if (!validCharacterSelection(msg.character, msg.unlock, this.room.mode === 'daily')) return ws.close(1008, 'Invalid selection');
       me.character = msg.character; me.unlock = msg.unlock;
+      me.maxAscension = Number.isInteger(msg.maxAscension) ? Math.max(0, Math.min(10, msg.maxAscension)) : 0;
+      this.room.ascension = Math.min(this.room.ascension ?? 0, ...this.room.players.map(p => p.maxAscension ?? 0));
       // 遵循原版规则：切换角色必须重置准备状态
       me.ready = false;
-    } else if (msg.type === 'ready' && !this.room.started && me.unlock) {
+    } else if (msg.type === 'ready' && !this.room.started && validCharacterSelection(me.character, me.unlock, this.room.mode === 'daily')) {
       me.ready = msg.ready === true;
-    } else if (msg.type === 'start' && id === 1 && !this.room.started) {
+    } else if (msg.type !== 'start' || id !== 1 || this.room.started) return;
+    // StartRunLobby begins as soon as every connected player has readied.
+    if (!this.room.started && this.room.players.length >= 2 && this.room.players.every(p => p.ready)) {
       // 全员就绪判定：至少 2 人，所有玩家（包括房主自身）全部就绪且连接在线
-      if (this.room.players.length < 2 || this.room.players.some(p => !p.ready || !this.ctx.getWebSockets(String(p.id)).length)) return;
+      if (this.room.players.length < 2 || this.room.players.some(p => !p.ready || !validCharacterSelection(p.character, p.unlock, this.room?.mode === 'daily') || !this.ctx.getWebSockets(String(p.id)).length)) return;
       this.room.started = true;
-      this.room.seed = crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
+      this.room.seed ||= crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
       await this.ctx.storage.put('room', this.room);
       for (const other of this.ctx.getWebSockets()) other.send(JSON.stringify({
         type: 'start',
         mode: this.room.mode,
         seed: this.room.seed,
+        settings: { ascension: this.room.ascension ?? 0, modifiers: this.room.modifiers ?? [], dailyDate: this.room.dailyDate ?? new Date(this.room.created).toISOString().slice(0, 10) },
         players: this.room.players.map(({ id, character, unlock }) => ({ id, character, unlock })),
       }));
       return;
-    } else return;
+    }
     await this.ctx.storage.put('room', this.room);
     this.broadcast();
   }
@@ -220,7 +236,8 @@ export class WebRoom extends DurableObject<Env> {
     } else {
       const id = ws.deserializeAttachment().id;
       const player = this.room.players.find(p => p.id === id);
-      if (player) {
+      if (player && !this.ctx.getWebSockets(String(id)).some(other => other !== ws)) {
+        player.ready = false;
         player.disconnectedAt = Date.now();
         await this.ctx.storage.put('room', this.room);
         this.broadcast();

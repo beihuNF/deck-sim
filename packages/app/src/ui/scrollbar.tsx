@@ -3,7 +3,7 @@
 // the value from the pointer.
 import { frameByName, frameStyle } from '../assets';
 
-export function NScrollbar({ x, y, w, h, value, onSet, style }: { x: number; y: number; w: number; h: number; value: number; onSet?: (v: number, pressed: boolean) => void; style?: any }) {
+export function NScrollbar({ x, y, w, h, value, onSet, style, trackFilter }: { x: number; y: number; w: number; h: number; value: number; onSet?: (v: number, pressed: boolean) => void; style?: any; trackFilter?: string }) {
   const set = (e: PointerEvent, pressed: boolean) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     onSet?.(Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)), pressed);
@@ -14,9 +14,9 @@ export function NScrollbar({ x, y, w, h, value, onSet, style }: { x: number; y: 
       onPointerDown={(e) => { if (e.button !== 0) return; e.stopPropagation(); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); set(e, true); }}
       onPointerMove={(e) => { if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) { e.stopPropagation(); set(e, true); } }}
       onPointerUp={(e) => { e.stopPropagation(); set(e, false); }}>
-      <div class="nsb-track" style={{ ...frameStyle(edge, w, 48), top: '-48px' }} />
-      <div class="nsb-track" style={{ ...frameStyle(frameByName('ui_atlas', 'scrollbar_track_center'), w, h), top: 0 }} />
-      <div class="nsb-track" style={{ ...frameStyle(edge, w, 48), top: `${h}px`, scale: '1 -1' }} />
+      <div class="nsb-track" style={{ ...frameStyle(edge, w, 48), top: '-48px', filter: trackFilter }} />
+      <div class="nsb-track" style={{ ...frameStyle(frameByName('ui_atlas', 'scrollbar_track_center'), w, h), top: 0, filter: trackFilter }} />
+      <div class="nsb-track" style={{ ...frameStyle(edge, w, 48), top: `${h}px`, scale: '1 -1', filter: trackFilter }} />
       <div class="nsb-train" style={{ ...frameStyle(frameByName('ui_atlas', 'scrollbar_train_large'), 72, 72), left: `${(w - 72) / 2}px`, top: `${h * value - 36}px` }} />
     </div>
   );

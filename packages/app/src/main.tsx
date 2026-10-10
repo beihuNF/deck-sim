@@ -37,7 +37,7 @@ import { ModalLayer } from './ui/modal';
 import { FeedbackScreen, feedbackOpen } from './ui/feedback';
 import { topBarMapPressed } from './ui/map';
 import { fit, turned } from './view';
-import { getBindings } from './input/bindings';
+import { getKeyboardBindings } from './input/hints';
 import { initGamepadLoop, VirtualCursor, GamepadToast } from './input/gamepad';
 import './anchors.css'; // last: it adjusts what the other stylesheets place
 
@@ -88,7 +88,7 @@ function runHotkey(key: string): boolean {
   if (ui.screen !== 'run' || ui.pauseOpen || ui.subscreen || ftueActive()) return false;
   if (combatHotkey(key)) return true;
   const k = key.toLowerCase();
-  const b = getBindings().keys;
+  const b = getKeyboardBindings();
   if (k === b.viewDeck.toLowerCase()) {
     toggleCardsView('deck');
     invalidate();
@@ -119,7 +119,7 @@ window.addEventListener('keydown', (e) => {
 
   // NPeekButton's hotkey (MegaInput.peek = Space) on an overlay screen that has one
   const top = ui.overlays[ui.overlays.length - 1];
-  const b = getBindings().keys;
+  const b = getKeyboardBindings();
   if (e.key.toLowerCase() === b.peek.toLowerCase() && ui.screen === 'run' && top?.peekEnabled) {
     e.preventDefault();
     if (!e.repeat) top.togglePeek();

@@ -5,11 +5,12 @@ import { loc } from './i18n';
 
 export const multiplayer = {
   phase: 'idle' as 'idle' | 'connecting' | 'lobby' | 'starting' | 'playing' | 'ended',
-  code: '', id: 0, mode: 'standard' as 'standard' | 'daily' | 'custom', maxPlayers: 4,
+  code: '', id: 0, mode: 'standard' as 'standard' | 'daily' | 'custom', maxPlayers: 4, maxAscension: 0,
+  settings: { ascension: 0, seed: '', modifiers: [] as string[], dailyDate: '' },
   players: [] as { id: number; character: string; ready: boolean; connected: boolean }[], error: '',
 };
 const API = '/api/multiplayer/rooms';
-const version = `${GAME_VERSION}/${__BUILD_ID__}/web-coop-1`;
+const version = `${GAME_VERSION}/${__BUILD_ID__}/web-coop-3`;
 let socket: WebSocket | null = null;
 let net: any = null;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -50,7 +51,7 @@ export function leaveMultiplayer() {
   if ($.vfs.ephemeral) { socket?.close(); location.reload(); return; }
   if (timer) clearInterval(timer); timer = null;
   socket?.close(); socket = null;
-  Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, players: [], error: '' });
+  Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, maxAscension: 0, settings: { ascension: 0, seed: '', modifiers: [], dailyDate: '' }, players: [], error: '' });
   changed();
 }
 function send(msg: unknown) {
@@ -58,11 +59,20 @@ function send(msg: unknown) {
   socket.send(JSON.stringify(msg));
 }
 export function selectMultiplayerCharacter(character: string) {
-  const unlock = G.SaveManager.Instance.GenerateUnlockStateFromProgress().ToSerializable();
-  const json = $.ext('System.Text.Json.JsonSerializer').Serialize(G.SerializableUnlockState, unlock);
-  send({ type: 'select', character, unlock: json });
+  const state = G.SaveManager.Instance.GenerateUnlockStateFromProgress();
+  if (multiplayer.phase !== 'lobby' || (multiplayer.mode !== 'daily' && !list(state.Characters).some(c => c.Id.Entry === character))) return;
+  const json = G.serializeWebUnlockState(state);
+  send({ type: 'select', character, unlock: json, maxAscension: G.SaveManager.Instance.Progress.MaxMultiplayerAscension });
 }
-export function readyMultiplayer(ready: boolean) { send({ type: 'ready', ready }); }
+export function readyMultiplayer(ready: boolean) {
+  const me = multiplayer.players.find(p => p.id === multiplayer.id);
+  if (multiplayer.phase !== 'lobby' || !me || (ready && multiplayer.mode !== 'daily' && !list(G.SaveManager.Instance.GenerateUnlockStateFromProgress().Characters).some(c => c.Id.Entry === me.character))) return;
+  send({ type: 'ready', ready });
+}
+export function configureMultiplayer(settings: Partial<typeof multiplayer.settings>) {
+  if (multiplayer.phase !== 'lobby' || multiplayer.id !== 1 || multiplayer.mode === 'daily') return;
+  send({ type: 'settings', ...multiplayer.settings, ...settings });
+}
 export function beginMultiplayer() { send({ type: 'start' }); }
 export function kickMultiplayerPlayer(targetId: number) {
   if (multiplayer.id !== 1 || multiplayer.phase !== 'lobby') return;
@@ -94,9 +104,9 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
     url.searchParams.set('token', result.token);
     const ws = socket = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
-    net = new G.WebNetService(result.id, (bytes: number[]) => {
+    net = new G.WebNetService(result.id, (bytes: number[], to = 0) => {
       if (ws.readyState !== WebSocket.OPEN) throw new Error('disconnected');
-      ws.send(new Uint8Array(bytes));
+      ws.send(new Uint8Array([to, ...bytes]));
     }, result.code);
     net.SetBufferMessages(true);
     lastSeen = Date.now();
@@ -104,11 +114,10 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
       if (Date.now() - lastSeen > 20_000) failed('disconnected');
       else if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
     }, 5_000);
+    let initializedSelection = false;
     ws.onopen = () => {
       if (socket !== ws) return;
       multiplayer.phase = 'lobby';
-      const myExistingChar = multiplayer.players.find(p => p.id === result.id)?.character;
-      selectMultiplayerCharacter(myExistingChar ?? list(G.SaveManager.Instance.GenerateUnlockStateFromProgress().Characters)[0].Id.Entry);
       changed();
     };
     ws.onmessage = e => {
@@ -121,7 +130,15 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
         const msg = JSON.parse(e.data);
         if (msg.type === 'room') {
           multiplayer.players = msg.players;
+          multiplayer.settings = msg.settings;
+          multiplayer.maxAscension = msg.maxAscension;
           if (msg.mode) multiplayer.mode = msg.mode;
+          const me = msg.players.find((p: any) => p.id === result.id);
+          if (multiplayer.phase === 'lobby' && me) {
+            const daily = msg.mode === 'daily' ? G.webDailySetup(msg.settings.dailyDate, msg.players) : null;
+            const character = daily ? daily.characters[msg.players.indexOf(me)].Id.Entry : me.character;
+            if (!initializedSelection || me.character !== character) { initializedSelection = true; selectMultiplayerCharacter(character); }
+          }
           if (msg.maxPlayers) multiplayer.maxPlayers = msg.maxPlayers;
         } else if (msg.type === 'kicked') {
           clearSession(multiplayer.code);
@@ -129,7 +146,7 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           return;
         } else if (msg.type === 'start') {
           multiplayer.phase = 'starting';
-          void startCoopRun(msg.players, msg.seed, net, msg.mode ?? multiplayer.mode).then(() => {
+          void startCoopRun(msg.players, msg.seed, net, msg.mode ?? multiplayer.mode, msg.settings).then(() => {
             if (multiplayer.phase === 'starting') multiplayer.phase = 'playing'; changed();
           }).catch(e => { console.error('Multiplayer start failed', e); failed('start'); });
         } else if (msg.type === 'ended') failed('disconnected');

@@ -1,14 +1,16 @@
 // Multiplayer menus and lobby using original game assets and layouts.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { G, $, list } from '../game';
 import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
-  readyMultiplayer, beginMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError,
+  readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError,
 } from '../multiplayer';
 import { BackButton, ConfirmButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
-import { CharacterSelectButton, InfoPanel } from './charselect';
+import { CharacterSelectButton, InfoPanel, AscensionPanel } from './charselect';
+import { allModifiers } from './modes';
+import { ScrollArea } from './scrollable';
 import { PopupButton } from './modal';
 import { RichText } from './richtext';
 import { loc } from '../i18n';
@@ -35,11 +37,20 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const [joinCode, setJoinCode] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
   const [, setKickGen] = useState(0);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [seed, setSeed] = useState('');
+  const modifiers = useMemo(allModifiers, []);
+  useEffect(() => { setSeed(mp.settings.seed); }, [mp.settings.seed]);
 
   const charList = characters();
   const me = mp.players.find(p => p.id === mp.id);
-  const currentHeroId = (me?.character ?? 'ironclad').toUpperCase();
+  const currentHeroId = preview ?? (me?.character ?? 'ironclad').toUpperCase();
   const selectedCharObj = charList.find(c => c.c.Id.Entry === currentHeroId) ?? charList[0];
+  const dailySetup = mp.phase === 'lobby' && mp.mode === 'daily' && mp.settings.dailyDate ? G.webDailySetup(mp.settings.dailyDate, mp.players) : null;
+  const displayedAscension = dailySetup?.ascension ?? mp.settings.ascension;
+  const dailyMods = dailySetup?.modifiers ?? [];
+  useEffect(() => { if (mp.phase !== 'lobby') setPreview(null); }, [mp.phase]);
 
   // 从 URL 参数自动加入房间
   useEffect(() => {
@@ -52,7 +63,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   // 房间大厅角色背景同步
   useEffect(() => {
     if (mp.phase === 'lobby' && selectedCharObj) {
-      void charSelectBg(String(selectedCharObj.c.Id.Entry).toLowerCase());
+      void charSelectBg(selectedCharObj.locked ? null : String(selectedCharObj.c.Id.Entry).toLowerCase());
     } else {
       void charSelectBg(null);
     }
@@ -78,14 +89,15 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
     }
   };
 
-  const handleSelectChar = (c: any) => {
+  const handleSelectChar = (c: any, locked: boolean) => {
     if (me?.ready) return; // 已就绪状态禁止切人
     const entry = c.Id.Entry;
     if (entry === currentHeroId) return;
+    setPreview(entry);
     playOneShot(c.CharacterSelectSfx);
     shake();
-    void charSelectBg(String(entry).toLowerCase());
-    selectMultiplayerCharacter(entry);
+    void charSelectBg(locked ? null : String(entry).toLowerCase());
+    if (!locked) selectMultiplayerCharacter(entry);
   };
 
   const daily = epochRevealed(G.DailyRunEpoch);
@@ -248,11 +260,11 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         <div class="charselect mp-lobby-screen">
           {/* 左侧角色属性信息面板 */}
           {selectedCharObj && (
-            <InfoPanel c={selectedCharObj.c} locked={selectedCharObj.locked} />
+            <InfoPanel c={selectedCharObj.c} locked={mp.mode !== 'daily' && selectedCharObj.locked} />
           )}
 
           {/* 角色选择按钮栏 */}
-          <div class="chs-buttons" style={{ left: `${960 - (charList.length * 116 - 16) / 2}px` }}>
+          {mp.mode !== 'daily' && <div class="chs-buttons" style={{ left: `${960 - (charList.length * 116 - 16) / 2}px` }}>
             {charList.map(({ c, locked }) => (
               <CharacterSelectButton
                 key={c.Id.Entry}
@@ -260,9 +272,15 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 locked={locked}
                 selected={currentHeroId === c.Id.Entry}
                 enabled={!me?.ready}
-                onSelect={() => handleSelectChar(c)}
+                onSelect={() => handleSelectChar(c, locked)}
               />
             ))}
+          </div>}
+
+          <AscensionPanel multiplayer level={displayedAscension} max={mp.maxAscension} readOnly={mp.id !== 1 || !!me?.ready || mp.mode === 'daily'} onChange={ascension => configureMultiplayer({ ascension })} />
+          <div class="mp-run-settings">
+            {mp.mode === 'daily' ? <span>{mp.settings.dailyDate} · {dailySetup?.seed}</span> : custom && <label>{tr('种子', 'Seed')} <input class="mp-seed-input" maxLength={40} value={seed} disabled={mp.id !== 1 || !!me?.ready} onInput={e => setSeed(e.currentTarget.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))} onBlur={() => { if (seed !== mp.settings.seed) configureMultiplayer({ seed }); }} /></label>}
+            {mp.mode !== 'standard' && <button class="mp-settings-button" onClick={() => setShowSettings(true)}>{tr('词缀', 'Modifiers')} ({mp.mode === 'daily' ? dailyMods.length : mp.settings.modifiers.length})</button>}
           </div>
 
           {/* 原版 RemotePlayerContainer（左上角玩家状态与邀请码） */}
@@ -368,8 +386,8 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               ? loc('main_menu_ui', 'MULTIPLAYER_CHAR_SELECT.SOLO')
               : allReady
                 ? isHost
-                  ? tr('全员已就绪 · 点击右下角启程！', 'All players ready · Click bottom right to embark!')
-                  : tr('全员已就绪 · 等待房主启程...', 'All players ready · Waiting for host to embark...')
+                  ? tr('全员已就绪 · 即将启程！', 'All players ready · Embarking!')
+                  : tr('全员已就绪 · 即将启程！', 'All players ready · Embarking!')
                 : me?.ready
                   ? tr('已就绪 · 等待其他玩家就绪...', 'Ready · Waiting for other players...')
                   : tr('点击右下角按钮准备就绪', 'Click bottom right button to ready up')}
@@ -380,15 +398,26 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
           {/* 右下角原版确认/启程按钮 */}
           <ConfirmButton
-            enabled={true}
-            onClick={() => {
-              if (isHost && allReady) {
-                beginMultiplayer();
-              } else {
-                readyMultiplayer(!me?.ready);
-              }
-            }}
+            enabled={!!me && (mp.mode === 'daily' || !selectedCharObj?.locked) && me.character === currentHeroId && !showSettings}
+            onClick={() => readyMultiplayer(!me?.ready)}
           />
+          {showSettings && <div class="mp-join-modal-backstop"><div class="mp-settings-dialog" style={{ borderImageSource: `url(${imageUrl('images/ui/tiny_nine_patch.png')})` }}>
+            <h2>{tr('词缀', 'Modifiers')}</h2>
+            <ScrollArea rect={[25, 90, 850, 540]} bar={[860, 90, 25, 540]}>
+              {mp.mode === 'daily' ? dailyMods.map((mod: any) => <div class="mp-mod-row"><RichText text={`${mod.Title.GetFormattedText()}\n${mod.Description.GetFormattedText()}`} /></div>) : modifiers.map(row => <label class="mp-mod-row" data-ctl>
+                <input type="checkbox" checked={mp.settings.modifiers.includes(row.key)} disabled={mp.id !== 1 || !!me?.ready} onChange={() => {
+                  let keys = mp.settings.modifiers.filter(key => key !== row.key);
+                  if (!mp.settings.modifiers.includes(row.key)) {
+                    const group = list(G.ModelDb.MutuallyExclusiveModifiers).find(s => s.Contains(row.canonical));
+                    keys = keys.filter(key => { const other = modifiers.find(m => m.key === key); return other?.canonical !== row.canonical && (!group || !group.Contains(other?.canonical)); });
+                    keys.push(row.key);
+                  }
+                  configureMultiplayer({ modifiers: keys });
+                }} /><RichText text={row.text} />
+              </label>)}
+            </ScrollArea>
+            <button class="mp-settings-button mp-settings-close" onClick={() => setShowSettings(false)}>{tr('完成', 'Done')}</button>
+          </div></div>}
         </div>
       )}
     </div>

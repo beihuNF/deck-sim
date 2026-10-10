@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { G, $, list } from '../game';
 import { playOneShot, stopMusic } from '../audio';
+import { actionHint, getInputDevice } from '../input/hints';
 import { invalidate } from '../store';
 import { imageUrl, atlasFrame, frameByName, frameStyle } from '../assets';
 import { loc } from '../i18n';
@@ -14,7 +15,7 @@ import { RichText } from './richtext';
 import { setTip } from './tooltip';
 import { BackButton, ConfirmButton, NGoldArrowButton } from './buttons';
 import { charSelectBg, regentZones, regentSkin } from '../render/scene';
-import { tint } from '../filters';
+import { tint, hsvFilter } from '../filters';
 import { useFit } from './card';
 import { transitionView } from './transition';
 import { characters, maxAscension, popMenu } from './menu';
@@ -139,7 +140,7 @@ export function CharSelect() {
           <CharacterSelectButton c={c} locked={locked} selected={sel?.c === c} enabled={!busy} onSelect={() => select(c, locked)} />
         ))}
       </div>
-      {sel && !sel.locked && max > 0 && <AscensionPanel key={sel.n} level={level} max={max} onChange={changeLevel} />}
+      {sel && !sel.locked && <AscensionPanel key={sel.n} level={level} max={max} onChange={changeLevel} />}
       <BackButton enabled={!busy && !unlocking} onClick={popMenu} />
       <ConfirmButton enabled={!!sel && !sel.locked && !busy && !unlocking} onClick={() => void embark()} />
     </div>
@@ -247,7 +248,13 @@ export function CharacterSelectButton({ c, locked, selected, enabled, onSelect }
  * NAscensionPanel (643, 738)–(1277, 855), fixed at the bottom: the gold arrows (hidden at 0 / max), the ascension
  * flame with the level, and "[gold]title[/gold]\ndescription". AnimIn: alpha 0 → 1 over 0.2 s, 30 px up (0.3 s Back Out).
  */
-export function AscensionPanel({ level, max, onChange }: { level: number; max: number; onChange: (n: number) => void }) {
+export function AscensionPanel({ level, max, onChange, readOnly = false, multiplayer = false }: { level: number; max: number; onChange: (n: number) => void; readOnly?: boolean; multiplayer?: boolean }) {
+  useEffect(() => {
+    if (readOnly) return;
+    const onPage = (e: Event) => onChange(Math.min(max, Math.max(0, level + (e as CustomEvent<number>).detail)));
+    window.addEventListener('input-page', onPage);
+    return () => window.removeEventListener('input-page', onPage);
+  }, [readOnly, level, max, onChange]);
   const key = `LEVEL_${String(level).padStart(2, '0')}`;
   const text = `[b][gold]${loc('ascension', `${key}.title`)}[/gold][/b]\n${loc('ascension', `${key}.description`)}`;
   const numRef = useRef<HTMLDivElement>(null);
@@ -255,11 +262,15 @@ export function AscensionPanel({ level, max, onChange }: { level: number; max: n
   return (
     <div class="chs-asc">
       <div class="chs-asc-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/tiny_nine_patch.png')})` }} />
-      {level > 0 && <NGoldArrowButton left size={64} class="chs-arrow left" onClick={() => onChange(level - 1)} />}
-      <div class="chs-asc-icon" style={frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_ascension'), 64, 93)} />
-      <div class="chs-asc-level" ref={numRef}>{level}</div>
+      {!readOnly && level > 0 && <NGoldArrowButton left size={64} class="chs-arrow left" onClick={() => onChange(level - 1)} />}
+      {!readOnly && getInputDevice() !== 'keyboard' && <>
+        <span class="chs-page-hint left"><RichText text={actionHint('viewDeck').replace('[img ', '[img size=64 ')} /></span>
+        <span class="chs-page-hint right"><RichText text={actionHint('viewExhaust').replace('[img ', '[img size=64 ')} /></span>
+      </>}
+      <div class="chs-asc-icon" style={{ ...frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_ascension'), 64, 93), filter: multiplayer ? hsvFilter(0.52, 1, 1.2) : undefined }} />
+      <div class="chs-asc-level" ref={numRef} style={multiplayer ? { WebkitTextStrokeColor: '#004759' } : undefined}>{level}</div>
       <div class="chs-asc-desc"><RichText text={text} /></div>
-      {level < max && <NGoldArrowButton size={64} class="chs-arrow right" onClick={() => onChange(level + 1)} />}
+      {!readOnly && level < max && <NGoldArrowButton size={64} class="chs-arrow right" onClick={() => onChange(level + 1)} />}
     </div>
   );
 }

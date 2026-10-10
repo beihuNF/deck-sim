@@ -1,8 +1,9 @@
+import { G } from '../game';
 import { frameByName } from '../assets';
 import { invalidate } from '../store';
 import { ACTION_LIST, getActionName, getBindings, formatGamepadButton, formatKeyName, type ActionId } from './bindings';
 
-type InputDevice = 'keyboard' | 'gamepad';
+type InputDevice = 'keyboard' | 'gamepad' | 'keyboardOnly';
 let device: InputDevice = 'keyboard';
 type ControllerFamily = 'xbox_one' | 'ps4' | 'switch';
 let controllerFamily: ControllerFamily = 'xbox_one';
@@ -43,11 +44,17 @@ export const getInputDevice = () => device;
 export function setInputDevice(next: InputDevice) {
   if (device === next) return;
   device = next;
+  document.body.classList.toggle('keyboard-only', next === 'keyboardOnly');
   invalidate();
 }
 
 // Virtual gamepad clicks and cancel events must not switch the hints back to keyboard.
-window.addEventListener('keydown', (e) => { if (e.isTrusted) setInputDevice('keyboard'); }, true);
+window.addEventListener('keydown', (e) => {
+  if (!e.isTrusted || (e.target as HTMLElement)?.matches('input, textarea, [contenteditable]')) return;
+  if (e.key.startsWith('Arrow') && G.SaveManager.Instance?.PrefsSave.KeyboardMode) setInputDevice('keyboardOnly');
+  else if (device !== 'keyboardOnly') setInputDevice('keyboard');
+}, true);
+export const getKeyboardBindings = () => device === 'keyboardOnly' ? getBindings().keyboardOnly : getBindings().keys;
 window.addEventListener('pointerdown', (e) => { if (e.isTrusted) setInputDevice('keyboard'); }, true);
 window.addEventListener('mousemove', (e) => {
   if (e.isTrusted && (e.movementX || e.movementY)) setInputDevice('keyboard');
@@ -60,7 +67,7 @@ export function actionHint(action: ActionId): string {
     const button = bindings.gamepad[action];
     return button == null ? '' : controllerHint(button);
   }
-  return formatKeyName(bindings.keys[action]);
+  return formatKeyName(getKeyboardBindings()[action]);
 }
 
 export function actionHintTitle(action: ActionId): string {

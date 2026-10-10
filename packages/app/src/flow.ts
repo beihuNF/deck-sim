@@ -12,12 +12,13 @@ import { transitionView } from './ui/transition';
 const stopAudio = () => { stopMusic(); stopAmbience(); stopAllLoops(); };
 
 export let run: any = null;
-export async function startCoopRun(players: any[], seed: string, net: any, mode = 'standard') {
+export async function startCoopRun(players: any[], seed: string, net: any, mode = 'standard', settings = { ascension: 0, modifiers: [] as string[], dailyDate: '' }) {
   await G.SaveManager.Instance.CurrentRunSaveTask;
   await $.vfs.beginEphemeralSession();
   resetUi();
   ui.menuStack = [];
-  await G.startWebMultiplayerRun(players, seed, net, (rs: any) => { run = rs; attachRun(rs); }, mode);
+  await G.startWebMultiplayerRun(players, seed, net, (rs: any) => { run = rs; attachRun(rs); }, mode,
+    settings.ascension, G.webRunModifiers(settings.modifiers), mode === 'daily' ? settings.dailyDate : null);
   invalidate();
 }
 function resetUi() {

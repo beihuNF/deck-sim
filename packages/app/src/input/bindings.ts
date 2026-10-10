@@ -5,6 +5,10 @@
 import { loc } from '../i18n';
 
 export type ActionId =
+  | 'select'
+  | 'topPanel'
+  | 'up'
+  | 'down'
   | 'endTurn'
   | 'peek'
   | 'confirm'
@@ -32,35 +36,34 @@ export interface ActionMeta {
   labelKey: string;
   defaultKey: string;
   defaultBtn: number | null;
+  keyboardOnlyKey?: string;
 }
 
+// NInputManager: controller inputs first, then remaining keyboard inputs.
 export const ACTION_LIST: ActionMeta[] = [
-  { id: 'endTurn', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.endTurn', defaultKey: 'e', defaultBtn: 3 }, // Y / Triangle
-  { id: 'peek', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.peek', defaultKey: ' ', defaultBtn: 2 }, // X / Square
-  { id: 'confirm', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.confirm', defaultKey: 'Enter', defaultBtn: 0 }, // A / Cross
-  { id: 'cancel', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.cancel', defaultKey: 'Escape', defaultBtn: 1 }, // B / Circle
-  { id: 'handPrev', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.left', defaultKey: 'ArrowLeft', defaultBtn: 4 }, // LB / L1
-  { id: 'handNext', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.right', defaultKey: 'ArrowRight', defaultBtn: 5 }, // RB / R1
-  { id: 'viewMap', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewMap', defaultKey: 'm', defaultBtn: 8 }, // Back / Select
-  { id: 'viewDeck', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewDeck', defaultKey: 'd', defaultBtn: 12 }, // D-Pad Up
-  { id: 'viewDraw', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewDraw', defaultKey: 'a', defaultBtn: 14 }, // D-Pad Left
-  { id: 'viewDiscard', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewDiscard', defaultKey: 's', defaultBtn: 15 }, // D-Pad Right
-  { id: 'viewExhaust', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewExhaust', defaultKey: 'x', defaultBtn: 13 }, // D-Pad Down
-  { id: 'selectCard1', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard1', defaultKey: '1', defaultBtn: null },
-  { id: 'selectCard2', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard2', defaultKey: '2', defaultBtn: null },
-  { id: 'selectCard3', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard3', defaultKey: '3', defaultBtn: null },
-  { id: 'selectCard4', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard4', defaultKey: '4', defaultBtn: null },
-  { id: 'selectCard5', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard5', defaultKey: '5', defaultBtn: null },
-  { id: 'selectCard6', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard6', defaultKey: '6', defaultBtn: null },
-  { id: 'selectCard7', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard7', defaultKey: '7', defaultBtn: null },
-  { id: 'selectCard8', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard8', defaultKey: '8', defaultBtn: null },
-  { id: 'selectCard9', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard9', defaultKey: '9', defaultBtn: null },
-  { id: 'selectCard10', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.selectCard10', defaultKey: '0', defaultBtn: null },
+  { id: 'select', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.select', defaultKey: '', keyboardOnlyKey: ' ', defaultBtn: 0 },
+  { id: 'cancel', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.cancel', defaultKey: 'Escape', defaultBtn: 1 },
+  { id: 'viewMap', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewMap', defaultKey: 'm', keyboardOnlyKey: 'Tab', defaultBtn: 8 },
+  { id: 'topPanel', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.topPanel', defaultKey: '', keyboardOnlyKey: 'w', defaultBtn: 2 },
+  { id: 'viewDeck', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewDeck', defaultKey: 'd', keyboardOnlyKey: 'q', defaultBtn: 4 },
+  { id: 'viewDraw', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewDraw', defaultKey: 'a', defaultBtn: 6 },
+  { id: 'viewDiscard', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewDiscard', defaultKey: 's', keyboardOnlyKey: 'd', defaultBtn: 7 },
+  { id: 'viewExhaust', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.viewExhaust', defaultKey: 'x', keyboardOnlyKey: 'f', defaultBtn: 5 },
+  { id: 'confirm', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.confirm', defaultKey: 'e', keyboardOnlyKey: 'Enter', defaultBtn: 3 },
+  { id: 'endTurn', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.endTurn', defaultKey: 'e', defaultBtn: 3 },
+  { id: 'peek', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.peek', defaultKey: ' ', keyboardOnlyKey: 's', defaultBtn: 10 },
+  { id: 'up', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.up', defaultKey: 'ArrowUp', defaultBtn: 12 },
+  { id: 'down', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.down', defaultKey: 'ArrowDown', defaultBtn: 13 },
+  { id: 'handPrev', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.left', defaultKey: 'ArrowLeft', defaultBtn: 14 },
+  { id: 'handNext', labelKey: 'INPUT_SETTINGS.INPUT_TITLE.right', defaultKey: 'ArrowRight', defaultBtn: 15 },
+  ...Array.from({ length: 10 }, (_, i): ActionMeta => ({ id: `selectCard${i + 1}` as ActionId,
+    labelKey: `INPUT_SETTINGS.INPUT_TITLE.selectCard${i + 1}`, defaultKey: String((i + 1) % 10), defaultBtn: null })),
 ];
 
 export interface BindingsData {
   keys: Record<ActionId, string>;
   gamepad: Record<ActionId, number | null>;
+  keyboardOnly: Record<ActionId, string>;
 }
 
 const STORAGE_KEY = 'sts2_input_bindings';
@@ -68,11 +71,13 @@ const STORAGE_KEY = 'sts2_input_bindings';
 function getDefaultBindings(): BindingsData {
   const keys = {} as Record<ActionId, string>;
   const gamepad = {} as Record<ActionId, number | null>;
+  const keyboardOnly = {} as Record<ActionId, string>;
   for (const a of ACTION_LIST) {
     keys[a.id] = a.defaultKey;
     gamepad[a.id] = a.defaultBtn;
+    keyboardOnly[a.id] = a.keyboardOnlyKey ?? a.defaultKey;
   }
-  return { keys, gamepad };
+  return { keys, gamepad, keyboardOnly };
 }
 
 let currentBindings: BindingsData = loadBindings();
@@ -90,6 +95,7 @@ export function loadBindings(): BindingsData {
     return {
       keys: { ...defaults.keys, ...(data.keys || {}) },
       gamepad: { ...defaults.gamepad, ...(data.gamepad || {}) },
+      keyboardOnly: { ...defaults.keyboardOnly, ...(data.keyboardOnly || {}) },
     };
   } catch {
     return getDefaultBindings();
@@ -109,17 +115,25 @@ export function resetBindings(): BindingsData {
   return d;
 }
 
-export function setKeyBinding(action: ActionId, key: string) {
+export function setKeyBinding(action: ActionId, key: string, keyboardOnly = false) {
   const b = getBindings();
-  const oldKey = b.keys[action];
+  const keys = keyboardOnly ? b.keyboardOnly : b.keys;
+  const oldKey = keys[action];
 
   // 若其他动作已占用此按键，与原动作按键互换（与原版游戏行为一致）
-  for (const act of Object.keys(b.keys) as ActionId[]) {
-    if (act !== action && b.keys[act]?.toLowerCase() === key.toLowerCase()) {
-      b.keys[act] = oldKey;
+  for (const act of Object.keys(keys) as ActionId[]) {
+    if (act !== action && keys[act]?.toLowerCase() === key.toLowerCase()) {
+      keys[act] = oldKey;
+      if (!keyboardOnly && act === 'confirm') keys.endTurn = oldKey;
+      if (!keyboardOnly && act === 'endTurn') keys.confirm = oldKey;
     }
   }
-  b.keys[action] = key;
+  keys[action] = key;
+  // NInputManager links confirm and end turn only in mouse/keyboard and controller modes.
+  if (!keyboardOnly) {
+    if (action === 'confirm') keys.endTurn = key;
+    if (action === 'endTurn') keys.confirm = key;
+  }
   saveBindings(b);
 }
 
@@ -132,16 +146,21 @@ export function setGamepadBinding(action: ActionId, btn: number | null) {
     for (const act of Object.keys(b.gamepad) as ActionId[]) {
       if (act !== action && b.gamepad[act] === btn) {
         b.gamepad[act] = oldBtn;
+        if (act === 'confirm') b.gamepad.endTurn = oldBtn;
+        if (act === 'endTurn') b.gamepad.confirm = oldBtn;
       }
     }
   }
   b.gamepad[action] = btn;
+  if (action === 'confirm') b.gamepad.endTurn = btn;
+  if (action === 'endTurn') b.gamepad.confirm = btn;
   saveBindings(b);
 }
 
 export function formatKeyName(key: string): string {
+  if (!key) return '-';
   if (key === ' ') return 'Space';
-  if (key === 'Escape') return 'Esc';
+  if (key === 'Escape') return 'Escape';
   if (key === 'ArrowUp') return '↑';
   if (key === 'ArrowDown') return '↓';
   if (key === 'ArrowLeft') return '←';

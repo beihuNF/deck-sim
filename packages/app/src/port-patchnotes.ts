@@ -11,9 +11,17 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Restored authentic lobby character selection and ready flow: all players (including the host) can pick characters freely and toggle ready status. Switching hero resets ready status, and the run embarks when all players are ready.
 • Added host kick player support with instant optimistic UI removal and resilient server broadcast.
 • Fixed locked mode cards in the multiplayer host menu showing raw localization keys, now properly falling back to unlock requirement descriptions.
+• Fixed co-op map votes failing to advance; player portraits now show each player's selected node.
+• Shared map drawings now sync between players in their character colors; erasing and clearing affect only your own drawings.
+• Fixed locked characters being usable in co-op and preserved each player's unlock progress when starting a run.
+• Added shared ascension and seed settings, custom modifier selection, and original UTC daily character and modifier rolls.
+• Team status now shows health, energy, hand size, turn readiness, and the screen each player is viewing.
+• Treasure chests now show every shared relic, player votes, and a skip option, using the original allocation rules.
 • Multiplayer runs run in isolated ephemeral sessions, keeping your singleplayer profile and saves completely intact.
  
 [gold][b]Controls[/b][/gold]
+• Restored the original mouse/keyboard, controller, and keyboard-only binding columns, with independent keyboard settings and keyboard navigation.
+• Corrected controller defaults: A selects, Y confirms/ends turns, bumpers page, and triggers open piles; character selection now shows the matching button hints.
 • Added full gamepad / controller support with console-style combat hand navigation, auto-targeting for single-target cards, and smooth virtual cursor for menus and maps.
 • Unlocked and implemented the Input settings tab with customizable keyboard and controller keybindings and reset support.
 • Controller bindings in Input settings now render original button icons from the controller atlas.
@@ -25,6 +33,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Hand shortcut labels now show your assigned keys and hide unassigned controller buttons.
 • Fixed old default shortcuts still triggering after rebinding, and controller pile shortcuts conflicting with hand navigation.
 • Controller cursor hovering now shows button hints and reaches edge controls at different aspect ratios.
+• Prevented controller cursor jumps after slow frames or returning to the browser tab.
  
 [gold][b]Quality of Life[/b][/gold]
 • Restored the original Mega Crit opening logo drop-in animation and iconic audio (supports click or keypress to skip).
@@ -46,9 +55,17 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 还原原作大厅选人与就绪流程：所有玩家（包含房主）均可在选好角色后自主点击准备/取消就绪，切换角色自动重置准备状态，全员就绪后由房主启程。
 • 房主可在大厅中踢出客机玩家：支持乐观即时响应与安全广播，房主界面卡片立刻移除，被踢玩家准确显示通知。
 • 修复多人建房菜单中未解锁模式大卡片底部显示原始本地化键名的问题，正确展示解锁条件说明。
+• 修复多人地图投票后无法前进的问题，节点旁现在显示各玩家选择的角色头像。
+• 地图绘画按角色颜色同步给其他玩家，擦除和清空只影响自己的绘画。
+• 修复多人模式可使用锁定角色的问题，开局正确继承各玩家的解锁进度。
+• 补齐共享进阶难度、种子与自定义词缀设置，每日挑战按原版规则生成角色和词缀。
+• 新增队友生命、能量、手牌数量、回合准备与所在界面的状态显示。
+• 宝箱展示全部共享遗物、玩家选择与放弃选项，按原版规则分配遗物。
 • 多人对局采用独立临时会话存储，不破坏或覆盖单人本地存档。
 
 [gold][b]操作[/b][/gold]
+• 操作设置还原鼠标+键盘、控制器、纯键盘三列，支持独立键位保存与纯键盘导航。
+• 手柄默认操作遵循原版：A 选择、Y 确认/结束回合，肩键翻页、扳机查看牌堆；角色选择页显示对应按键提示。
 • 新增完整手柄（控制器）支持：战斗中采用主机版手牌轮盘与指向性卡牌敌人自动吸附切换；菜单、地图与商店支持摇杆虚拟光标与右摇杆滚屏。
 • 解锁并完整实现设置中的“操作设置”：支持自定义键盘按键与手柄按钮绑定，并可一键重置为默认。
 • 操作设置中的手柄按键列现在渲染原作图集专用按键图标。
@@ -60,6 +77,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 手牌快捷键标签显示当前绑定，手柄模式下隐藏未绑定按钮的标签。
 • 修复修改键位后旧默认键仍然触发，以及手柄牌堆快捷键与手牌切换冲突的问题。
 • 手柄虚拟光标悬停可显示按钮提示，并可在不同宽高比下到达屏幕边缘的控件。
+• 修复低帧率或返回浏览器标签页后手柄光标跳跃过大的问题。
 
 [gold][b]便利功能[/b][/gold]
 • 还原 Mega Crit 原版开屏 Logo 弹入动画与标志性开场音效（支持随时点击或按键跳过）。

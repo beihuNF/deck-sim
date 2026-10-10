@@ -9,7 +9,7 @@ import { creatureViewsRef, targetManager, arrow } from '../cardnodes';
 import { getCombatHand, endTurnHotkey, peekHotkey, pileHotkey, confirmHotkey } from '../ui/combat';
 import { toggleCardsView, closeCardsView } from '../ui/pause';
 import { topBarMapPressed } from '../ui/map';
-import { getInputDevice, setInputDevice, setControllerId } from './hints';
+import { getInputDevice, setInputDevice, setControllerId, getKeyboardBindings } from './hints';
 import { modalOpen } from '../ui/modal';
 import { ftueActive } from '../ui/ftue';
 import { edge } from '../view';
@@ -75,6 +75,80 @@ window.addEventListener('keydown', (e) => {
   cursorActive = false;
 }, true);
 
+function combatInputActive() {
+  return ui.screen === 'run' && !ui.pauseOpen && !ui.subscreen && !ui.cardsView && !ui.mapOpen && !ui.overlays.length && !modalOpen() && !ftueActive() && !!document.querySelector('.combat .combat-ui');
+}
+function clearFocus() {
+  const focused = document.querySelectorAll('.input-focus');
+  focused.forEach(el => {
+    el.classList.remove('input-focus');
+    el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false }));
+  });
+  if (focused.length) virtualHovered = null;
+}
+const CONTROL_SELECTOR = 'button:not(:disabled), [data-ctl]:not(.disabled), .settings-tab, .submenu-btn:not(.disabled), .chs-btn, .game-btn.shown, .mp.travelable, .event-option:not(.disabled), .ancient-next, .anc-hitbox, .reward-btn, .bundle, .gh-card, .pause-btn, .vp-btn:not(.disabled), .chs-arrow';
+function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = CONTROL_SELECTOR) {
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector)).filter(el => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && (r.bottom > 0 || !!el.closest('.settings-panel')) && (r.top < innerHeight || !!el.closest('.settings-panel')) && r.right > 0 && r.left < innerWidth
+      && getComputedStyle(el).visibility !== 'hidden' && !el.closest('.disabled, [data-rebinding="true"]');
+  });
+  const current = document.querySelector<HTMLElement>('.input-focus');
+  const origin = current?.getBoundingClientRect();
+  const center = (el: HTMLElement) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  let next = candidates.find(el => el.matches('.mp.travelable, .chs-btn.selected')) ?? candidates[0];
+  if (origin) {
+    const x = origin.left + origin.width / 2, y = origin.top + origin.height / 2;
+    const ranked = candidates.filter(el => el !== current).map(el => {
+      const [cx, cy] = center(el), horizontal = direction === 'left' || direction === 'right';
+      const along = horizontal ? cx - x : cy - y, across = Math.abs(horizontal ? cy - y : cx - x);
+      const forward = direction === 'left' || direction === 'up' ? -along : along;
+      return { el, forward, score: forward + across * 3 };
+    }).filter(v => v.forward > 8).sort((a, b) => a.score - b.score);
+    next = ranked[0]?.el ?? current ?? next;
+  }
+  clearFocus();
+  next?.classList.add('input-focus');
+  if (next) {
+    if (next.closest('.settings-panel')) {
+      const r = next.getBoundingClientRect(), root = document.querySelector('.stage-root')!.getBoundingClientRect(), scale = root.width / 1920;
+      const upper = root.top + 200 * scale;
+      const delta = r.bottom > innerHeight - 30 ? (r.bottom - innerHeight + 30) / scale : r.top < upper ? (r.top - upper) / scale : 0;
+      if (delta) window.dispatchEvent(new CustomEvent('input-scroll', { detail: delta }));
+    }
+    next.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
+    if (next instanceof HTMLButtonElement) next.focus({ preventScroll: true });
+  }
+}
+window.addEventListener('pointerdown', e => { if (e.isTrusted) clearFocus(); }, true);
+window.addEventListener('mousemove', e => { if (e.isTrusted && (e.movementX || e.movementY)) clearFocus(); }, true);
+window.addEventListener('keydown', e => {
+  if (ftueActive() || getInputDevice() !== 'keyboardOnly' || !e.isTrusted || (e.target as HTMLElement)?.matches('input, textarea, [contenteditable]')
+      || document.querySelector('[data-rebinding="true"]')) return;
+  const keys = getKeyboardBindings(), matches = (act: ActionId) => !!keys[act] && e.key.toLowerCase() === keys[act].toLowerCase();
+  const directions = [['up', 'up'], ['down', 'down'], ['handPrev', 'left'], ['handNext', 'right']] as const;
+  const direction = directions.find(([act]) => matches(act));
+  if (direction || matches('select') || matches('topPanel')) {
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (combatInputActive()) handleCombatGamepad(1, 0, 0, b => (b === 14 && matches('handPrev')) || (b === 15 && matches('handNext')), matches);
+    else if (direction) focusControls(direction[1]);
+    else if (matches('topPanel')) focusControls('up', '.tb-map, .tb-deck, .tb-settings');
+    else {
+      const focused = document.querySelector<HTMLElement>('.input-focus');
+      if (focused) activateControl(focused);
+    }
+    return;
+  }
+  if (matches('confirm') && !combatInputActive() && !modalOpen()) {
+    const confirm = document.querySelector<HTMLElement>('.confirm-btn.shown');
+    if (confirm) { e.preventDefault(); e.stopImmediatePropagation(); activateControl(confirm); return; }
+  }
+  if ((matches('viewDeck') || matches('viewExhaust')) && document.querySelector('.settings-screen, .charselect, .coop-charselect')) {
+    e.preventDefault(); e.stopImmediatePropagation();
+    window.dispatchEvent(new CustomEvent('input-page', { detail: matches('viewDeck') ? -1 : 1 }));
+  }
+}, true);
+
 // Listen for gamepad events
 window.addEventListener('gamepadconnected', (e) => {
   activeGamepadIndex = e.gamepad.index;
@@ -113,7 +187,7 @@ export function initGamepadLoop() {
     if (!gp) {
       lastButtons = [];
       lastAxes = [];
-      setInputDevice('keyboard');
+      if (getInputDevice() === 'gamepad') setInputDevice('keyboard');
       return true;
     }
 
@@ -162,13 +236,15 @@ export function initGamepadLoop() {
       return true;
     }
 
+    if (document.querySelector('[data-rebinding="true"]')) { lastButtons = btns; return true; }
+
     const bindings = getBindings().gamepad;
     const isActionJustPressed = (act: keyof typeof bindings) => {
       const b = bindings[act];
       return b !== null && justPressed(b);
     };
 
-    const inCombat = ui.screen === 'run' && !ui.pauseOpen && !ui.subscreen && !ui.cardsView && !ui.mapOpen && !ui.overlays.length && !modalOpen() && !ftueActive() && !!document.querySelector('.combat .combat-ui');
+    const inCombat = combatInputActive();
 
     if (inCombat) {
       handleCombatGamepad(dt, lx, ly, justPressed, isActionJustPressed);
@@ -189,6 +265,14 @@ function handleCombatGamepad(
   actionJustPressed: (act: ActionId) => boolean,
 ) {
   const hand = getCombatHand();
+  const topFocus = document.querySelector<HTMLElement>('.top-bar .input-focus');
+  if (topFocus && !targetManager.IsInSelection) {
+    if (actionJustPressed('select')) { activateControl(topFocus); return; }
+    if (actionJustPressed('cancel') || actionJustPressed('topPanel')) { clearFocus(); return; }
+    for (const [action, direction] of [['up', 'up'], ['down', 'down'], ['handPrev', 'left'], ['handNext', 'right']] as const) {
+      if (actionJustPressed(action)) { focusControls(direction, '.tb-map, .tb-deck, .tb-settings'); return; }
+    }
+  }
 
   // 1. If currently in single targeting mode (arrow pointing at monsters)
   if (targetManager.IsInSelection) {
@@ -219,8 +303,8 @@ function handleCombatGamepad(
       }
     }
 
-    // Confirm play card to selected monster (A button)
-    if (actionJustPressed('confirm')) {
+    // Select plays a card; confirm/end turn are separate original actions.
+    if (actionJustPressed('select')) {
       targetManager.button(0, false);
       return;
     }
@@ -268,7 +352,7 @@ function handleCombatGamepad(
     }
 
     // Play highlighted card (A button)
-    if (actionJustPressed('confirm')) {
+    if (actionJustPressed('select')) {
       const cur = holders[selectedHandIndex];
       if (cur) {
         targetMonsterIndex = 0;
@@ -280,11 +364,12 @@ function handleCombatGamepad(
   }
 
   // Combat shortcuts
+  if (actionJustPressed('topPanel')) { focusControls('up', '.tb-map, .tb-deck, .tb-settings'); return; }
   if (actionJustPressed('endTurn')) { // Y button -> End Turn
     endTurnHotkey()?.();
     return;
   }
-  if (actionJustPressed('peek')) { // X button -> Peek
+  if (actionJustPressed('peek')) { // Left stick press -> Peek
     peekHotkey()?.();
     return;
   }
@@ -320,9 +405,12 @@ function handleMenuVirtualCursor(
 ) {
   // Move virtual cursor with left stick
   const speed = 1200; // pixels per second
-  cursorX = Math.max(edge.l + 20, Math.min(edge.r - 20, cursorX + lx * speed * dt));
-  cursorY = Math.max(edge.t + 20, Math.min(edge.b - 20, cursorY + ly * speed * dt));
-  if (getInputDevice() === 'gamepad') hoverElementUnderCursor();
+  // A delayed frame must not jump over an entire control (or across the screen after tab resume).
+  const cursorDt = Math.min(dt, 1 / 30);
+  cursorX = Math.max(edge.l + 20, Math.min(edge.r - 20, cursorX + lx * speed * cursorDt));
+  cursorY = Math.max(edge.t + 20, Math.min(edge.b - 20, cursorY + ly * speed * cursorDt));
+  if (lx || ly) clearFocus();
+  if (getInputDevice() === 'gamepad' && !document.querySelector('.input-focus')) hoverElementUnderCursor();
   invalidate();
 
   // Scroll views with right stick (e.g. Map, Compendium, Settings)
@@ -339,14 +427,27 @@ function handleMenuVirtualCursor(
   }
 
   if (modalOpen()) {
-    if (actionJustPressed('confirm')) window.dispatchEvent(new KeyboardEvent('keydown', { key: getBindings().keys.confirm, bubbles: true }));
+    if (actionJustPressed('confirm') || actionJustPressed('select')) window.dispatchEvent(new KeyboardEvent('keydown', { key: getKeyboardBindings().confirm, bubbles: true }));
     else if (actionJustPressed('cancel')) simulateEscape();
     return;
   }
 
-  // A button -> Click element under cursor
+  const onPageScreen = !!document.querySelector('.settings-screen, .charselect, .coop-charselect');
+  if (onPageScreen && (actionJustPressed('viewDeck') || actionJustPressed('viewExhaust'))) {
+    window.dispatchEvent(new CustomEvent('input-page', { detail: actionJustPressed('viewDeck') ? -1 : 1 }));
+    return;
+  }
+  for (const [action, direction] of [['up', 'up'], ['down', 'down'], ['handPrev', 'left'], ['handNext', 'right']] as const) {
+    if (actionJustPressed(action)) focusControls(direction);
+  }
+  // A selects the focused control or clicks under the virtual cursor.
+  if (actionJustPressed('select')) {
+    const focused = document.querySelector<HTMLElement>('.input-focus');
+    if (focused) activateControl(focused); else clickElementUnderCursor();
+  }
   if (actionJustPressed('confirm')) {
-    clickElementUnderCursor();
+    const confirm = document.querySelector<HTMLElement>('.confirm-btn.shown, .vp-btn.yes:not(.disabled)');
+    if (confirm) activateControl(confirm);
   }
 
   // B button -> Back / Close / Escape
@@ -409,6 +510,10 @@ function getElementUnderCursor(): HTMLElement | null {
 function clickElementUnderCursor() {
   const el = getElementUnderCursor();
   if (!el) return;
+  activateControl(el);
+}
+
+function activateControl(el: HTMLElement) {
   const rect = el.getBoundingClientRect();
   const evInit: PointerEventInit = {
     clientX: rect.left + rect.width / 2,
@@ -425,7 +530,7 @@ function clickElementUnderCursor() {
 
 function simulateEscape() {
   if (modalOpen()) {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: getBindings().keys.cancel, bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: getKeyboardBindings().cancel, bubbles: true }));
     return;
   }
   const closers = document.querySelectorAll<HTMLElement>('[data-esc]');
@@ -437,7 +542,7 @@ function simulateEscape() {
   } else if (ui.cardsView) {
     closeCardsView();
   } else {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: getBindings().keys.cancel, bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: getKeyboardBindings().cancel, bubbles: true }));
   }
   invalidate();
 }

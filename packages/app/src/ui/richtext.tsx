@@ -44,7 +44,7 @@ export function bbcodeToHtml(src: string, literal = false): string {
       if (frame) {
         let label = '';
         try { label = decodeURIComponent(attrs.alt ?? ''); } catch { label = attrs.alt ?? ''; }
-        const style = Object.entries(frameStyle(frame, 28)).map(([k, v]) => `${k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())}:${v}`).join(';');
+        const style = Object.entries(frameStyle(frame, Math.max(16, Math.min(96, Number(attrs.size) || 28)))).map(([k, v]) => `${k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())}:${v}`).join(';');
         out += `<span class="rt-controller-icon" role="img" aria-label="${esc(label).replace(/"/g, '&quot;')}" data-glyph="${esc(path)}" style="${style}"><span class="input-icon-label">${esc(label)}</span></span>`;
         continue;
       }

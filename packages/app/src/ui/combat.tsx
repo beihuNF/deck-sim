@@ -20,7 +20,7 @@ import { HandSelectUi, SelectConfirmButton, confirmHotkey, peekHotkey } from './
 import { CardFxCanvas } from '../render/cardfx';
 import { arrow, ftueHook, targetManager, TrailVfx, ShuffleFlyVfx, type HandView } from '../cardnodes';
 
-import { getBindings } from '../input/bindings';
+import { getKeyboardBindings } from '../input/hints';
 
 export { pileHotkey, endTurnHotkey, peekHotkey, confirmHotkey };
 export function getCombatHand(): HandView | null {
@@ -43,7 +43,7 @@ export function combatHotkey(key: string): boolean {
   const k = key.toLowerCase(), hand = hotkeys.hand;
   if (keyRepeat) return true;
 
-  const b = getBindings().keys;
+  const b = getKeyboardBindings();
   // Card numbers (selectCard1–10)
   const cardKeys = [
     b.selectCard1, b.selectCard2, b.selectCard3, b.selectCard4, b.selectCard5,

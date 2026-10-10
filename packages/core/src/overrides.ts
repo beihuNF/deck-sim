@@ -1,7 +1,7 @@
 // Hand-written replacements for generated members whose C# semantics JS numbers cannot express (int32 overflow etc.).
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as G from './gen/sts2';
-import { ext, stubOf, headless, dcombine, dremove } from './rt/core';
+import { ext, stubOf, headless, dcombine, dremove, getType } from './rt/core';
 import { toSignal, vfs, nextFrame } from './rt/godot';
 import { toTask } from './rt/task';
 import { WebTween } from './rt/tween';
@@ -10,6 +10,13 @@ import { Dictionary } from './rt/collections';
 import { saveReadCompatibility, retainSaveMember } from './rt/json';
 
 const g = G as any;
+// The generated instance method-group delegate drops HandleMessage<T>'s runtime type argument.
+// Recover it at the callback boundary so location-targeted co-op actions reach their registered handlers.
+const handleLocationMessage = g.RunLocationTargetedMessageBuffer.prototype.HandleMessage;
+g.RunLocationTargetedMessageBuffer.prototype.HandleMessage = function (...args: any[]) {
+  if (args.length === 2) return handleLocationMessage.call(this, getType(args[0]), args[0], args[1]);
+  return handleLocationMessage.apply(this, args);
+};
 // The beta moved play-phase ownership to the action synchronizer. Keep the web
 // view's phase query tied to that state, including setup and turn transitions.
 Object.defineProperty(g.CombatManager.prototype, 'IsPlayPhase', {

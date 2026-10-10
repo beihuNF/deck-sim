@@ -7,7 +7,8 @@ import { playOneShot } from '../audio';
 import { loc } from '../i18n';
 import { tint } from '../filters';
 import { invalidate } from '../store';
-import { actionHintTitle } from '../input/hints';
+import { RichText } from './richtext';
+import { actionHint, getInputDevice, actionHintTitle } from '../input/hints';
 import { setDynamicTip, setTip } from './tooltip';
 
 const GOLD = () => tint(0.941, 0.706, 0), CREAM = () => tint(1, 0.965, 0.886);
@@ -66,6 +67,7 @@ export function ConfirmButton({ enabled: on, onClick, style, hotkey }: { enabled
       <div class="gb-outline" style={{ ...fit('compressed', 'confirm_button_outline', -56, -16, 273, 156), filter: GOLD() }} />
       <div class="gb-image" style={fit('ui_atlas', 'confirm_button', -53, -13, 267, 150)} />
       <div class="gb-icon" style={{ ...fit('compressed', 'confirm_button_tick', 35, 15, 80, 80), filter: CREAM() }} />
+      {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint(hotkey ? 'confirm' : 'select').replace('[img ', '[img size=48 ')} /></span>}
     </div>
   );
 }
@@ -85,6 +87,7 @@ export function BackButton({ enabled: on, onClick, style }: { enabled: boolean; 
       <div class="gb-outline" style={{ ...fit('compressed', 'back_button_outline', -24, -16, 273, 156), filter: GOLD() }} />
       <div class="gb-image" style={fit('ui_atlas', 'back_button', -21, -13, 267, 150)} />
       <div class="gb-icon" style={{ ...fit('compressed', 'back_button_arrow', 67, 15, 80, 80), filter: CREAM() }} />
+      {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint('cancel').replace('[img ', '[img size=48 ')} /></span>}
     </div>
   );
 }

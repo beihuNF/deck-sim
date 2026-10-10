@@ -180,7 +180,7 @@ function ScoreWarning() {
 const custom = { seed: '', mods: new Set<string>() };
 interface ModRow { key: string; make: () => any; text: string; canonical: any }
 /** NCustomRunModifiersList.GetAllModifiers: good then bad, CharacterCards once per character. */
-function allModifiers(): ModRow[] {
+export function allModifiers(): ModRow[] {
   const out: ModRow[] = [];
   const good = new Set(list(G.ModelDb.GoodModifiers));
   const label = (x: any, g: boolean) => locv('main_menu_ui', 'CUSTOM_RUN_SCREEN.MODIFIER_LABEL', { color: g ? 'green' : 'red', modifier_title: fmt(x.Title), modifier_description: fmt(x.Description) });

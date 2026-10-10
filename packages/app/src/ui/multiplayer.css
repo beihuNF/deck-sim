@@ -406,3 +406,28 @@
   color: #9cb2be;
   margin: 0 0 24px;
 }
+
+/* Original multiplayer state list follows the bottom of the local relic inventory. */
+.mp-player-states { position: absolute; z-index: 29; width: 268px; pointer-events: none; }
+.mp-player-state { display: flex; align-items: center; position: relative; min-height: 70px; margin-bottom: 8px; color: #fff6e2; text-shadow: 1px 1px 2px #000; }
+.mp-state-icon { width: 48px; height: 48px; margin-right: 8px; }
+.mp-state-info { width: 175px; font-size: 19px; }
+.mp-state-info small { color: #efc851; font-size: 16px; }
+.mp-state-health { height: 23px; background: #261614; position: relative; border: 1px solid #897357; }
+.mp-state-health span { position: absolute; inset: 0 auto 0 0; background: #8d2923; }
+.mp-state-health b { position: relative; display: block; text-align: center; font-size: 17px; }
+.mp-state-resources { display: flex; align-items: center; font-size: 17px; gap: 5px; }
+.mp-state-resources img { width: 22px; height: 22px; }
+.mp-state-ready { margin-left: 6px; }
+.treasure-votes { position: absolute; top: 178px; width: 204px; display: flex; justify-content: center; pointer-events: none; }
+.treasure-votes img { width: 40px; height: 40px; }
+.treasure-skip { position: absolute; top: 430px; left: 330px; width: 240px; padding: 10px; color: #fff6e2; border: 1px solid #897357; background: #332820; font: inherit; font-size: 24px; pointer-events: auto; cursor: pointer; }
+.treasure-skip:disabled { opacity: .4; cursor: default; }
+.mp-run-settings { position: absolute; top: 28px; left: 710px; width: 600px; display: flex; justify-content: center; gap: 24px; align-items: center; color: #fff6e2; font-size: 24px; }
+.mp-seed-input { width: 220px; border: 1px solid #897357; padding: 8px; background: #332820; color: #fff6e2; font: inherit; }
+.mp-settings-button { border: 1px solid #897357; padding: 8px 20px; background: #332820; color: #fff6e2; font: inherit; cursor: pointer; }
+.mp-settings-dialog { position: relative; width: 900px; height: 740px; background: #261f1b; color: #fff6e2; border: 12px solid transparent; border-image-slice: 6 fill; font-size: 24px; }
+.mp-settings-dialog h2 { margin: 20px 30px; }
+.mp-mod-row { display: flex; align-items: flex-start; gap: 15px; padding: 15px; }
+.mp-mod-row input { width: 24px; height: 24px; flex-shrink: 0; }
+.mp-settings-close { position: absolute; bottom: 30px; right: 30px; }

@@ -21,6 +21,7 @@ import { transitionView } from './transition';
 import { wheelDrag } from './scrollbar';
 import { fullView, view, mapDy } from '../view';
 import { renderResolution } from '../render/quality';
+import { CoopMapDrawings } from './map-coop';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const TR = { Linear: 0, Sine: 1, Quad: 4, Expo: 5, Elastic: 6, Cubic: 7, Back: 10 }, EZ = { In: 0, Out: 1, InOut: 2 };
@@ -73,6 +74,35 @@ const fx = { MapY: -600, MapV: 1, MapA: 1, BackstopA: 0, PointsA: 1, LegendX: 15
 const marker = { visible: false, Position: new V2(), Scale: new V2(1, 1), tween: null as any };
 
 const nodeAt = (c: any) => (c ? S.byKey.get(keyOf(c)) ?? null : null);
+const playerVotes = new Map<number, any>();
+let mapSync: any = null;
+let coopDrawings: CoopMapDrawings | null = null;
+const voteChanged = (player: any, _old: any, vote: any) => {
+  if (player.NetId !== G.LocalContext.NetId) { playerVotes.set(player.NetId, vote?.coord ?? null); invalidate(); }
+};
+const voteCancelled = (player: any) => { playerVotes.delete(player.NetId); invalidate(); };
+const votesCleared = () => { playerVotes.clear(); invalidate(); };
+export function initializeMap() {
+  disposeMapSync();
+  const rm = G.RunManager.Instance;
+  mapSync = rm.MapSelectionSynchronizer;
+  mapSync.PlayerVoteChanged = $.dcombine(mapSync.PlayerVoteChanged, voteChanged);
+  mapSync.PlayerVoteCancelled = $.dcombine(mapSync.PlayerVoteCancelled, voteCancelled);
+  mapSync.PlayerVotesCleared = $.dcombine(mapSync.PlayerVotesCleared, votesCleared);
+  if (rm.State.Players.length > 1) coopDrawings = new CoopMapDrawings(rm.NetService, list(rm.State.Players), () => drawings.paint());
+}
+function disposeMapSync() {
+  if (mapSync) {
+    mapSync.PlayerVoteChanged = $.dremove(mapSync.PlayerVoteChanged, voteChanged);
+    mapSync.PlayerVoteCancelled = $.dremove(mapSync.PlayerVoteCancelled, voteCancelled);
+    mapSync.PlayerVotesCleared = $.dremove(mapSync.PlayerVotesCleared, votesCleared);
+  }
+  mapSync = null; playerVotes.clear(); coopDrawings?.dispose(); coopDrawings = null;
+}
+export function refreshMapVotes() {
+  for (const p of list(rs()?.Players ?? [])) playerVotes.set(p.NetId, mapSync?.GetVote(p)?.coord ?? null);
+  invalidate();
+}
 const inputAllowed = () => !S.traveling && S.mode === 'none';
 const travelable = (n: MapNode) => (S.debugTravel && !S.traveling) || (S.travelEnabled && n.state === St.Travelable);
 const pivot = (n: MapNode) => (n.kind === 'normal' ? [28, 28] : n.kind === 'ancient' ? [104, 104] : [187, 153]);
@@ -237,6 +267,7 @@ function signalOpenedClosed() {
 export const isMapVisible = () => S.visible;
 /** A new run or the main menu: the run's NMapScreen goes away with it. */
 export function resetMap() {
+  disposeMapSync();
   S.tween?.Kill(); S.actTween?.Kill();
   S.actTween = null; S.isOpen = false; ui.mapOpen = false; S.banners = [];
   hide();
@@ -302,6 +333,11 @@ export function initMarker(coord: any) { setMarker(nodeAt(coord)); }
 /** NMapScreen.OnMapPointSelectedLocally: vote for the point (single player: travel). */
 function selectLocally(n: MapNode) {
   const r = rs(), me = localPlayer(r);
+  if (playerVotes.get(me.NetId) && keyOf(playerVotes.get(me.NetId)) === n.key) {
+    if (r.Players.length > 1) G.RunManager.Instance.FlavorSynchronizer.SendMapPing(n.p.coord);
+    return;
+  }
+  if (r.Players.length > 1) { playerVotes.set(me.NetId, n.p.coord); invalidate(); }
   const vote = new G.MapVote().$zero_MapVote();
   vote.coord = n.p.coord;
   vote.mapGenerationCount = G.RunManager.Instance.MapSelectionSynchronizer.MapGenerationCount;
@@ -586,6 +622,7 @@ const all = (): Record<string, Record<string, Line[]>> => (store ??= safe(() => 
 const runKey = () => `${safe(() => rs().Rng.StringSeed, '')}:${safe(() => G.RunManager.Instance._startTime, 0)}`;
 const actKey = () => String(safe(() => rs().CurrentActIndex, 0));
 let canvas: HTMLCanvasElement | null = null;
+let drawingLayer: HTMLCanvasElement | null = null;
 const drawings = {
   lines(): Line[] {
     const k = runKey(), a = actKey();
@@ -602,6 +639,7 @@ const drawings = {
   begin(x: number, y: number) {
     const lx = x * 0.5, ly = this.ly(y);
     S.line = [lx, ly, lx, ly + 0.5];
+    if (coopDrawings) { coopDrawings.begin(lx, ly, S.mode === 'erase'); return; }
     const k = runKey(), a = actKey();
     ((all()[k] ??= {})[a] ??= []).push({ e: S.mode === 'erase', p: S.line });
     this.paint();
@@ -610,28 +648,43 @@ const drawings = {
     const p = S.line!, lx = x * 0.5, ly = this.ly(y);
     if ((lx - p[p.length - 2]) ** 2 + (ly - p[p.length - 1]) ** 2 < 4) return;
     p.push(lx, ly);
+    if (coopDrawings) { coopDrawings.extend(lx, ly); return; }
     this.paint();
   },
-  end() { if (S.line) { S.line = null; this.save(); } },
-  clearMine() { const k = runKey(); (all()[k] ??= {})[actKey()] = []; this.save(); this.paint(); },
-  clearAll() { const k = runKey(); if (all()[k]) all()[k][actKey()] = []; this.paint(); },
+  end() { if (S.line) { S.line = null; if (coopDrawings) coopDrawings.end(); else this.save(); } },
+  clearMine() { if (coopDrawings) { coopDrawings.clearMine(); return; } const k = runKey(); (all()[k] ??= {})[actKey()] = []; this.save(); this.paint(); },
+  clearAll() { S.line = null; if (coopDrawings) { coopDrawings.clearAll(); return; } const k = runKey(); if (all()[k]) all()[k][actKey()] = []; this.paint(); },
   paint() {
     const c = canvas?.getContext('2d');
     if (!c) return;
     c.clearRect(0, 0, 960, 1620);
-    const color = safe(() => css(localPlayer(rs()).Character.MapDrawingColor), '#000');
-    for (const l of this.lines()) {
-      c.globalCompositeOperation = l.e ? 'destination-out' : 'source-over';
-      c.strokeStyle = l.e ? '#000' : color;
-      c.lineWidth = l.e ? 12 : 4;
-      c.lineCap = c.lineJoin = 'round';
-      c.beginPath();
-      for (let i = 0; i < l.p.length; i += 2) (i ? c.lineTo : c.moveTo).call(c, l.p[i], l.p[i + 1]);
-      c.stroke();
+    if (coopDrawings) {
+      if (!drawingLayer) { drawingLayer = document.createElement('canvas'); drawingLayer.width = 960; drawingLayer.height = 1620; }
+      const ctx = drawingLayer.getContext('2d')!;
+      for (const player of list(rs().Players)) {
+        if (player.NetId !== G.LocalContext.NetId && !G.SaveManager.Instance.PrefsSave.ShowMultiplayerDrawings) continue;
+        ctx.clearRect(0, 0, 960, 1620);
+        paintLines(ctx, coopDrawings.layers.get(player.NetId) ?? [], css(player.Character.MapDrawingColor));
+        c.drawImage(drawingLayer, 0, 0);
+      }
+      return;
     }
-    c.globalCompositeOperation = 'source-over';
+    const color = safe(() => css(localPlayer(rs()).Character.MapDrawingColor), '#000');
+    paintLines(c, this.lines(), color);
   },
 };
+function paintLines(c: CanvasRenderingContext2D, lines: Line[], color: string) {
+  for (const l of lines) {
+    c.globalCompositeOperation = l.e ? 'destination-out' : 'source-over';
+    c.strokeStyle = l.e ? '#000' : color;
+    c.lineWidth = l.e ? 12 : 4;
+    c.lineCap = c.lineJoin = 'round';
+    c.beginPath();
+    for (let i = 0; i < l.p.length; i += 2) (i ? c.lineTo : c.moveTo).call(c, l.p[i], l.p[i + 1]);
+    c.stroke();
+  }
+  c.globalCompositeOperation = 'source-over';
+}
 /** NMapDrawingInput.StopDrawing. */
 function stopDrawing() {
   drawings.end();
@@ -834,6 +887,7 @@ function NormalPoint({ n, act }: { n: MapNode; act: any }) {
           <CircleFrames play={n.circle.play} />
         </div>
       )}
+      <MapVotes n={n} />
     </div>
   );
 }
@@ -861,6 +915,7 @@ function AncientPoint({ n, act }: { n: MapNode; act: any }) {
         <div class="mp-anc-outline" style={{ maskImage: url(imageUrl(`images/packed/map/ancients/ancient_node_${id}_outline.png`)), backgroundColor: css(hov && tv ? OUTLINE_HOVER : act.MapBgColor), transition: tr('background-color', 'outline') }} />
         <div class="mp-anc-img" style={{ maskImage: url(imageUrl(`images/packed/map/ancients/ancient_node_${id}.png`)), backgroundColor: css(color), transition: tr('background-color', 'alpha') }} />
       </div>
+      <MapVotes n={n} />
     </div>
   );
 }
@@ -878,8 +933,25 @@ function BossPoint({ n, act }: { n: MapNode; act: any }) {
           <div class="mp-boss-img" style={{ maskImage: url(imageUrl(path + '.png')), backgroundColor: css(on ? act.MapTraveledColor : act.MapUntraveledColor) }} />
         </div>
       )}
+      <MapVotes n={n} />
     </div>
   );
+}
+
+/** NMapPoint.ShouldDisplayPlayerVote: unvoted players remain at the current node, voted players at their choice. */
+function MapVotes({ n }: { n: MapNode }) {
+  const r = rs(), players = list(r.Players);
+  if (players.length < 2) return null;
+  const voters = players.filter(p => {
+    const coord = playerVotes.get(p.NetId) ?? r.CurrentMapCoord;
+    return coord && keyOf(coord) === n.key;
+  });
+  return <div class="map-votes" style={{ position: 'absolute', left: `${n.w - 12}px`, top: `${n.h - 14}px`, display: 'flex', gap: '4px', pointerEvents: 'none' }}>
+    {voters.map(p => <div key={p.NetId} class="map-vote" data-player-id={p.NetId} style={{ width: '32px', height: '32px', position: 'relative' }}>
+      <img src={imageUrl(p.Character.IconOutlineTexturePath) ?? ''} style={{ position: 'absolute', width: '100%', height: '100%' }} />
+      <img src={imageUrl(p.Character.IconTexturePath) ?? ''} style={{ position: 'absolute', width: '100%', height: '100%' }} />
+    </div>)}
+  </div>;
 }
 
 function Legend() {

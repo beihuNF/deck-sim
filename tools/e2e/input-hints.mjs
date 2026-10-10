@@ -18,7 +18,8 @@ page.on('console', m => { if (m.type() === 'error' && !/GL Driver|WebGL/.test(m.
 await page.addInitScript(() => {
   localStorage.setItem('sts2_input_bindings', JSON.stringify({
     keys: { viewDeck: 'Tab', viewMap: 'F6', viewDraw: 'q', viewDiscard: 'w', viewExhaust: 'r', endTurn: 't', peek: 'p', confirm: 'f', cancel: 'Backspace', selectCard1: 'z' },
-    gamepad: { viewDeck: 7, viewMap: 6, selectCard1: 9 },
+    // Legacy saved bindings remain authoritative even after the defaults change.
+    gamepad: { viewDeck: 7, viewMap: 6, viewDraw: 14, viewDiscard: 15, viewExhaust: 13, handPrev: 4, handNext: 5, peek: 2, topPanel: null, confirm: 0, endTurn: 3, selectCard1: 9 },
   }));
   window.__pad = { connected: false, index: 0, id: 'E2E Controller', mapping: 'standard', axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
   Object.defineProperty(navigator, 'getGamepads', { value: () => window.__pad.connected ? [window.__pad] : [] });
@@ -50,19 +51,27 @@ const selectHand = () => page.evaluate(() => {
 });
 const virtualHover = async (selector, expected) => {
   await padTap(10);
-  const target = await page.locator(selector).evaluate(el => {
+  const target = async () => page.locator(selector).evaluate(el => {
     const r = el.getBoundingClientRect(), s = document.querySelector('.stage-root').getBoundingClientRect(), k = 1920 / s.width;
     return [(r.left + r.width / 2 - s.left) * k, (r.top + r.height / 2 - s.top) * k];
   });
   for (let i = 0; i < 180; i++) {
     const pos = await page.locator('.gamepad-cursor').evaluate(el => [parseFloat(el.style.left), parseFloat(el.style.top)]);
-    const delta = target.map((v, j) => v - pos[j]);
+    const delta = (await target()).map((v, j) => v - pos[j]);
     if (delta.every(v => Math.abs(v) < 5)) break;
     await page.evaluate(delta => { window.__pad.axes = delta.map(v => Math.abs(v) < 5 ? 0 : Math.sign(v) * Math.max(0.24, Math.min(0.8, Math.abs(v) / 90))).concat([0, 0]); }, delta);
     await page.waitForTimeout(20);
   }
   await page.evaluate(() => { window.__pad.axes = [0, 0, 0, 0]; });
-  await title(expected);
+  try { await title(expected); } catch (error) {
+    console.log('virtual hover state', await page.evaluate(() => {
+      const cursor = document.querySelector('.gamepad-cursor'), root = document.querySelector('.stage-root')?.getBoundingClientRect();
+      const pos = cursor ? [parseFloat(cursor.style.left), parseFloat(cursor.style.top)] : null;
+      const hit = pos && root ? document.elementFromPoint(root.left + pos[0] * root.width / 1920, root.top + pos[1] * root.width / 1920) : null;
+      return { pos, hit: hit?.className, tips: [...document.querySelectorAll('.hover-tip-title')].map(el => el.textContent), focused: [...document.querySelectorAll('.input-focus')].map(el => el.className), connected: window.__pad.connected, axes: window.__pad.axes };
+    }));
+    throw error;
+  }
 };
 
 try {
@@ -169,6 +178,14 @@ try {
   await page.evaluate(() => { window.__pad.connected = true; });
   await padTap(3);
   await page.waitForFunction(round => window.G.CombatManager.Instance.IsPlayPhase && window.G.CombatManager.Instance.DebugOnlyGetState().RoundNumber > round, beforeRound);
+  await page.keyboard.press('Backspace'); await page.waitForSelector('.pause-menu');
+  await (await pauseButton(page, 'SETTINGS')).click();
+  await page.locator('.settings-tab').nth(3).click();
+  await page.locator('.bind-row').nth(5).locator('.st-bind-btn').nth(1).click();
+  await padTap(0);
+  await page.waitForSelector('[data-rebinding]', { state: 'detached' });
+  assert.equal(await page.locator('.bind-row').nth(8).locator('[data-glyph]').getAttribute('data-glyph'), 'xbox_one/left');
+  assert.equal(await page.locator('.bind-row').nth(9).locator('[data-glyph]').getAttribute('data-glyph'), 'xbox_one/left');
   assert.deepEqual(errors, []);
   await page.screenshot({ path: `${out}/hints.png` });
   console.log('OK custom keyboard/controller bindings, live hints, idle connection, device changes, disconnect, piles, hand labels, peek, confirmation, modal cancel, end turn');

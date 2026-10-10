@@ -2,8 +2,9 @@
 // treasureBackdrop), the common banner, the relic collection's single-player holder and the proceed button.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { G } from '../game';
-import { frameByName, frameStyle, atlasFrame } from '../assets';
+import { G, list } from '../game';
+import { frameByName, frameStyle, atlasFrame, imageUrl } from '../assets';
+import { mpText } from '../multiplayer';
 import { playOneShot } from '../audio';
 import { loc } from '../i18n';
 import { Backdrop } from './backdrop';
@@ -18,13 +19,13 @@ const EXPO_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
 export function TreasureScreen({ view }: { view: TreasureView }) {
   const rs = G.RunManager.Instance.State;
-  const coll = useRef<HTMLDivElement>(null), holder = useRef<HTMLDivElement>(null);
+  const coll = useRef<HTMLDivElement>(null), holders = useRef<(HTMLDivElement | null)[]>([]);
   const paint = () => {
     chestAlpha(view.fx.ChestA);
     if (coll.current) coll.current.style.opacity = String(view.fx.CollectionA);
-    if (holder.current) {
-      holder.current.style.translate = `0 ${view.fx.HolderY}px`;
-      holder.current.style.filter = `brightness(${view.fx.HolderV})`;
+    for (const holder of holders.current) if (holder) {
+      holder.style.translate = `0 ${view.fx.HolderY}px`;
+      holder.style.filter = `brightness(${view.fx.HolderV})`;
     }
   };
   useLayoutEffect(() => { view.paint = paint; paint(); return () => { if (view.paint === paint) view.paint = undefined; }; });
@@ -37,7 +38,8 @@ export function TreasureScreen({ view }: { view: TreasureView }) {
         <div class="relic-collection" ref={coll}>
           {view.empty
             ? <div class="treasure-empty">{loc('gameplay_ui', 'TREASURE_EMPTY')}</div>
-            : view.holderShown && <RelicHolder view={view} el={holder} />}
+            : view.holderShown && view.relics.map((relic, index) => <RelicHolder key={index} view={view} relic={relic} index={index} el={node => { holders.current[index] = node; }} />)}
+          {!view.empty && view.runState.Players.length > 1 && <button class="treasure-skip" disabled={!view.clickable || view.selectionOff} onClick={() => view.skip()}>{mpText('放弃遗物', 'Skip relic')}</button>}
         </div>
       )}
       {view.banner && <CommonBanner text={loc('gameplay_ui', 'TREASURE_BANNER')} out={view.banner === 'out'} />}
@@ -61,9 +63,12 @@ function ChestButton({ view }: { view: TreasureView }) {
  * NTreasureRoomRelicHolder (204 × 204 at (858, 357)): the relic at 2× (a 120 icon centred at (960, 459) with its black
  * outline) over its rarity glow. Hover 2.1 (0.05 s), unhover 2.0 (0.4 s Expo Out), press 1.9; tips under the relic.
  */
-function RelicHolder({ view, el }: { view: TreasureView; el: { current: HTMLDivElement | null } }) {
+function RelicHolder({ view, relic, index, el }: { view: TreasureView; relic: any; index: number; el: (node: HTMLDivElement | null) => void }) {
   const [st, setSt] = useState<'' | 'hover' | 'press'>('');
-  const relic = view.relic;
+  const count = view.relics.length;
+  const left = 348 + (index - (count - 1) / 2) * 230;
+  const sync = G.RunManager.Instance.TreasureRoomRelicSynchronizer;
+  const voters = list(view.runState.Players).filter(p => { const vote = sync.GetPlayerVote(p); return vote.voteReceived && vote.index === index; });
   const id = String(safe(() => relic.Id.Entry, '')).toLowerCase();
   const rarity = safe(() => relic.Rarity, 0);
   const scale = st === 'hover' ? 2.1 : st === 'press' ? 1.9 : 2;
@@ -71,7 +76,7 @@ function RelicHolder({ view, el }: { view: TreasureView; el: { current: HTMLDivE
   glowScale.current = scale / 2;
   useEffect(() => {
     const kind = rarity === G.RelicRarity.Rare ? 'rare' : rarity === G.RelicRarity.Uncommon ? 'uncommon' : null;
-    if (!kind) return;
+    if (!kind || count > 1) return;
     let alive = true;
     void chestRelicGlow(kind, () => (alive && view.holderShown ? [960, 459 + view.fx.HolderY, view.fx.CollectionA * view.fx.HolderV, glowScale.current] : null));
     return () => { alive = false; };
@@ -79,15 +84,16 @@ function RelicHolder({ view, el }: { view: TreasureView; el: { current: HTMLDivE
   const t = st === 'hover' ? 'scale .05s linear' : `scale .4s ${EXPO_OUT}`;
   const enabled = view.clickable && !view.selectionOff;
   return (
-    <div class="relic-holder-t" ref={el}
-      onPointerEnter={() => { if (!view.clickable) return; setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); setTips(hoverTipsOf(relic), { kind: 'relic', rect: [892, 391, 120, 120] }); }}
+    <div class="relic-holder-t" ref={el} data-relic-index={index} style={{ left: `${left}px`, translate: `0 ${view.fx.HolderY}px`, filter: `brightness(${view.fx.HolderV})` }}
+      onPointerEnter={() => { if (!view.clickable) return; setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); setTips(hoverTipsOf(relic), { kind: 'relic', rect: [left + 544, 391, 120, 120] }); }}
       onPointerLeave={() => { setSt(''); setTip(null); }}
       onPointerDown={(e) => { if (e.button === 0 && enabled) { setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
-      onPointerUp={(e) => { if (e.button === 0 && st === 'press') { setSt('hover'); setTip(null); view.pick(); } }}>
+      onPointerUp={(e) => { if (e.button === 0 && st === 'press') { setSt('hover'); setTip(null); view.pick(index); } }}>
       <div class="rh-relic" style={{ scale: String(scale / 2), transition: t }}>
         <div class="relic-outline" style={frameStyle(frameByName('relic_outline_atlas', id), 120, 120)} />
         <div style={frameStyle(atlasFrame(safe(() => relic.IconPath, '')) ?? frameByName('relic_atlas', id), 120, 120)} />
       </div>
+      <div class="treasure-votes">{voters.map(p => <img key={p.NetId} data-player-id={p.NetId} src={imageUrl(p.Character.IconTexturePath) ?? ''} alt={String(p.NetId)} />)}</div>
     </div>
   );
 }

@@ -19,7 +19,7 @@ import { openChest, chestSkin, chestGold, playSpriteVfx, extinguishRestFire } fr
 import { playCombatVfx, playItemThrow } from './render/cardfx';
 import { screenShake, screenRumble, screenShakeTrauma, hitStop } from './ui/screenshake';
 import { OrbManagerView } from './ui/orbs';
-import { setMap, openMap, closeMap, isMapVisible, setTravelEnabled, setDebugTravelEnabled, mapTraveling, initMarker, travelToMapCoord, spawnActBanner } from './ui/map';
+import { setMap, openMap, closeMap, isMapVisible, setTravelEnabled, setDebugTravelEnabled, mapTraveling, initMarker, travelToMapCoord, spawnActBanner, initializeMap, refreshMapVotes } from './ui/map';
 import { view, fracX } from './view';
 
 const NRun = N('NRun');
@@ -1062,6 +1062,7 @@ export class TreasureView extends NTreasureRoom {
   collection = false;
   empty = false;
   relic: any = null;
+  relics: any[] = [];
   holderShown = false;
   clickable = false;
   claimed = false;
@@ -1070,6 +1071,7 @@ export class TreasureView extends NTreasureRoom {
   private openedAt = 0;
   private done: any = null;
   private awarded: any = null;
+  private votesChanged = () => invalidate();
   constructor(public room: any, public runState: any) { super(); }
   get proceedOn() { return this.claimed && !ui.overlays.length; }
   /** OpenChest. */
@@ -1087,6 +1089,7 @@ export class TreasureView extends NTreasureRoom {
     const sync = G.RunManager.Instance.TreasureRoomRelicSynchronizer;
     this.awarded = (results: any) => this.onAwarded(results);
     sync.RelicsAwarded = $.dcombine(sync.RelicsAwarded, this.awarded);
+    sync.VotesChanged = $.dcombine(sync.VotesChanged, this.votesChanged);
     this.done = tcs();
     this.animIn(list(sync.CurrentRelics));
     void this.relicFtue();
@@ -1103,6 +1106,7 @@ export class TreasureView extends NTreasureRoom {
   }
   /** InitializeRelics + AnimIn: the collection fades in over the dimmed chest; the relic comes up from black, 150 px low. */
   private animIn(relics: any[]) {
+    this.relics = relics;
     this.collection = true;
     this.openedAt = performance.now();
     const t = play(this, new $.WebTween().SetParallel());
@@ -1138,21 +1142,29 @@ export class TreasureView extends NTreasureRoom {
   }
   selectionOff = false;
   /** PickRelic: clicks in the first 200 ms after opening are ignored. */
-  pick() {
+  pick(index = 0) {
     if (!this.clickable || this.selectionOff || performance.now() - this.openedAt <= 200) return;
-    G.RunManager.Instance.TreasureRoomRelicSynchronizer.PickRelicLocally(0);
+    if (index < 0 || index >= this.relics.length) return;
+    G.RunManager.Instance.TreasureRoomRelicSynchronizer.PickRelicLocally(index);
+  }
+  skip() {
+    if (!this.clickable || this.selectionOff || this.runState.Players.length < 2) return;
+    G.RunManager.Instance.TreasureRoomRelicSynchronizer.SkipRelicLocally();
   }
   /** AnimateRelicAwards (single player: no hands): obtain, the top-bar relic flies from the holder, the holder hides. */
   private onAwarded(results: any) {
     const sync = G.RunManager.Instance.TreasureRoomRelicSynchronizer;
     sync.RelicsAwarded = $.dremove(sync.RelicsAwarded, this.awarded);
+    sync.VotesChanged = $.dremove(sync.VotesChanged, this.votesChanged);
     this.clickable = false;
     for (const r of list(results)) {
       const relic = r.relic.ToMutable();
-      G.TaskHelper.RunSafely(G.RelicCmd.Obtain$3(relic, r.player, -1));
-      if (G.LocalContext.IsMe$Player(r.player)) NRun.Instance.GlobalUi.RelicInventory.AnimateRelic(relic, new $.Vector2(858, 357 + this.fx.HolderY), new $.Vector2(1, 1));
-      if (list(this.runState.Players).length === 1) this.holderShown = false;
-      for (const p of list(r.player.RunState.Players)) if (p !== r.player) p.RelicGrabBag.MoveToFallback(r.relic);
+      if (r.type !== G.RelicPickingResultType.Skipped) {
+        G.TaskHelper.RunSafely(G.RelicCmd.Obtain$3(relic, r.player, -1));
+        if (G.LocalContext.IsMe$Player(r.player)) NRun.Instance.GlobalUi.RelicInventory.AnimateRelic(relic, new $.Vector2(858, 357 + this.fx.HolderY), new $.Vector2(1, 1));
+        if (list(this.runState.Players).length === 1) this.holderShown = false;
+      }
+      for (const p of list(this.runState.Players)) if (p !== r.player) p.RelicGrabBag.MoveToFallback(r.relic);
     }
     this.done?.TrySetResult();
     invalidate();
@@ -1185,7 +1197,7 @@ export class MapView extends NMapScreen {
   get IsTraveling() { return mapTraveling.get(); }
   set IsTraveling(v: boolean) { mapTraveling.set(v); }
   InitMarker(coord: any) { initMarker(coord); }
-  RefreshAllMapPointVotes() {}
+  RefreshAllMapPointVotes() { refreshMapVotes(); }
   TravelToMapCoord(coord: any) { return travelToMapCoord(coord); }
   HighlightPointType() {}
   CleanUp() { if (G.RunManager.Instance.IsSingleplayerOrFakeMultiplayer) G.CombatManager.Instance.Unpause(); }
@@ -2028,5 +2040,6 @@ export function installBridge() {
 }
 export function attachRun(runState: any) {
   NRun.Instance = new RunView(runState);
+  initializeMap();
   musicController.SetRunState(runState);
 }
