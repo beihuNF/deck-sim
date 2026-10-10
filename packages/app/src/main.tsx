@@ -34,7 +34,11 @@ import { ModalLayer } from './ui/modal';
 import { FeedbackScreen, feedbackOpen } from './ui/feedback';
 import { topBarMapPressed } from './ui/map';
 import { fit, turned } from './view';
+import { getBindings } from './input/bindings';
+import { initGamepadLoop, VirtualCursor, GamepadToast } from './input/gamepad';
 import './anchors.css'; // last: it adjusts what the other stylesheets place
+
+initGamepadLoop();
 
 window.addEventListener('resize', () => { fit(); invalidate(); });
 // While turned, page coordinates are reported as the unturned stage sees them (x = page y, y = width − page x), so
@@ -81,10 +85,12 @@ function runHotkey(key: string) {
   if (ui.screen !== 'run' || ui.pauseOpen || ui.subscreen || ftueActive()) return;
   if (combatHotkey(key)) return;
   const k = key.toLowerCase();
-  const pile = ({ a: 'draw', s: 'discard', x: 'exhaust', d: 'deck' } as Record<string, 'draw' | 'discard' | 'exhaust' | 'deck'>)[k];
-  if (pile && (pile === 'deck' || document.querySelector('.combat .combat-ui'))) toggleCardsView(pile);
-  else if (k === 'm' && !ui.gameOver && ui.room?.kind !== 'maproom') topBarMapPressed(); // NTopBarMapButton's viewMap hotkey
-  else return;
+  const b = getBindings().keys;
+  if (k === b.viewDeck.toLowerCase() || k === 'd') {
+    if (document.querySelector('.combat .combat-ui')) toggleCardsView('deck');
+  } else if ((k === b.viewMap.toLowerCase() || k === 'm') && !ui.gameOver && ui.room?.kind !== 'maproom') {
+    topBarMapPressed();
+  } else return;
   invalidate();
 }
 const SCREENS: Partial<Record<Screen, () => any>> = {
@@ -99,7 +105,8 @@ window.addEventListener('contextmenu', (e) => e.preventDefault(), true);
 window.addEventListener('keydown', (e) => {
   // NPeekButton's hotkey (MegaInput.peek = Space) on an overlay screen that has one
   const top = ui.overlays[ui.overlays.length - 1];
-  if (e.code === 'Space' && ui.screen === 'run' && top?.peekEnabled && !(e.target as HTMLElement)?.closest?.('input, textarea')) {
+  const b = getBindings().keys;
+  if ((e.code === 'Space' || e.key.toLowerCase() === b.peek.toLowerCase()) && ui.screen === 'run' && top?.peekEnabled && !(e.target as HTMLElement)?.closest?.('input, textarea')) {
     e.preventDefault();
     if (!e.repeat) top.togglePeek();
     return;
@@ -129,6 +136,7 @@ function App() {
           {ui.screen === 'menu' && <MainMenu />}
           {ui.screen === 'run' && <RunScreen />}
           <ScreenView s={ui.screen} />
+          <VirtualCursor />
         </div>
       </div>
       <TransitionLayer />
@@ -139,6 +147,7 @@ function App() {
       <ModalLayer />
       <Tip />
       {ui.toast && <div class="toast" onClick={() => { ui.toast = ''; invalidate(); }}>{ui.toast}</div>}
+      <GamepadToast />
       <DevConsole />
     </>
   );

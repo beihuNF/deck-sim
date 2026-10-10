@@ -2,7 +2,11 @@
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_10',
-    eng: `[gold][b]Display[/b][/gold]
+    eng: `[gold][b]Controls[/b][/gold]
+• Added full gamepad / controller support with console-style combat hand navigation, auto-targeting for single-target cards, and smooth virtual cursor for menus and maps.
+• Unlocked and implemented the Input settings tab with customizable keyboard and controller keybindings and reset support.
+
+[gold][b]Display[/b][/gold]
 • Prevented accidental browser text selection and ghost image dragging during gameplay.
 • Fixed an issue where dragging the settings scrollbar downward would scroll upward.
 • Fixed a white screen that could cover the game after continuing a saved run or changing screens.
@@ -21,7 +25,11 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]Save compatibility[/b][/gold]
 • Preserved the original Doormaker battle and its changing forms in existing runs.`,
-    zhs: `[gold][b]画面[/b][/gold]
+    zhs: `[gold][b]操作[/b][/gold]
+• 新增完整手柄（控制器）支持：战斗中采用主机版手牌轮盘与指向性卡牌敌人自动吸附切换；菜单、地图与商店支持摇杆虚拟光标与右摇杆滚屏。
+• 解锁并完整实现设置中的“操作设置”：支持自定义键盘按键与手柄按钮绑定，并可一键重置为默认。
+
+[gold][b]画面[/b][/gold]
 • 修复游戏内鼠标拖拽时可能误选中文本或拖出图片虚影的问题。
 • 修复设置界面中向下拖拽滚动条反而向上滚动的问题。
 • 修复继续存档或切换界面后可能遮住游戏的白屏。

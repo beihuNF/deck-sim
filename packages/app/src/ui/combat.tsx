@@ -20,6 +20,13 @@ import { HandSelectUi, SelectConfirmButton, confirmHotkey, peekHotkey } from './
 import { CardFxCanvas } from '../render/cardfx';
 import { arrow, ftueHook, targetManager, TrailVfx, ShuffleFlyVfx, type HandView } from '../cardnodes';
 
+import { getBindings } from '../input/bindings';
+
+export { pileHotkey, endTurnHotkey, peekHotkey, confirmHotkey };
+export function getCombatHand(): HandView | null {
+  return hotkeys?.hand ?? null;
+}
+
 let hotkeys: { hand: HandView | null } | null = null;
 /** NHotkeyManager: echoes (held-key repeats) never trigger; a hotkey's release binding runs when its key comes up. */
 let keyRepeat = false;
@@ -28,19 +35,45 @@ const held = new Map<string, () => void>();
 window.addEventListener('keyup', (e) => { const k = e.key.toLowerCase(), f = held.get(k); if (f) { held.delete(k); f(); } });
 const hold = (k: string, release: (() => void) | null) => { if (release) held.set(k, release); return true; };
 /**
- * Combat keys (NInputManager.DefaultKeyboardInputMap): digits pick hand cards (NPlayerHand selectCard1–10), Space is the
- * peek button's, E (accept) the confirm button's during a hand selection and otherwise the End Turn button's, A / S / X
- * the pile buttons'. A button takes its key only while enabled.
+ * Combat keys: digits pick hand cards, Space peek, E end turn / confirm, A / S / X piles.
+ * Supports custom keyboard bindings from input settings.
  */
 export function combatHotkey(key: string): boolean {
   if (!hotkeys || !document.querySelector('.combat .combat-ui')) return false;
   const k = key.toLowerCase(), hand = hotkeys.hand;
-  if (!/^[0-9 easx]$/.test(k)) return false;
   if (keyRepeat) return true;
-  if (/^[0-9]$/.test(k)) { if (combatIsCurrent()) hand?.selectCardShortcut((Number(k) + 9) % 10); return true; }
-  if (k === ' ') return hold(k, hand?.IsInCardSelection && combatIsCurrent() ? peekHotkey() : null);
-  if (k === 'e') return hold(k, !hand?.IsInCardSelection ? endTurnHotkey() : combatIsCurrent() ? confirmHotkey() : null);
-  return hold(k, pileHotkey(k === 'a' ? 'draw' : k === 's' ? 'discard' : 'exhaust'));
+
+  const b = getBindings().keys;
+  // Card numbers (selectCard1–10)
+  const cardKeys = [
+    b.selectCard1, b.selectCard2, b.selectCard3, b.selectCard4, b.selectCard5,
+    b.selectCard6, b.selectCard7, b.selectCard8, b.selectCard9, b.selectCard10,
+  ].map((c) => c.toLowerCase());
+  const cardIdx = cardKeys.indexOf(k);
+  if (cardIdx !== -1) {
+    if (combatIsCurrent()) hand?.selectCardShortcut(cardIdx);
+    return true;
+  }
+  // Fallback default digits
+  if (/^[0-9]$/.test(k)) {
+    if (combatIsCurrent()) hand?.selectCardShortcut((Number(k) + 9) % 10);
+    return true;
+  }
+
+  // Peek
+  if (k === b.peek.toLowerCase() || k === ' ') {
+    return hold(k, hand?.IsInCardSelection && combatIsCurrent() ? peekHotkey() : null);
+  }
+  // End turn / Confirm
+  if (k === b.endTurn.toLowerCase() || k === 'e') {
+    return hold(k, !hand?.IsInCardSelection ? endTurnHotkey() : combatIsCurrent() ? confirmHotkey() : null);
+  }
+  // Piles
+  if (k === b.viewDraw.toLowerCase() || k === 'a') return hold(k, pileHotkey('draw'));
+  if (k === b.viewDiscard.toLowerCase() || k === 's') return hold(k, pileHotkey('discard'));
+  if (k === b.viewExhaust.toLowerCase() || k === 'x') return hold(k, pileHotkey('exhaust'));
+
+  return false;
 }
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };

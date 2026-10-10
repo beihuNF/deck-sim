@@ -991,6 +991,17 @@ button { font-family: var(--font); cursor: pointer; }
 .settings-toast { position: absolute; left: 610px; top: 1088px; width: 700px; height: 64px; opacity: 0; pointer-events: none; }
 .stt-bg { position: absolute; inset: 0; box-sizing: border-box; border-style: solid; border-width: 16px 32px; border-image-slice: 16 32 fill; filter: brightness(0); opacity: .75; }
 .stt-text { position: absolute; inset: 0; display: grid; place-items: center; font: 400 28px 'Kreon', var(--font); color: #EFC851; white-space: nowrap; }
+
+/* Settings Input Tab Keybinding */
+.settings-row.header { justify-content: flex-start; padding: 16px 12px 6px; height: auto; }
+.sr-header-text { font: 700 28px 'Kreon', var(--font); color: #EFC851; letter-spacing: 2px; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6); }
+.st-bind-btn { position: relative; width: 280px; height: 54px; background: rgba(18, 33, 41, 0.85); border: 2px solid rgba(232, 220, 190, 0.45); border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; user-select: none; }
+.st-bind-btn:hover { background: rgba(44, 88, 112, 0.85); border-color: #EFC851; transform: scale(1.03); }
+.st-bind-btn.listening { background: rgba(85, 45, 20, 0.95); border-color: #FFAE19; box-shadow: 0 0 14px rgba(255, 174, 25, 0.7); animation: bind-pulse 0.8s infinite alternate ease-in-out; }
+.st-bind-text { font: 700 24px 'Kreon', var(--font); color: #FFF6E2; letter-spacing: 1px; text-shadow: 2px 2px 0 rgba(0, 0, 0, .6); pointer-events: none; }
+.st-bind-btn.listening .st-bind-text { color: #FFAE19; }
+@keyframes bind-pulse { from { box-shadow: 0 0 4px rgba(255, 174, 25, 0.4); transform: scale(1.01); } to { box-shadow: 0 0 16px rgba(255, 174, 25, 0.85); transform: scale(1.05); } }
+
 .nscrollbar { position: absolute; }
 .nsb-track, .nsb-train { position: absolute; left: 0; pointer-events: none; }
 

@@ -24,6 +24,18 @@ import { confirmPopup } from './modal';
 import { openCredits } from './profile';
 import { openFeedback } from './feedback';
 import { view, fit } from '../view';
+import {
+  ACTION_LIST,
+  getBindings,
+  setKeyBinding,
+  setGamepadBinding,
+  resetBindings,
+  formatKeyName,
+  formatGamepadButton,
+  getActionName,
+  type ActionId,
+} from '../input/bindings';
+import { listenNextGamepadButton, cancelGamepadListen } from '../input/gamepad';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const s = (k: string) => loc('settings_ui', k);
@@ -53,7 +65,9 @@ type Row =
   | { kind: 'slider'; label: string; get: () => number; set: (v: number) => void }
   | { kind: 'lang'; label: string; disabled: boolean }
   | { kind: 'drop'; label: string; options: string[]; get: () => number; set: (i: number) => void }
-  | { kind: 'button'; label: string; text: string; hsv: number[]; outline: string; onClick: () => void };
+  | { kind: 'button'; label: string; text: string; hsv: number[]; outline: string; onClick: () => void }
+  | { kind: 'bind'; label: string; keyText: string; listening: boolean; onListen: () => void }
+  | { kind: 'header'; label: string };
 
 const prefs = () => sm().PrefsSave, settings = () => sm().SettingsSave;
 /** A tickbox row; `tip` names the hover tip's title key (its description is the key without _HEADER, plus _DESCRIPTION). */
@@ -138,6 +152,43 @@ function soundRows(): Row[] {
     tick('BACKGROUND_MUTE', null, () => prefs().MuteInBackground, (v) => { prefs().MuteInBackground = v; applyMute(); }, 'MUTE_IN_BACKGROUND'),
   ];
 }
+function inputRows(
+  listenTarget: { type: 'key' | 'gamepad'; action: ActionId } | null,
+  setListenTarget: (t: { type: 'key' | 'gamepad'; action: ActionId } | null) => void,
+  onReset: () => void,
+): Row[] {
+  const p = prefs;
+  const bindings = getBindings();
+  const isListening = (type: 'key' | 'gamepad', act: ActionId) =>
+    listenTarget?.type === type && listenTarget?.action === act;
+
+  return [
+    tick('LONG_PRESS_CONFIRMATION_HEADER', 'LONG_PRESS_CONFIRMATION_HEADER', () => p().IsLongPressEnabled, (v) => { p().IsLongPressEnabled = v; }),
+    tick('SHOW_HAND_CARD_COUNT_HEADER', 'SHOW_HAND_CARD_COUNT_HEADER', () => p().ShowCardIndices, (v) => { p().ShowCardIndices = v; }, 'HAND_CARD_COUNT'),
+    { kind: 'header', label: s('INPUT_SETTINGS.KEYBOARD_HEADER') },
+    ...ACTION_LIST.map((a): Row => ({
+      kind: 'bind',
+      label: getActionName(a),
+      keyText: formatKeyName(bindings.keys[a.id] ?? a.defaultKey),
+      listening: isListening('key', a.id),
+      onListen: () => setListenTarget({ type: 'key', action: a.id }),
+    })),
+    { kind: 'header', label: s('INPUT_SETTINGS.CONTROLLER_HEADER') },
+    ...ACTION_LIST.filter((a) => a.defaultBtn !== null).map((a): Row => ({
+      kind: 'bind',
+      label: getActionName(a),
+      keyText: formatGamepadButton(bindings.gamepad[a.id] ?? a.defaultBtn),
+      listening: isListening('gamepad', a.id),
+      onListen: () => setListenTarget({ type: 'gamepad', action: a.id }),
+    })),
+    {
+      ...RESET,
+      label: s('RESET_DEFAULT'),
+      text: s('INPUT_SETTINGS.RESET_TO_DEFAULT'),
+      onClick: onReset,
+    },
+  ];
+}
 
 // ------------------------------------------------------------------ the screen
 const TABS = ['TAB_GENERAL', 'TAB_GRAPHICS', 'TAB_SOUND', 'TAB_INPUT'];
@@ -147,15 +198,110 @@ function showToast(key: string) { toast.text = s(key); toast.gen++; invalidate()
 
 export function SettingsScreen({ inRun, onBack }: { inRun: boolean; onBack: () => void }) {
   const [tab, setTab] = useState(0);
-  useEffect(() => () => { safe(() => { sm().SaveSettings(); sm().SavePrefsFile(); }, null); toast.text = ''; }, []);
-  const rows = tab === 0 ? generalRows(inRun) : tab === 1 ? graphicsRows() : soundRows();
+  const [listenTarget, setListenTarget] = useState<{ type: 'key' | 'gamepad'; action: ActionId } | null>(null);
+  const [rebindGen, setRebindGen] = useState(0);
+
+  useEffect(() => () => {
+    safe(() => { sm().SaveSettings(); sm().SavePrefsFile(); }, null);
+    toast.text = '';
+    cancelGamepadListen();
+  }, []);
+
+  // Listen for keyboard input when rebinding
+  useEffect(() => {
+    if (!listenTarget) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === 'Escape') {
+        cancelGamepadListen();
+        setListenTarget(null);
+        playOneShot('event:/sfx/ui/clicks/ui_click');
+        return;
+      }
+      if (listenTarget.type === 'key') {
+        setKeyBinding(listenTarget.action, e.key);
+        playOneShot('event:/sfx/ui/clicks/ui_click');
+        setListenTarget(null);
+        setRebindGen((g) => g + 1);
+        invalidate();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [listenTarget]);
+
+  // Listen for gamepad button when rebinding
+  useEffect(() => {
+    if (!listenTarget || listenTarget.type !== 'gamepad') {
+      cancelGamepadListen();
+      return;
+    }
+
+    listenNextGamepadButton((btnIndex) => {
+      setGamepadBinding(listenTarget.action, btnIndex);
+      playOneShot('event:/sfx/ui/clicks/ui_click');
+      setListenTarget(null);
+      setRebindGen((g) => g + 1);
+      invalidate();
+    });
+
+    return () => {
+      cancelGamepadListen();
+    };
+  }, [listenTarget]);
+
+  const onResetBindings = async () => {
+    const yes = await confirmPopup({
+      header: s('RESET_CONFIRMATION.header'),
+      body: s('RESET_GAMEPLAY_CONFIRMATION.body'),
+      yes: loc('main_menu_ui', 'GENERIC_POPUP.confirm'),
+      no: loc('main_menu_ui', 'GENERIC_POPUP.cancel'),
+    });
+    if (yes) {
+      resetBindings();
+      setRebindGen((g) => g + 1);
+      invalidate();
+    }
+  };
+
+  const rows =
+    tab === 0
+      ? generalRows(inRun)
+      : tab === 1
+      ? graphicsRows()
+      : tab === 2
+      ? soundRows()
+      : inputRows(listenTarget, setListenTarget, () => void onResetBindings());
+
   return (
     <div class="settings-screen">
       <SettingsScroll key={tab} rows={rows} />
       <div class="settings-tabs">
-        {TABS.map((k, i) => <SettingsTab label={s(k)} x={442 + 260 * i} selected={tab === i} disabled={i === 3} onClick={() => setTab(i)} />)}
+        {TABS.map((k, i) => (
+          <SettingsTab
+            label={s(k)}
+            x={442 + 260 * i}
+            selected={tab === i}
+            onClick={() => {
+              setListenTarget(null);
+              cancelGamepadListen();
+              setTab(i);
+            }}
+          />
+        ))}
       </div>
-      <BackButton enabled onClick={() => { setTip(null); onBack(); }} />
+      <BackButton
+        enabled
+        onClick={() => {
+          setListenTarget(null);
+          cancelGamepadListen();
+          setTip(null);
+          onBack();
+        }}
+      />
       <Toast />
     </div>
   );
@@ -222,6 +368,13 @@ function SettingsRow({ r }: { r: Row }) {
     const rr = ref.current.getBoundingClientRect(), sr = document.querySelector('.stage-root')!.getBoundingClientRect(), k = 1920 / sr.width;
     setTip(tip[0], tip[1], { kind: 'at', x: 1466, y: (rr.top - sr.top) * k - 60 });
   };
+  if (r.kind === 'header') {
+    return (
+      <div class="settings-row header">
+        <div class="sr-header-text"><RichText text={r.label} /></div>
+      </div>
+    );
+  }
   return (
     <div class="settings-row" ref={ref} onPointerEnter={showTip} onPointerLeave={() => tip && setTip(null)}>
       <div class={'sr-label' + (r.kind === 'lang' && r.disabled ? ' disabled' : '')}><RichText text={r.label} /></div>
@@ -231,6 +384,26 @@ function SettingsRow({ r }: { r: Row }) {
       {r.kind === 'lang' && <LanguageDropdown disabled={r.disabled} />}
       {r.kind === 'drop' && <Dropdown label={r.options[safe(r.get, -1)] ?? ''} options={r.options} onPick={(i) => { r.set(i); invalidate(); }} />}
       {r.kind === 'button' && <SettingsButton r={r} />}
+      {r.kind === 'bind' && <KeybindButton r={r} />}
+    </div>
+  );
+}
+
+function KeybindButton({ r }: { r: Extract<Row, { kind: 'bind' }> }) {
+  return (
+    <div
+      class={'st-bind-btn' + (r.listening ? ' listening' : '')}
+      data-ctl
+      onPointerDown={(e) => {
+        if (e.button === 0) {
+          click();
+          r.onListen();
+        }
+      }}
+    >
+      <div class="st-bind-text">
+        {r.listening ? s('LISTENING_INPUT') : r.keyText}
+      </div>
     </div>
   );
 }
