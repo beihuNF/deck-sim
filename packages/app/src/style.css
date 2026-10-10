@@ -49,7 +49,7 @@ html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); 
 /* a Pixi canvas over the whole viewport (view.ts fullView), and whatever else fills it */
 .view-canvas, .view-fill, .fx-slot { position: absolute; left: calc(-1 * var(--ox)); top: calc(-1 * var(--oy)); width: calc(1920px + 2 * var(--ox)) !important; height: calc(1080px + 2 * var(--oy)) !important; }
 /* GPU Compositing Layer Optimization */
-.viewport, .stage-root, .view-canvas {
+.view-canvas {
   transform: translateZ(0);
   backface-visibility: hidden;
 }
