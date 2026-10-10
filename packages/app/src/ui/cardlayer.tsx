@@ -166,6 +166,7 @@ export function usePointer(hand: () => HandView | null) {
     const root = document.querySelector('.stage-root') as HTMLElement | null;
     const move = (e: PointerEvent) => {
       if (!e.isPrimary) return;
+      if (e.isTrusted && hand()?.currentPlay?.directional) hand()?.currentPlay?.CancelPlayCard();
       const r = (root ?? document.body).getBoundingClientRect();
       mouse.x = ((e.clientX - r.left) / r.width) * 1920;
       mouse.y = ((e.clientY - r.top) / r.height) * 1080;

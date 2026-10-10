@@ -583,7 +583,7 @@ export class HandView extends Web(NPlayerHand) {
     if (off) this.CancelAllCardPlay();
   }
   /** OnHolderPressed: while peeking the peek button wiggles; Mode.Play → StartCardPlay; the selection modes pick the card. */
-  press(h: HolderView, touch = false) {
+  press(h: HolderView, touch = false, directional = false) {
     if (this.select.peeking) { this.select.wiggle++; invalidate(); return; }
     if (this.IsInCardSelection) {
       if (!h.CardNode || !G.CombatManager.Instance.IsInProgress || safe(() => N('Screens.Overlays.NOverlayStack').Instance.ScreenCount > 0, false)) return;
@@ -592,7 +592,7 @@ export class HandView extends Web(NPlayerHand) {
     }
     if (!h.CardNode || !G.CombatManager.Instance.IsInProgress || this.currentPlay) return;
     if (!this.cardActionsAllowed()) return;
-    this.StartCardPlay(h, false, touch);
+    this.StartCardPlay(h, false, touch, directional);
   }
   /**
    * NPlayerHand._UnhandledInput selectCard1–10: the dragged card keeps its number; in play mode a card already being
@@ -613,12 +613,12 @@ export class HandView extends Web(NPlayerHand) {
       if (this.mode === 2) this.SelectCardInSimpleMode(h); else this.SelectCardInUpgradeMode(h);
     }
   }
-  private StartCardPlay(h: HolderView, viaShortcut: boolean, touch = false) {
+  private StartCardPlay(h: HolderView, viaShortcut: boolean, touch = false, directional = false) {
     this.draggedIndex = h.GetIndex();
     this.awaiting.set(h, this.draggedIndex);
     h.Reparent(this);
     h.BeginDrag();
-    this.currentPlay = new MouseCardPlay(h, this, viaShortcut, touch);
+    this.currentPlay = new MouseCardPlay(h, this, viaShortcut, touch, directional);
     safe(() => G.RunManager.Instance.HoveredModelTracker.OnLocalCardSelected(h.CardNode!.Model), null);
     this.currentPlay.Start();
     this.RefreshLayout();
@@ -1076,7 +1076,9 @@ let headTw: any = null;
 /** NTargetingArrow._Process / UpdateArrowPosition / UpdateSegments. */
 function updateArrow() {
   const from = arrow.from ? arrow.from.GlobalPosition : arrow.fromPos;
-  arrow.to = v2(mouse.x, mouse.y);
+  const target = targetManager.mode === TM.Controller ? targetManager.hovered : null;
+  const top = target?.GetTopOfHitbox?.(), bottom = target?.GetBottomOfHitbox?.();
+  arrow.to = top && bottom ? top.Lerp(bottom, 0.5) : v2(mouse.x, mouse.y);
   const t = arrow.to, h = arrow.head;
   const back = v2(0, 88).Rotated(h.rot);
   h.x = t.X + back.X; h.y = t.Y + back.Y;
@@ -1105,7 +1107,7 @@ function arrowHighlight(on: boolean, enemy = true) {
   }
 }
 
-const TM = { None: 0, ReleaseMouseToTarget: 1, ClickMouseToTarget: 2 };
+const TM = { None: 0, ReleaseMouseToTarget: 1, ClickMouseToTarget: 2, Controller: 3 };
 class TargetManager {
   mode = TM.None;
   private validType = 0;
@@ -1151,6 +1153,8 @@ class TargetManager {
     if (finish) this.FinishTargeting(cancel);
   }
   CancelTargeting() { if (this.IsInSelection) this.FinishTargeting(true); }
+  /** NTargetManager._Input: directional selection does not depend on mouse release or position. */
+  ConfirmTargeting() { if (this.IsInSelection && this.hovered && this.allowed(this.hovered)) this.FinishTargeting(false); }
   private FinishTargeting(cancel: boolean) {
     const r = this.resolve, node = cancel ? null : this.hovered;
     this.resolve = null;
@@ -1172,7 +1176,7 @@ class TargetManager {
     if (!c) return true;
     const T = G.TargetType;
     switch (this.validType) {
-      case T.AnyEnemy: return c.Side === G.CombatSide.Enemy;
+      case T.AnyEnemy: return c.Side === G.CombatSide.Enemy && !c.IsDead;
       case T.AnyPlayer: return c.IsPlayer && !c.IsDead;
       case T.AnyAlly: return c.IsPlayer && !c.IsDead && !G.LocalContext.IsMe$Player(c.Player);
       default: return true;
@@ -1182,6 +1186,7 @@ class TargetManager {
   OnNodeHovered(node: any) {
     if (!this.IsInSelection || !this.allowed(node)) return;
     if (!(node instanceof NCreature)) {
+      if (this.hovered && this.hovered !== node) this.OnNodeUnhovered(this.hovered);
       // any other node (the merchant, for a TargetedNoCreature potion) is the target as it is; the arrow lights up green
       this.hovered = node;
       arrowHighlight(true, false);
@@ -1190,14 +1195,16 @@ class TargetManager {
     }
     const c = node.Entity, pre = { v: null as any };
     if (!G.Hook.ShouldAllowTargeting(c.CombatState, c, pre)) { safe(() => G.TaskHelper.RunSafely(pre.v.AfterTargetingBlockedVfx(c)), null); return; }
+    if (this.hovered && this.hovered !== node) this.OnNodeUnhovered(this.hovered);
     this.hovered = node;
     arrowHighlight(true, c.IsEnemy);
     node.ShowSingleSelectReticle();
     this.onHover?.(node);
+    if (this.mode === TM.Controller) updateArrow();
     invalidate();
   }
   OnNodeUnhovered(node: any) {
-    if (!this.IsInSelection || !this.allowed(node)) return;
+    if (!this.IsInSelection || (this.hovered !== node && !this.allowed(node))) return;
     if (!(node instanceof NCreature)) { this.hovered = null; arrowHighlight(false); invalidate(); return; }
     this.onUnhover?.(node);
     if (this.hovered === node) this.hovered = null;
@@ -1220,7 +1227,9 @@ export class MouseCardPlay {
   private leftDown: boolean;
   private dragStartY = 0;
   private done = false;
-  constructor(public holder: HolderView, private hand: HandView, private skipDrag: boolean, private touch = false) { this.leftDown = !skipDrag; }
+  private directionalConfirmed = false;
+  constructor(public holder: HolderView, private hand: HandView, private skipDrag: boolean, private touch = false, public directional = false) { this.leftDown = !skipDrag; }
+  ConfirmDirectionalPlay() { if (this.directional) this.directionalConfirmed = true; }
   get cardNode() { return this.holder.CardNode; }
   get card() { return this.cardNode?.Model ?? null; }
   private get playZone() {
@@ -1246,7 +1255,7 @@ export class MouseCardPlay {
   private async run() {
     if (!this.card || !this.cardNode) return;
     this.dragStartY = mouse.y;
-    if (!this.skipDrag) {
+    if (!this.skipDrag && !this.directional) {
       do await this.lerpToMouse();
       while (!this.inPlayZone() && !this.cancelled);
     }
@@ -1260,14 +1269,14 @@ export class MouseCardPlay {
       return;
     }
     this.cardNode.CardHighlight.AnimFlash();
-    const mode = this.skipDrag ? TM.ClickMouseToTarget : this.leftDown || this.touch ? TM.ReleaseMouseToTarget : TM.ClickMouseToTarget;
+    const mode = this.directional ? TM.Controller : this.skipDrag ? TM.ClickMouseToTarget : this.leftDown || this.touch ? TM.ReleaseMouseToTarget : TM.ClickMouseToTarget;
     this.tryShowEvokingOrbs();
     this.cardNode?.CardHighlight.AnimFlash();
     const T = G.TargetType, tt = this.card.TargetType;
     if (tt === T.AnyEnemy || tt === T.AnyAlly) await this.singleTargeting(mode, tt);
     else await this.multiTargeting(mode);
     if (this.cancelled) return;
-    if (!this.inPlayZone()) this.CancelPlayCard();
+    if (!this.directional && !this.inPlayZone()) this.CancelPlayCard();
     if (!this.cancelled) this.TryPlayCard(this.target);
   }
   private async lerpToMouse() {
@@ -1284,11 +1293,18 @@ export class MouseCardPlay {
     this.centerCard();
     targetManager.onHover = (c) => this.cardNode?.SetPreviewTarget(c.Entity);
     targetManager.onUnhover = () => this.cardNode?.SetPreviewTarget(null);
-    const node = await targetManager.StartTargeting(type, this.cardNode, mode, () => this.inCancelZone() || this.cancelled);
+    const node = await targetManager.StartTargeting(type, this.cardNode, mode, () => this.cancelled || (!this.directional && this.inCancelZone()));
     targetManager.onHover = targetManager.onUnhover = null;
     if (node) this.target = node.Entity;
   }
   private async multiTargeting(mode: number) {
+    if (this.directional) {
+      // NControllerCardPlay: show self/all-target previews and wait for a second Select press.
+      this.centerCard();
+      this.showMultiTargetingVisuals();
+      while (!this.directionalConfirmed && !this.cancelled) await frame();
+      return;
+    }
     let showing = false;
     const finished = mode === TM.ReleaseMouseToTarget ? () => !this.leftDown : () => this.leftDown;
     do {

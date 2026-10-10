@@ -1,6 +1,17 @@
 /** Web port updates, newest first. Add both languages here; original game notes remain in assets/patch_notes. */
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
+    date: '2026_10_11',
+    eng: `[gold][b]Controls[/b][/gold]
+• Fixed controller card play waiting for mouse dragging: cards now focus automatically, preview on Select, and play on a second press, with valid targets and aiming arrows snapping to enemies or allies.
+• Map navigation now snaps between reachable nodes with the stick or directional buttons, and restores the current floor after scrolling.
+• Fixed the first mouse click on a map node being ignored after controller navigation.`,
+    zhs: `[gold][b]操作[/b][/gold]
+• 修复手柄出牌仍需鼠标拖动的问题：自动聚焦手牌，按选择预览、再次选择出牌，有效目标与箭头吸附敌人或队友。
+• 地图支持摇杆或方向键在可走节点间吸附切换，滚动后导航自动回到当前楼层。
+• 修复手柄导航后切回鼠标时，第一次点击地图节点被忽略的问题。`,
+  },
+  {
     date: '2026_10_10',
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Added multiplayer co-op between web players, adhering to the original game's 4-player cap and mode structure.

@@ -51,25 +51,28 @@ const selectHand = () => page.evaluate(() => {
 });
 const virtualHover = async (selector, expected) => {
   await padTap(10);
-  const target = async () => page.locator(selector).evaluate(el => {
-    const r = el.getBoundingClientRect(), s = document.querySelector('.stage-root').getBoundingClientRect(), k = 1920 / s.width;
-    return [(r.left + r.width / 2 - s.left) * k, (r.top + r.height / 2 - s.top) * k];
-  });
-  for (let i = 0; i < 180; i++) {
-    const pos = await page.locator('.gamepad-cursor').evaluate(el => [parseFloat(el.style.left), parseFloat(el.style.top)]);
-    const delta = (await target()).map((v, j) => v - pos[j]);
-    if (delta.every(v => Math.abs(v) < 5)) break;
-    await page.evaluate(delta => { window.__pad.axes = delta.map(v => Math.abs(v) < 5 ? 0 : Math.sign(v) * Math.max(0.24, Math.min(0.8, Math.abs(v) / 90))).concat([0, 0]); }, delta);
-    await page.waitForTimeout(20);
-  }
-  await page.evaluate(() => { window.__pad.axes = [0, 0, 0, 0]; });
+  await page.waitForTimeout(400); // Let animated popups settle before the cursor first reaches their buttons.
+  // Adjust once per browser frame: separate Playwright round trips can leave an axis held
+  // for many frames on a busy renderer and overshoot an entire button.
+  await page.evaluate(async selector => {
+    for (let i = 0; i < 240; i++) {
+      const r = document.querySelector(selector).getBoundingClientRect(), s = document.querySelector('.stage-root').getBoundingClientRect(), k = 1920 / s.width;
+      const cursor = document.querySelector('.gamepad-cursor');
+      const delta = [(r.left + r.width / 2 - s.left) * k - parseFloat(cursor.style.left), (r.top + r.height / 2 - s.top) * k - parseFloat(cursor.style.top)];
+      if (delta.every(v => Math.abs(v) < 12)) break;
+      window.__pad.axes = delta.map(v => Math.abs(v) < 12 ? 0 : Math.sign(v) * Math.max(0.24, Math.min(0.8, Math.abs(v) / 90))).concat([0, 0]);
+      await new Promise(requestAnimationFrame);
+    }
+    window.__pad.axes = [0, 0, 0, 0];
+  }, selector);
   try { await title(expected); } catch (error) {
-    console.log('virtual hover state', await page.evaluate(() => {
+    console.log('virtual hover state', await page.evaluate(selector => {
       const cursor = document.querySelector('.gamepad-cursor'), root = document.querySelector('.stage-root')?.getBoundingClientRect();
       const pos = cursor ? [parseFloat(cursor.style.left), parseFloat(cursor.style.top)] : null;
       const hit = pos && root ? document.elementFromPoint(root.left + pos[0] * root.width / 1920, root.top + pos[1] * root.width / 1920) : null;
-      return { pos, hit: hit?.className, tips: [...document.querySelectorAll('.hover-tip-title')].map(el => el.textContent), focused: [...document.querySelectorAll('.input-focus')].map(el => el.className), connected: window.__pad.connected, axes: window.__pad.axes };
-    }));
+      const target = document.querySelector(selector)?.getBoundingClientRect();
+      return { pos, root: root && [root.x, root.y, root.width, root.height], target: target && [target.x, target.y, target.width, target.height], hit: hit?.className, tips: [...document.querySelectorAll('.hover-tip-title')].map(el => el.textContent), focused: [...document.querySelectorAll('.input-focus')].map(el => el.className), connected: window.__pad.connected, axes: window.__pad.axes };
+    }, selector));
     throw error;
   }
 };
@@ -96,8 +99,9 @@ try {
   assert.equal(await page.evaluate(() => window.ui.cardsView), null);
   await padTap(7); await deck();
   await padTap(1); await closed();
-  assert.ok(await page.locator('.gamepad-cursor').count(), 'synthetic cancel must preserve controller mode');
-  await virtualHover('.tb-deck', 'RT');
+  assert.equal(await page.locator('.gamepad-cursor').count(), 0, 'map uses controller node focus');
+  await page.waitForSelector('.mp.travelable.input-focus');
+  await tip('.tb-deck', 'Tab'); await padTap(10); await title('RT');
   await page.waitForSelector('.hover-tip-title [data-glyph$="xbox_one/rt.tres"]');
   for (const [id, family, label] of [['Sony DualSense (054c)', 'ps4', 'R2'], ['Nintendo Switch Pro (057e)', 'switch', 'ZR'], ['E2E Controller', 'xbox_one', 'RT']]) {
     await page.evaluate(id => { window.__pad.id = id; }, id);

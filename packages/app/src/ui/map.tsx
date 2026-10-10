@@ -104,6 +104,20 @@ export function refreshMapVotes() {
   invalidate();
 }
 const inputAllowed = () => !S.traveling && S.mode === 'none';
+/** NMapScreen.ProcessControllerEvent returns navigation to the current floor after panning the map. */
+export function restoreMapControllerScroll() {
+  if (!S.visible || !inputAllowed()) return false;
+  tryCancelStartOfActAnim();
+  S.target = -600 + (rs().CurrentMapCoord?.row ?? 0) * S.distY;
+  return true;
+}
+export function mapControllerNavigationAllowed() { return S.visible && inputAllowed(); }
+/** Original map directional scroll step: 400 logical pixels, while left/right/select restore the current floor. */
+export function scrollMapWithController(up: boolean) {
+  if (!mapControllerNavigationAllowed() || !canScroll()) return;
+  S.target += up ? 400 : -400;
+  tryCancelStartOfActAnim();
+}
 const travelable = (n: MapNode) => (S.debugTravel && !S.traveling) || (S.travelEnabled && n.state === St.Travelable);
 const pivot = (n: MapNode) => (n.kind === 'normal' ? [28, 28] : n.kind === 'ancient' ? [104, 104] : [187, 153]);
 

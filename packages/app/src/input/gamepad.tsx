@@ -2,13 +2,13 @@
  * Gamepad controller subsystem.
  * Provides console-style combat focus navigation & targeting, and virtual cursor for menus/maps/shops.
  */
-import { $ } from '../game';
+import { $, G } from '../game';
 import { ui, invalidate } from '../store';
 import { getBindings, type ActionId } from './bindings';
-import { creatureViewsRef, targetManager, arrow } from '../cardnodes';
+import { creatureViewsRef, targetManager } from '../cardnodes';
 import { getCombatHand, endTurnHotkey, peekHotkey, pileHotkey, confirmHotkey } from '../ui/combat';
 import { toggleCardsView, closeCardsView } from '../ui/pause';
-import { topBarMapPressed } from '../ui/map';
+import { topBarMapPressed, restoreMapControllerScroll, mapControllerNavigationAllowed, scrollMapWithController } from '../ui/map';
 import { getInputDevice, setInputDevice, setControllerId, getKeyboardBindings } from './hints';
 import { modalOpen } from '../ui/modal';
 import { ftueActive } from '../ui/ftue';
@@ -24,11 +24,25 @@ let cursorY = 540;
 
 // Combat hand selection state
 let selectedHandIndex = 0;
-let targetMonsterIndex = 0;
+let activeHand: any = null;
+let selectedHolder: any = null;
+let lastTarget: any = null;
 
 // Analog stick debounce / repeat timers
 let stickXTimer = 0;
-let stickYTimer = 0;
+let navigationDirection = '';
+let navigationTimer = 0;
+const MAP_SELECTOR = '.map-screen .mp.travelable';
+/** A stick acts like directional input here, including immediate input after releasing it. */
+function stickDirection(dt: number, lx: number, ly: number, horizontalOnly = false) {
+  const direction = Math.max(Math.abs(lx), horizontalOnly ? 0 : Math.abs(ly)) < 0.5 ? ''
+    : horizontalOnly || Math.abs(lx) >= Math.abs(ly) ? (lx < 0 ? 'left' : 'right') : (ly < 0 ? 'up' : 'down');
+  navigationTimer -= dt;
+  if (direction !== navigationDirection) { navigationDirection = direction; navigationTimer = 0; }
+  if (!direction || navigationTimer > 0) return null;
+  navigationTimer = 0.25;
+  return direction as 'up' | 'down' | 'left' | 'right';
+}
 
 // Connected gamepad info
 let connectedName = '';
@@ -78,26 +92,31 @@ window.addEventListener('keydown', (e) => {
 function combatInputActive() {
   return ui.screen === 'run' && !ui.pauseOpen && !ui.subscreen && !ui.cardsView && !ui.mapOpen && !ui.overlays.length && !modalOpen() && !ftueActive() && !!document.querySelector('.combat .combat-ui');
 }
-function clearFocus() {
+function clearFocus(mouseTarget: EventTarget | null = null) {
   const focused = document.querySelectorAll('.input-focus');
   focused.forEach(el => {
     el.classList.remove('input-focus');
-    el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false }));
+    // A real mouse may already have entered this focused control before mousemove reaches window.
+    // Keep its native hover; synthesizing leave here makes the first mouse click on a map node fail.
+    if (!(mouseTarget instanceof Node && el.contains(mouseTarget))) el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false }));
   });
   if (focused.length) virtualHovered = null;
 }
 const CONTROL_SELECTOR = 'button:not(:disabled), [data-ctl]:not(.disabled), .settings-tab, .submenu-btn:not(.disabled), .chs-btn, .game-btn.shown, .mp.travelable, .event-option:not(.disabled), .ancient-next, .anc-hitbox, .reward-btn, .bundle, .gh-card, .pause-btn, .vp-btn:not(.disabled), .chs-arrow';
-function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = CONTROL_SELECTOR) {
+function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = CONTROL_SELECTOR, move = true) {
+  const mapOnly = selector === MAP_SELECTOR;
   const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector)).filter(el => {
     const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && (r.bottom > 0 || !!el.closest('.settings-panel')) && (r.top < innerHeight || !!el.closest('.settings-panel')) && r.right > 0 && r.left < innerWidth
+    return r.width > 0 && r.height > 0 && (r.bottom > 0 || mapOnly || !!el.closest('.settings-panel')) && (r.top < innerHeight || mapOnly || !!el.closest('.settings-panel')) && r.right > 0 && r.left < innerWidth
       && getComputedStyle(el).visibility !== 'hidden' && !el.closest('.disabled, [data-rebinding="true"]');
   });
-  const current = document.querySelector<HTMLElement>('.input-focus');
+  const focused = document.querySelector<HTMLElement>('.input-focus');
+  const current = focused && candidates.includes(focused) ? focused : null;
   const origin = current?.getBoundingClientRect();
   const center = (el: HTMLElement) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
   let next = candidates.find(el => el.matches('.mp.travelable, .chs-btn.selected')) ?? candidates[0];
-  if (origin) {
+  if (current && !move) return;
+  if (origin && move) {
     const x = origin.left + origin.width / 2, y = origin.top + origin.height / 2;
     const ranked = candidates.filter(el => el !== current).map(el => {
       const [cx, cy] = center(el), horizontal = direction === 'left' || direction === 'right';
@@ -107,6 +126,7 @@ function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = C
     }).filter(v => v.forward > 8).sort((a, b) => a.score - b.score);
     next = ranked[0]?.el ?? current ?? next;
   }
+  if (next === current) return;
   clearFocus();
   next?.classList.add('input-focus');
   if (next) {
@@ -120,8 +140,12 @@ function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = C
     if (next instanceof HTMLButtonElement) next.focus({ preventScroll: true });
   }
 }
-window.addEventListener('pointerdown', e => { if (e.isTrusted) clearFocus(); }, true);
-window.addEventListener('mousemove', e => { if (e.isTrusted && (e.movementX || e.movementY)) clearFocus(); }, true);
+function navigateMap(direction: 'up' | 'down' | 'left' | 'right') {
+  if (direction === 'up' || direction === 'down') scrollMapWithController(direction === 'up');
+  else { restoreMapControllerScroll(); focusControls(direction, MAP_SELECTOR); }
+}
+window.addEventListener('pointerdown', e => { if (e.isTrusted) clearFocus(e.target); }, true);
+window.addEventListener('mousemove', e => { if (e.isTrusted && (e.movementX || e.movementY)) clearFocus(e.target); }, true);
 window.addEventListener('keydown', e => {
   if (ftueActive() || getInputDevice() !== 'keyboardOnly' || !e.isTrusted || (e.target as HTMLElement)?.matches('input, textarea, [contenteditable]')
       || document.querySelector('[data-rebinding="true"]')) return;
@@ -130,7 +154,10 @@ window.addEventListener('keydown', e => {
   const direction = directions.find(([act]) => matches(act));
   if (direction || matches('select') || matches('topPanel')) {
     e.preventDefault(); e.stopImmediatePropagation();
-    if (combatInputActive()) handleCombatGamepad(1, 0, 0, b => (b === 14 && matches('handPrev')) || (b === 15 && matches('handNext')), matches);
+    if (combatInputActive()) handleCombatGamepad(1, 0, 0, matches);
+    else if (direction && ui.mapOpen && mapControllerNavigationAllowed()) {
+      navigateMap(direction[1]);
+    }
     else if (direction) focusControls(direction[1]);
     else if (matches('topPanel')) focusControls('up', '.tb-map, .tb-deck, .tb-settings');
     else {
@@ -213,6 +240,10 @@ export function initGamepadLoop() {
     // New presses or deliberate stick movement select the device. A held button or idle stick must not
     // overwrite a more recent keyboard/mouse action on every frame.
     if (btns.some((pressed, i) => pressed && !lastButtons[i]) || axes.some((value, i) => value !== 0 && Math.abs(value - (lastAxes[i] ?? 0)) > 0.01)) {
+      if (getInputDevice() !== 'gamepad') {
+        getCombatHand()?.currentPlay?.CancelPlayCard();
+        targetManager.CancelTargeting();
+      }
       setInputDevice('gamepad');
     }
     lastAxes = axes;
@@ -246,8 +277,9 @@ export function initGamepadLoop() {
 
     const inCombat = combatInputActive();
 
+    if (getInputDevice() !== 'gamepad') { lastButtons = btns; return true; }
     if (inCombat) {
-      handleCombatGamepad(dt, lx, ly, justPressed, isActionJustPressed);
+      handleCombatGamepad(dt, lx, ly, isActionJustPressed);
     } else {
       handleMenuVirtualCursor(dt, lx, ly, rx, ry, isActionJustPressed);
     }
@@ -261,10 +293,14 @@ function handleCombatGamepad(
   dt: number,
   lx: number,
   ly: number,
-  justPressed: (b: number) => boolean,
   actionJustPressed: (act: ActionId) => boolean,
 ) {
   const hand = getCombatHand();
+  if (activeHand !== hand) {
+    activeHand = hand; selectedHolder = null; lastTarget = null;
+    selectedHandIndex = Math.floor((hand?.ActiveHolders.length ?? 0) / 2);
+    stickXTimer = 0;
+  }
   const topFocus = document.querySelector<HTMLElement>('.top-bar .input-focus');
   if (topFocus && !targetManager.IsInSelection) {
     if (actionJustPressed('select')) { activateControl(topFocus); return; }
@@ -274,45 +310,37 @@ function handleCombatGamepad(
     }
   }
 
-  // 1. If currently in single targeting mode (arrow pointing at monsters)
+  // NControllerCardPlay restricts navigation to valid, hittable enemies or allies.
   if (targetManager.IsInSelection) {
-    const monsters = creatureViewsRef.get().filter((c: any) => c.Entity?.IsMonster && c.Entity?.IsAlive);
-    if (monsters.length > 0) {
-      if (targetMonsterIndex >= monsters.length) targetMonsterIndex = 0;
-      
-      // Step left/right between monsters using stick or d-pad
-      stickXTimer -= dt;
-      if (lx < -0.4 || justPressed(14)) { // D-Pad Left or Stick Left
-        if (stickXTimer <= 0) {
-          targetMonsterIndex = (targetMonsterIndex - 1 + monsters.length) % monsters.length;
-          stickXTimer = 0.25;
-        }
-      } else if (lx > 0.4 || justPressed(15)) { // D-Pad Right or Stick Right
-        if (stickXTimer <= 0) {
-          targetMonsterIndex = (targetMonsterIndex + 1) % monsters.length;
-          stickXTimer = 0.25;
-        }
-      } else {
-        stickXTimer = 0;
-      }
-
-      const m = monsters[targetMonsterIndex];
-      if (m && targetManager.hovered !== m) {
-        targetManager.OnNodeHovered(m);
-        invalidate();
-      }
-    }
+    const targets = creatureViewsRef.get().filter((n: any) => n.Entity?.IsHittable && targetManager.AllowedToTargetNode(n)
+      && G.Hook.ShouldAllowTargeting(n.Entity.CombatState, n.Entity, { v: null })).sort((a: any, b: any) => a.GlobalPosition.X - b.GlobalPosition.X);
+    if (!targets.length) { targetManager.CancelTargeting(); return; }
+    let index = targets.indexOf(targetManager.hovered);
+    if (index < 0) { index = Math.max(0, targets.findIndex((n: any) => n.Entity === lastTarget)); }
+    const direction = stickDirection(dt, lx, ly, true);
+    if (actionJustPressed('handPrev') || direction === 'left') index = (index - 1 + targets.length) % targets.length;
+    else if (actionJustPressed('handNext') || direction === 'right') index = (index + 1) % targets.length;
+    const target = targets[index];
+    if (targetManager.hovered !== target) targetManager.OnNodeHovered(target);
 
     // Select plays a card; confirm/end turn are separate original actions.
     if (actionJustPressed('select')) {
-      targetManager.button(0, false);
+      lastTarget = target.Entity;
+      targetManager.ConfirmTargeting();
       return;
     }
     // Cancel targeting (B button)
-    if (actionJustPressed('cancel')) {
+    if (actionJustPressed('cancel') || actionJustPressed('topPanel')) {
       targetManager.CancelTargeting();
       return;
     }
+    return;
+  }
+
+  // Self/all-target cards use the same two-press preview/confirm flow as the original controller play.
+  if (hand?.currentPlay?.directional) {
+    if (actionJustPressed('select')) hand.currentPlay.ConfirmDirectionalPlay();
+    else if (actionJustPressed('cancel') || actionJustPressed('topPanel')) hand.currentPlay.CancelPlayCard();
     return;
   }
 
@@ -325,6 +353,8 @@ function handleCombatGamepad(
   // 2. Not targeting: navigate hand cards or trigger combat actions
   if (hand && hand.ActiveHolders.length > 0) {
     const holders = hand.ActiveHolders;
+    const heldIndex = holders.indexOf(selectedHolder);
+    if (heldIndex >= 0) selectedHandIndex = heldIndex;
     if (selectedHandIndex >= holders.length) selectedHandIndex = holders.length - 1;
     if (selectedHandIndex < 0) selectedHandIndex = 0;
 
@@ -345,18 +375,18 @@ function handleCombatGamepad(
 
     if (step !== 0) {
       selectedHandIndex = (selectedHandIndex + step + holders.length) % holders.length;
-      for (let i = 0; i < holders.length; i++) {
-        holders[i].focus(i === selectedHandIndex);
-      }
-      invalidate();
     }
+    selectedHolder = holders[selectedHandIndex];
+    for (const holder of holders) holder.focus(holder === selectedHolder);
 
     // Play highlighted card (A button)
     if (actionJustPressed('select')) {
       const cur = holders[selectedHandIndex];
       if (cur) {
-        targetMonsterIndex = 0;
-        hand.press(cur, false);
+        navigationDirection = ''; navigationTimer = 0;
+        hand.press(cur, false, true);
+        // Keyboard-only input has no gamepad polling frame to choose its initial target.
+        if (targetManager.IsInSelection) handleCombatGamepad(0, 0, 0, () => false);
         invalidate();
         return;
       }
@@ -403,6 +433,27 @@ function handleMenuVirtualCursor(
   ry: number,
   actionJustPressed: (act: ActionId) => boolean,
 ) {
+  const mapNavigation = ui.mapOpen && !ui.pauseOpen && !ui.cardsView && !ui.overlays.length && !modalOpen() && !ftueActive() && mapControllerNavigationAllowed();
+  if (mapNavigation) {
+    if (!document.querySelector(MAP_SELECTOR + '.input-focus')) {
+      restoreMapControllerScroll(); focusControls('right', MAP_SELECTOR, false);
+    }
+    const analog = stickDirection(dt, lx, ly);
+    const direction = (['up', 'down', 'handPrev', 'handNext'] as const).find(actionJustPressed);
+    if (analog || direction) {
+      navigateMap(analog ?? (direction === 'handPrev' ? 'left' : direction === 'handNext' ? 'right' : direction!));
+    }
+    if (actionJustPressed('select')) {
+      restoreMapControllerScroll();
+      const focused = document.querySelector<HTMLElement>(MAP_SELECTOR + '.input-focus');
+      if (focused) activateControl(focused);
+    }
+    if (Math.abs(ry) > 0.2) document.querySelector('.map-screen')?.dispatchEvent(new WheelEvent('wheel', { deltaY: ry * 35, bubbles: true, cancelable: true }));
+    if (actionJustPressed('cancel')) simulateEscape();
+    if (actionJustPressed('viewMap')) topBarMapPressed();
+    if (actionJustPressed('viewDeck')) toggleCardsView('deck');
+    return;
+  }
   // Move virtual cursor with left stick
   const speed = 1200; // pixels per second
   // A delayed frame must not jump over an entire control (or across the screen after tab resume).
@@ -551,7 +602,7 @@ function simulateEscape() {
  * Virtual cursor visual indicator rendered over the stage.
  */
 export function VirtualCursor() {
-  if (!cursorActive || getInputDevice() !== 'gamepad') return null;
+  if (!cursorActive || getInputDevice() !== 'gamepad' || combatInputActive() || (ui.mapOpen && mapControllerNavigationAllowed() && !ui.pauseOpen && !ui.cardsView && !ui.overlays.length && !modalOpen() && !ftueActive())) return null;
   return (
     <div
       class="gamepad-cursor"
