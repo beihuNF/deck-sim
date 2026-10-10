@@ -3,6 +3,9 @@
 // arrow (NTargetingArrow); and the pointer plumbing NMouseCardPlay / NTargetManager listen to.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef } from 'preact/hooks';
+import { bbcodeToHtml } from './richtext';
+import { actionHint } from '../input/hints';
+import { type ActionId } from '../input/bindings';
 import { G, $ } from '../game';
 import { imageUrl } from '../assets';
 import { Card } from './card';
@@ -72,9 +75,10 @@ export function CardLayer({ root, hand, skip }: { root: any; hand?: HandView | n
         if (h instanceof HolderView && h.flash.a > 0) { flash.style.display = ''; flash.style.opacity = String(h.flash.a); flash.style.filter = `url(#tint-${h.flash.color.join('-').replace(/\./g, '_')})`; }
         else flash.style.display = 'none';
         const idx = el.children[2] as HTMLElement;
-        const showIdx = h instanceof HolderView && h.indexLabel > 0 && showIndices();
+        const hint = h instanceof HolderView && h.indexLabel > 0 && h.indexLabel <= 10 ? actionHint(`selectCard${h.indexLabel}` as ActionId) : '';
+        const showIdx = !!hint && showIndices();
         idx.style.display = showIdx ? '' : 'none';
-        if (showIdx) idx.textContent = String((h as HolderView).indexLabel % 10);
+        if (showIdx && idx.dataset.hint !== hint) { idx.innerHTML = bbcodeToHtml(hint); idx.dataset.hint = hint; }
         // NHandCardHolder hitbox: live once it is near its slot, ignored while a card is dragged or targeted
         const hit = !!h && !!hand && ((h instanceof HolderView && h.$parent === hand.CardHolderContainer && h.hitboxEnabled) || h instanceof SelectedHolderView) && !hand.dragging && !targetManager.IsInSelection;
         el.style.pointerEvents = hit ? 'auto' : 'none';

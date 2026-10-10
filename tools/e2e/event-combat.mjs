@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { chromium } from 'playwright';
+import { pauseButton } from './pause.mjs';
 import { startRun, travel } from './start.mjs';
 
 const out = process.argv[2] ?? '/tmp/sts2-event-combat';
@@ -64,7 +65,7 @@ try {
 
   await click(page.locator('.tb-settings'));
   await page.waitForSelector('.pause-menu');
-  await click(page.locator('.pause-btn').last());
+  await click(await pauseButton(page, 'SAVE_AND_QUIT'));
   await page.waitForFunction(() => window.ui?.screen === 'menu');
   await page.waitForTimeout(500); // IndexedDB writes are asynchronous.
   await page.reload();

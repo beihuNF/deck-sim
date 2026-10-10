@@ -177,6 +177,8 @@ button { font-family: var(--font); cursor: pointer; }
 /* ---- cards ---- */
 .card.picked { transform: translateY(-14px); filter: drop-shadow(0 0 18px #ffe066); }
 .rt-icon { height: 1.1em; vertical-align: -0.2em; }
+.rt-controller-icon { display: inline-block; vertical-align: middle; line-height: 0; }
+.input-icon-label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .rt-center { display: block; text-align: center; }
 /* rich text glyph effects (ui/richtext.tsx), per character (--i = index from the effect's start) */
 .rt-c { display: inline-block; white-space: pre; }

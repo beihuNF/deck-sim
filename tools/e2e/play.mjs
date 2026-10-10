@@ -17,6 +17,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { toCharSelect, embark, viewport, setAspect } from './start.mjs';
+import { pauseButton } from './pause.mjs';
 const url = process.env.URL ?? 'http://127.0.0.1:47173/';
 const out = process.argv[2] ?? '/tmp/sts2play';
 const maxSteps = +(process.argv[3] ?? 400);
@@ -326,7 +327,8 @@ async function saveQuitContinue(s) {
   if (!(await mouseTap('.tb-settings'))) { console.log('savequit: no settings button'); return false; }
   await page.waitForSelector('.pause-btn', { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(600);
-  const quit = await page.evaluate(() => { const b = [...document.querySelectorAll('.pause-btn:not(.disabled)')].pop()?.getBoundingClientRect(); return b ? [b.left + b.width / 2, b.top + b.height / 2] : null; });
+  const box = await (await pauseButton(page, 'SAVE_AND_QUIT')).boundingBox();
+  const quit = box ? [box.x + box.width / 2, box.y + box.height / 2] : null;
   if (!quit) { console.log('savequit: no Save and Quit'); return false; }
   await page.mouse.move(quit[0], quit[1]); await page.waitForTimeout(80); await page.mouse.down(); await page.mouse.up(); await page.mouse.move(5, 5);
   if (!(await page.waitForFunction(() => window.ui?.screen === 'menu', null, { timeout: 30000 }).then(() => true, () => false))) { console.log('savequit: did not reach the menu'); return false; }

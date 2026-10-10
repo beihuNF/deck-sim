@@ -4,15 +4,20 @@
  */
 import { $ } from '../game';
 import { ui, invalidate } from '../store';
-import { getBindings } from './bindings';
+import { getBindings, type ActionId } from './bindings';
 import { creatureViewsRef, targetManager, arrow } from '../cardnodes';
 import { getCombatHand, endTurnHotkey, peekHotkey, pileHotkey, confirmHotkey } from '../ui/combat';
 import { toggleCardsView, closeCardsView } from '../ui/pause';
 import { topBarMapPressed } from '../ui/map';
+import { getInputDevice, setInputDevice, setControllerId } from './hints';
+import { modalOpen } from '../ui/modal';
+import { ftueActive } from '../ui/ftue';
+import { edge } from '../view';
 
 // Controller state
 let activeGamepadIndex: number | null = null;
 let lastButtons: boolean[] = [];
+let lastAxes: number[] = [];
 let cursorActive = false;
 let cursorX = 960;
 let cursorY = 540;
@@ -56,12 +61,19 @@ function showGamepadToast(msg: string) {
 }
 
 // Track mouse activity to disable virtual cursor
-window.addEventListener('mousemove', () => {
+window.addEventListener('mousemove', (e) => {
+  if (!e.isTrusted) return;
+  virtualHovered = null;
   if (cursorActive) {
     cursorActive = false;
     invalidate();
   }
 }, { passive: true });
+window.addEventListener('keydown', (e) => {
+  if (!e.isTrusted) return;
+  virtualHovered = null;
+  cursorActive = false;
+}, true);
 
 // Listen for gamepad events
 window.addEventListener('gamepadconnected', (e) => {
@@ -100,12 +112,14 @@ export function initGamepadLoop() {
     const gp = getActiveGamepad();
     if (!gp) {
       lastButtons = [];
+      lastAxes = [];
+      setInputDevice('keyboard');
       return true;
     }
 
+    setControllerId(gp.id);
     const btns = gp.buttons.map((b) => b.pressed);
     const justPressed = (idx: number) => btns[idx] && !lastButtons[idx];
-    const isDown = (idx: number) => btns[idx] ?? false;
 
     // Left stick and right stick values with deadzone
     const deadzone = 0.22;
@@ -121,6 +135,13 @@ export function initGamepadLoop() {
 
     // Check if user is using the gamepad (buttons or stick)
     const hasInput = btns.some(Boolean) || Math.abs(lx) > 0 || Math.abs(ly) > 0 || Math.abs(rx) > 0 || Math.abs(ry) > 0;
+    const axes = [lx, ly, rx, ry];
+    // New presses or deliberate stick movement select the device. A held button or idle stick must not
+    // overwrite a more recent keyboard/mouse action on every frame.
+    if (btns.some((pressed, i) => pressed && !lastButtons[i]) || axes.some((value, i) => value !== 0 && Math.abs(value - (lastAxes[i] ?? 0)) > 0.01)) {
+      setInputDevice('gamepad');
+    }
+    lastAxes = axes;
     if (hasInput && !cursorActive) {
       cursorActive = true;
       invalidate();
@@ -147,12 +168,12 @@ export function initGamepadLoop() {
       return b !== null && justPressed(b);
     };
 
-    const inCombat = ui.screen === 'run' && !ui.pauseOpen && !ui.subscreen && !!document.querySelector('.combat .combat-ui');
+    const inCombat = ui.screen === 'run' && !ui.pauseOpen && !ui.subscreen && !ui.cardsView && !ui.mapOpen && !ui.overlays.length && !modalOpen() && !ftueActive() && !!document.querySelector('.combat .combat-ui');
 
     if (inCombat) {
       handleCombatGamepad(dt, lx, ly, justPressed, isActionJustPressed);
     } else {
-      handleMenuVirtualCursor(dt, lx, ly, rx, ry, justPressed, isActionJustPressed);
+      handleMenuVirtualCursor(dt, lx, ly, rx, ry, isActionJustPressed);
     }
 
     lastButtons = btns;
@@ -165,7 +186,7 @@ function handleCombatGamepad(
   lx: number,
   ly: number,
   justPressed: (b: number) => boolean,
-  actionJustPressed: (act: any) => boolean,
+  actionJustPressed: (act: ActionId) => boolean,
 ) {
   const hand = getCombatHand();
 
@@ -199,16 +220,22 @@ function handleCombatGamepad(
     }
 
     // Confirm play card to selected monster (A button)
-    if (actionJustPressed('confirm') || justPressed(0)) {
+    if (actionJustPressed('confirm')) {
       targetManager.button(0, false);
       return;
     }
     // Cancel targeting (B button)
-    if (actionJustPressed('cancel') || justPressed(1)) {
+    if (actionJustPressed('cancel')) {
       targetManager.CancelTargeting();
       return;
     }
     return;
+  }
+
+  if (actionJustPressed('cancel')) { simulateEscape(); return; }
+  if (hand?.IsInCardSelection && actionJustPressed('confirm')) { confirmHotkey()?.(); return; }
+  for (let i = 1; i <= 10; i++) {
+    if (actionJustPressed(`selectCard${i}` as ActionId)) { hand?.selectCardShortcut(i - 1); return; }
   }
 
   // 2. Not targeting: navigate hand cards or trigger combat actions
@@ -220,9 +247,9 @@ function handleCombatGamepad(
     // Step between cards (LB / RB, D-Pad Left/Right, or Left Stick)
     stickXTimer -= dt;
     let step = 0;
-    if (actionJustPressed('handPrev') || justPressed(4) || justPressed(14)) {
+    if (actionJustPressed('handPrev')) {
       step = -1;
-    } else if (actionJustPressed('handNext') || justPressed(5) || justPressed(15)) {
+    } else if (actionJustPressed('handNext')) {
       step = 1;
     } else if (lx < -0.5) {
       if (stickXTimer <= 0) { step = -1; stickXTimer = 0.25; }
@@ -241,7 +268,7 @@ function handleCombatGamepad(
     }
 
     // Play highlighted card (A button)
-    if (actionJustPressed('confirm') || justPressed(0)) {
+    if (actionJustPressed('confirm')) {
       const cur = holders[selectedHandIndex];
       if (cur) {
         targetMonsterIndex = 0;
@@ -253,31 +280,31 @@ function handleCombatGamepad(
   }
 
   // Combat shortcuts
-  if (actionJustPressed('endTurn') || justPressed(3)) { // Y button -> End Turn
+  if (actionJustPressed('endTurn')) { // Y button -> End Turn
     endTurnHotkey()?.();
     return;
   }
-  if (actionJustPressed('peek') || justPressed(2)) { // X button -> Peek
+  if (actionJustPressed('peek')) { // X button -> Peek
     peekHotkey()?.();
     return;
   }
-  if (actionJustPressed('viewDraw') || justPressed(14)) {
+  if (actionJustPressed('viewDraw')) {
     pileHotkey('draw')?.();
     return;
   }
-  if (actionJustPressed('viewDiscard') || justPressed(15)) {
+  if (actionJustPressed('viewDiscard')) {
     pileHotkey('discard')?.();
     return;
   }
-  if (actionJustPressed('viewExhaust') || justPressed(13)) {
+  if (actionJustPressed('viewExhaust')) {
     pileHotkey('exhaust')?.();
     return;
   }
-  if (actionJustPressed('viewDeck') || justPressed(12)) {
+  if (actionJustPressed('viewDeck')) {
     toggleCardsView('deck');
     return;
   }
-  if (actionJustPressed('viewMap') || justPressed(8)) {
+  if (actionJustPressed('viewMap')) {
     topBarMapPressed();
     return;
   }
@@ -289,13 +316,13 @@ function handleMenuVirtualCursor(
   ly: number,
   rx: number,
   ry: number,
-  justPressed: (b: number) => boolean,
-  actionJustPressed: (act: any) => boolean,
+  actionJustPressed: (act: ActionId) => boolean,
 ) {
   // Move virtual cursor with left stick
   const speed = 1200; // pixels per second
-  cursorX = Math.max(20, Math.min(1900, cursorX + lx * speed * dt));
-  cursorY = Math.max(20, Math.min(1060, cursorY + ly * speed * dt));
+  cursorX = Math.max(edge.l + 20, Math.min(edge.r - 20, cursorX + lx * speed * dt));
+  cursorY = Math.max(edge.t + 20, Math.min(edge.b - 20, cursorY + ly * speed * dt));
+  if (getInputDevice() === 'gamepad') hoverElementUnderCursor();
   invalidate();
 
   // Scroll views with right stick (e.g. Map, Compendium, Settings)
@@ -311,24 +338,61 @@ function handleMenuVirtualCursor(
     }
   }
 
+  if (modalOpen()) {
+    if (actionJustPressed('confirm')) window.dispatchEvent(new KeyboardEvent('keydown', { key: getBindings().keys.confirm, bubbles: true }));
+    else if (actionJustPressed('cancel')) simulateEscape();
+    return;
+  }
+
   // A button -> Click element under cursor
-  if (actionJustPressed('confirm') || justPressed(0)) {
+  if (actionJustPressed('confirm')) {
     clickElementUnderCursor();
   }
 
   // B button -> Back / Close / Escape
-  if (actionJustPressed('cancel') || justPressed(1)) {
+  if (actionJustPressed('cancel')) {
     simulateEscape();
   }
 
   // Map hotkey (Select/Back button)
-  if (actionJustPressed('viewMap') || justPressed(8)) {
+  const runShortcuts = ui.screen === 'run' && !ui.pauseOpen && !ui.subscreen && !modalOpen() && !ftueActive();
+  if (runShortcuts && actionJustPressed('viewMap')) {
     topBarMapPressed();
   }
 
   // Deck hotkey (D-Pad Up)
-  if (actionJustPressed('viewDeck') || justPressed(12)) {
+  if (runShortcuts && actionJustPressed('viewDeck')) {
     toggleCardsView('deck');
+  }
+}
+
+let virtualHovered: HTMLElement | null = null;
+let virtualHoverDevice = getInputDevice();
+function hoverElementUnderCursor() {
+  if (virtualHoverDevice !== getInputDevice()) virtualHovered = null;
+  virtualHoverDevice = getInputDevice();
+  const el = getElementUnderCursor();
+  if (el === virtualHovered) return;
+  const previous = virtualHovered;
+  virtualHovered = el;
+  // Synthetic hover events reveal the same tips as a mouse, while preserving the active gamepad device.
+  const hoverEvent = (target: HTMLElement | null, type: string, relatedTarget: HTMLElement | null, bubbles = true) => {
+    if (!target) return;
+    const r = target.getBoundingClientRect();
+    const init = { bubbles, relatedTarget, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+    target.dispatchEvent(type.startsWith('pointer') ? new PointerEvent(type, { ...init, pointerType: 'mouse' }) : new MouseEvent(type, init));
+  };
+  hoverEvent(previous, 'pointerout', el);
+  hoverEvent(previous, 'mouseout', el);
+  for (let node = previous; node && !node.contains(el); node = node.parentElement) {
+    hoverEvent(node, 'pointerleave', el, false);
+    hoverEvent(node, 'mouseleave', el, false);
+  }
+  hoverEvent(el, 'pointerover', previous);
+  hoverEvent(el, 'mouseover', previous);
+  for (let node = el; node && !node.contains(previous); node = node.parentElement) {
+    hoverEvent(node, 'pointerenter', previous, false);
+    hoverEvent(node, 'mouseenter', previous, false);
   }
 }
 
@@ -360,6 +424,10 @@ function clickElementUnderCursor() {
 }
 
 function simulateEscape() {
+  if (modalOpen()) {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: getBindings().keys.cancel, bubbles: true }));
+    return;
+  }
   const closers = document.querySelectorAll<HTMLElement>('[data-esc]');
   const close = closers[closers.length - 1];
   if (close) {
@@ -369,7 +437,7 @@ function simulateEscape() {
   } else if (ui.cardsView) {
     closeCardsView();
   } else {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: getBindings().keys.cancel, bubbles: true }));
   }
   invalidate();
 }
@@ -378,7 +446,7 @@ function simulateEscape() {
  * Virtual cursor visual indicator rendered over the stage.
  */
 export function VirtualCursor() {
-  if (!cursorActive) return null;
+  if (!cursorActive || getInputDevice() !== 'gamepad') return null;
   return (
     <div
       class="gamepad-cursor"

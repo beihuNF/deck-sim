@@ -7,6 +7,12 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Unlocked and implemented the Input settings tab with customizable keyboard and controller keybindings and reset support.
 • Prevented the browser from capturing the Tab key for focus navigation, allowing Tab to be reliably bound and triggered in-game.
 • Enabled opening the deck via hotkey from any room, not just in combat.
+• Fixed deck and map shortcut hints to show the current keyboard bindings; rebinding the deck no longer keeps D as an extra shortcut.
+• Shortcut hints now follow your custom bindings and switch between keyboard and controller buttons when you change input devices, including deck, map, piles, end turn, peek, confirm, and back.
+• Controller hints use the original Xbox, PlayStation, or Switch button icons, matching the detected controller.
+• Hand shortcut labels now show your assigned keys and hide unassigned controller buttons.
+• Fixed old default shortcuts still triggering after rebinding, and controller pile shortcuts conflicting with hand navigation.
+• Controller cursor hovering now shows button hints and reaches edge controls at different aspect ratios.
 
 [gold][b]Quality of Life[/b][/gold]
 • Built in the "Quick SL Button" mod: reload the current room directly from the pause menu, with an option in Settings to toggle it.
@@ -42,6 +48,12 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 解锁并完整实现设置中的“操作设置”：支持自定义键盘按键与手柄按钮绑定，并可一键重置为默认。
 • 阻止浏览器默认焦点切换对 Tab 键的截获，确保将查看卡牌组等快捷键绑定至 Tab 时可在游戏内稳定触发。
 • 允许在任意房间（包括地图、事件、商店等）通过快捷键直接打开卡牌组，不再局限于战斗中。
+• 修复查看牌组和地图的按键提示未跟随当前键位的问题；修改牌组快捷键后，D 不再额外触发。
+• 快捷键提示跟随自定义绑定，并按最近使用的键鼠或手柄自动切换：包括牌组、地图、牌堆、结束回合、查看战场、确认和返回。
+• 手柄按键提示使用原作专用图标，并根据识别到的 Xbox、PlayStation 或 Switch 手柄切换。
+• 手牌快捷键标签显示当前绑定，手柄模式下隐藏未绑定按钮的标签。
+• 修复修改键位后旧默认键仍然触发，以及手柄牌堆快捷键与手牌切换冲突的问题。
+• 手柄虚拟光标悬停可显示按钮提示，并可在不同宽高比下到达屏幕边缘的控件。
 
 [gold][b]便利功能[/b][/gold]
 • 内置“快速SL按钮”模组：暂停菜单中可直接原地重新加载当前房间，并可在通用设置中随时开启或关闭。

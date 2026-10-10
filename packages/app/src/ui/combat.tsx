@@ -54,24 +54,21 @@ export function combatHotkey(key: string): boolean {
     if (combatIsCurrent()) hand?.selectCardShortcut(cardIdx);
     return true;
   }
-  // Fallback default digits
-  if (/^[0-9]$/.test(k)) {
-    if (combatIsCurrent()) hand?.selectCardShortcut((Number(k) + 9) % 10);
-    return true;
-  }
-
   // Peek
-  if (k === b.peek.toLowerCase() || k === ' ') {
+  if (k === b.peek.toLowerCase()) {
     return hold(k, hand?.IsInCardSelection && combatIsCurrent() ? peekHotkey() : null);
   }
   // End turn / Confirm
-  if (k === b.endTurn.toLowerCase() || k === 'e') {
+  if (hand?.IsInCardSelection && k === b.confirm.toLowerCase()) {
+    return hold(k, combatIsCurrent() ? confirmHotkey() : null);
+  }
+  if (k === b.endTurn.toLowerCase()) {
     return hold(k, !hand?.IsInCardSelection ? endTurnHotkey() : combatIsCurrent() ? confirmHotkey() : null);
   }
   // Piles
-  if (k === b.viewDraw.toLowerCase() || k === 'a') return hold(k, pileHotkey('draw'));
-  if (k === b.viewDiscard.toLowerCase() || k === 's') return hold(k, pileHotkey('discard'));
-  if (k === b.viewExhaust.toLowerCase() || k === 'x') return hold(k, pileHotkey('exhaust'));
+  if (k === b.viewDraw.toLowerCase()) return hold(k, pileHotkey('draw'));
+  if (k === b.viewDiscard.toLowerCase()) return hold(k, pileHotkey('discard'));
+  if (k === b.viewExhaust.toLowerCase()) return hold(k, pileHotkey('exhaust'));
 
   return false;
 }

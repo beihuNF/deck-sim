@@ -17,6 +17,7 @@ import { modalOpen } from './modal';
 import { ftueActive, seenFtue, showFtue } from './ftue';
 import { inspectActive } from './inspect';
 import { view, fracX, fracY, anchored } from '../view';
+import { inputTip } from './input-tip';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const rgb = (c: number[]) => `rgb(${c[0] * 255}, ${c[1] * 255}, ${c[2] * 255})`;
@@ -27,8 +28,7 @@ const QUART = 3, EXPO = 5, CUBIC = 7, BACK = 10, OUT = 1;
 /** static_hover_tips `<key>.title` / `.description`, at a point anchored like its button (`to`: view.ts anchored). */
 function staticTip(key: string, vars: Record<string, string>, x0: number, y0: number, to = '') {
   const [x, y] = anchored(x0, y0, to);
-  const ls = (k: string) => { const l = new G.LocString().$ctor_LocString('static_hover_tips', k); for (const [n, v] of Object.entries({ Hotkey: 'None', ...vars })) l.Add$String_String(n, v); return safe(() => l.GetFormattedText(), ''); };
-  setTip(ls(`${key}.title`), ls(`${key}.description`), { kind: 'at', x, y });
+  inputTip(key, vars, { kind: 'at', x, y });
 }
 /** Style writes that skip unchanged values (the buttons are painted every frame). */
 const painted = new WeakMap<HTMLElement, Record<string, string>>();
@@ -471,9 +471,9 @@ class EndTurnCtl extends Clickable {
     if (!this.ready()) {
       this.n.LabelMod = col(safe(() => this.me.PlayerCombatState.HasCardsToPlay(), false) ? RED : CYAN);
       this.hand?.FlashPlayableHolders?.();
-      staticTip('END_TURN', {}, fracX(1604 / 1920) - 76, fracY(this.n.PosY / 1080) - 302);
-      this.tipShown = true;
     } else this.n.LabelMod = col(CREAM);
+    staticTip('END_TURN', {}, fracX(1604 / 1920) - 76, fracY(this.n.PosY / 1080) - 302);
+    this.tipShown = true;
   }
   protected onUnfocus() {
     if (longPressOn()) this.bar.cancelPress();

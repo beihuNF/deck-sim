@@ -9,6 +9,9 @@ import { loc } from '../i18n';
 import { hsvFilter, tint } from '../filters';
 import { RichText } from './richtext';
 import { view } from '../view';
+import { getBindings } from '../input/bindings';
+import { actionHint } from '../input/hints';
+import { setDynamicTip, setTip } from './tooltip';
 
 let modal: { key: number; render: () => any; holes?: () => number[][] } | null = null;
 let modalKey = 0;
@@ -27,7 +30,7 @@ function holePath(rects: number[][]) {
   return `path(evenodd, "M0 0H${view.w}V${view.h}H0Z${rects.map(([x, y, w, h]) => `M${x + view.ox} ${y + view.oy}h${w}v${h}h${-w}Z`).join('')}")`;
 }
 /** NModalContainer.Clear. */
-export function closeModal() { modal = null; invalidate(); }
+export function closeModal() { modal = null; setTip(null); invalidate(); }
 
 export function ModalLayer() {
   return (
@@ -46,9 +49,13 @@ let popupKeys: { yes?: () => void; no?: () => void } = {};
 export const setPopupKeys = (k: { yes?: () => void; no?: () => void }) => { popupKeys = k; };
 window.addEventListener('keydown', (e) => {
   if (!modal) return;
+  const el = e.target as HTMLElement;
+  const typing = el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button'].includes((el as HTMLInputElement).type));
+  if (typing) return;
   // a modal takes the keyboard: nothing under it reacts
   e.stopImmediatePropagation();
-  const f = e.key === 'Enter' ? popupKeys.yes : e.key === 'Escape' ? popupKeys.no : undefined;
+  const keys = getBindings().keys, key = e.key.toLowerCase();
+  const f = key === keys.confirm.toLowerCase() ? popupKeys.yes : key === keys.cancel.toLowerCase() ? popupKeys.no : undefined;
   if (!f) return;
   e.preventDefault();
   f();
@@ -112,8 +119,8 @@ function PopupButton({ yes, text, onClick }: { yes: boolean; text: string; onCli
   const fit = (f: any) => { const k = f ? Math.min(196 / (f.sw * 2), 96 / (f.sh * 2)) : 1; return frameStyle(f, f ? f.sw * 2 * k : 196, f ? f.sh * 2 * k : 96); };
   return (
     <div class={'vp-btn ' + (yes ? 'yes' : 'no')}
-      onPointerEnter={() => { setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); }}
-      onPointerLeave={() => setSt('')}
+      onPointerEnter={() => { setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); setDynamicTip(() => { const hint = actionHint(yes ? 'confirm' : 'cancel'); return { title: hint ? `${text} (${hint})` : text, body: '' }; }); }}
+      onPointerLeave={() => { setSt(''); setTip(null); }}
       onPointerDown={(e) => { if (e.button === 0) { setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
       onPointerUp={(e) => { if (e.button === 0 && st === 'press') { setSt(''); onClick(); } }}>
       <div class="vpb-visuals" style={{ scale: st === 'hover' ? '1.025' : st === 'press' ? '0.975' : '1', transition: `scale ${t}` }}>

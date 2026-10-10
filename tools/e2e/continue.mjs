@@ -1,8 +1,9 @@
 // Save & Quit → reload → Continue in the browser: start a run, enter the first fight, quit from the pause menu, reload
 // the page, continue from the menu.
-// Usage: CHROME=<path> [URL=<dev server>] node tools/e2e/continue.mjs <outDir>   (exit 1 on failure)
+// Usage: CHROME=<path> [URL=<dev server>] [LANG_UI=eng|zhs] node tools/e2e/continue.mjs <outDir>   (exit 1 on failure)
 import { chromium } from 'playwright';
 import { startRun, travel, viewport, setAspect } from './start.mjs';
+import { pauseButton } from './pause.mjs';
 import fs from 'node:fs';
 const out = process.argv[2] ?? '/tmp/sts2continue';
 fs.mkdirSync(out, { recursive: true });
@@ -16,7 +17,8 @@ const state = () => page.evaluate(() => {
   return { screen: window.ui.screen, room: rs?.CurrentRoom?.constructor?.$name, floor: rs?.TotalFloor, hp: rs?.Players?.[0]?.Creature?.CurrentHp, gold: rs?.Players?.[0]?.Gold };
 });
 
-await page.goto((process.env.URL ?? 'http://127.0.0.1:47173/') + '?seed=CONTINUE1&unlock=all&tutorials=off');
+const query = new URLSearchParams({ seed: 'CONTINUE1', unlock: 'all', tutorials: 'off', ...(process.env.LANG_UI ? { lang: process.env.LANG_UI } : {}) });
+await page.goto((process.env.URL ?? 'http://127.0.0.1:47173/') + '?' + query);
 await page.waitForFunction(() => window.ui?.screen === 'menu', null, { timeout: 60000 });
 await setAspect(page);
 await page.evaluate(() => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType.Instant; });
@@ -26,7 +28,7 @@ await page.waitForFunction(() => document.querySelector('.end-turn-btn.shown:not
 const before = await state();
 await page.click('.tb-settings'); // pause (top-bar settings button)
 await page.waitForSelector('.pause-menu');
-await page.click('.pause-btn >> nth=-1'); // Save and Quit
+await (await pauseButton(page, 'SAVE_AND_QUIT')).click();
 await page.waitForFunction(() => window.ui?.screen === 'menu', null, { timeout: 30000 }).catch(() => fail('did not return to menu'));
 // the save must survive a reload (IndexedDB, written asynchronously)
 await page.waitForTimeout(500);
@@ -42,7 +44,7 @@ await page.waitForFunction(() => document.querySelector('.end-turn-btn.shown:not
 const after = await state();
 await page.screenshot({ path: `${out}/continued.png` });
 console.log('before', JSON.stringify(before), 'after', JSON.stringify(after));
-if (after.floor !== before.floor || after.room !== before.room) await fail('continued into a different place');
+if (after.floor !== before.floor || after.room !== before.room || after.hp !== before.hp || after.gold !== before.gold) await fail('continued run state changed');
 if (errors.length) await fail('page errors');
 console.log('OK');
 await browser.close();

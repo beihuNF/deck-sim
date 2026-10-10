@@ -15,6 +15,7 @@ import { targetManager } from '../cardnodes';
 import { topBarMapPressed } from './map';
 import { inspectRelic } from './inspect';
 import { openPauseMenu, toggleCardsView } from './pause';
+import { inputTip } from './input-tip';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const tb = (n: string) => frameByName('ui_atlas', 'top_bar/' + n);
@@ -26,12 +27,7 @@ function fit(f: any, x: number, y: number, w: number, h: number, extra: any = {}
 /** A tip at a point of the bar's left group, or (`rightEdge`) ending at one of its right group: top_bar.tscn LeftAlignedStuff / RightAlignedStuff. */
 const tipAt = (x0: number, y0: number, rightEdge = false) => { const [x, y] = anchored(x0, y0, rightEdge ? 'rt' : 'lt'); return { kind: 'at' as const, x, y, rightEdge }; };
 function staticTip(key: string, x: number, y: number, rightEdge = false) {
-  const ls = (k: string) => safe(() => {
-    const s = new G.LocString().$ctor_LocString('static_hover_tips', k);
-    s.Add$String_String('Hotkey', ({ MAP: 'M', DECK: 'Tab', SETTINGS: 'Esc' } as Record<string, string>)[key] ?? 'None');
-    return s.GetFormattedText();
-  }, '');
-  setTip(ls(`${key}.title`), ls(`${key}.description`), tipAt(x, y, rightEdge));
+  inputTip(key, {}, tipAt(x, y, rightEdge));
 }
 /** Keyframes sampled from Godot's easing (Tween TransitionType / EaseType) for one property. */
 function tw(el: HTMLElement | null, prop: (v: number) => Keyframe, from: number, to: number, ms: number, trans: number, easeType: number) {

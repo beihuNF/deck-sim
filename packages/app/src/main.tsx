@@ -86,11 +86,11 @@ function runHotkey(key: string): boolean {
   if (combatHotkey(key)) return true;
   const k = key.toLowerCase();
   const b = getBindings().keys;
-  if (k === b.viewDeck.toLowerCase() || k === 'd') {
+  if (k === b.viewDeck.toLowerCase()) {
     toggleCardsView('deck');
     invalidate();
     return true;
-  } else if ((k === b.viewMap.toLowerCase() || k === 'm') && !ui.gameOver && ui.room?.kind !== 'maproom') {
+  } else if (k === b.viewMap.toLowerCase() && !ui.gameOver && ui.room?.kind !== 'maproom') {
     topBarMapPressed();
     invalidate();
     return true;
@@ -117,15 +117,16 @@ window.addEventListener('keydown', (e) => {
   // NPeekButton's hotkey (MegaInput.peek = Space) on an overlay screen that has one
   const top = ui.overlays[ui.overlays.length - 1];
   const b = getBindings().keys;
-  if ((e.code === 'Space' || e.key.toLowerCase() === b.peek.toLowerCase()) && ui.screen === 'run' && top?.peekEnabled) {
+  if (e.key.toLowerCase() === b.peek.toLowerCase() && ui.screen === 'run' && top?.peekEnabled) {
     e.preventDefault();
     if (!e.repeat) top.togglePeek();
     return;
   }
-  if (e.key !== 'Escape') {
+  if (e.key.toLowerCase() !== b.cancel.toLowerCase()) {
     if (runHotkey(e.key)) e.preventDefault();
     return;
   }
+  e.preventDefault();
   const closers = document.querySelectorAll<HTMLElement>('[data-esc]'); // inner modals (card inspect) mark their close control
   const close = closers[closers.length - 1];
   if (close) { close.click(); return; }

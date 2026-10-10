@@ -1,5 +1,5 @@
 // Game BBCode ([gold]…[/gold], [img]res://…[/img], [b], [center], effects) → HTML.
-import { imageUrl } from '../assets';
+import { imageUrl, atlasFrame, frameStyle } from '../assets';
 const COLORS: Record<string, string> = {
   gold: '#efc851', blue: '#87ceeb', green: '#7fff00', red: '#ff5555', purple: '#ee82ee', pink: '#ff78a0', aqua: '#2aebbe',
   orange: '#ffa518', gray: '#a0a0a0', grey: '#a0a0a0', white: '#ffffff', yellow: '#fff27a', cream: '#fff6e2',
@@ -39,6 +39,15 @@ export function bbcodeToHtml(src: string, literal = false): string {
       const path = src.slice(last, end < 0 ? undefined : end);
       last = end < 0 ? src.length : end + 6;
       re.lastIndex = last;
+      // Controller glyphs live in the original atlas, rather than individual image files.
+      const frame = path.includes('/controller_atlas.sprites/') ? atlasFrame(path) : null;
+      if (frame) {
+        let label = '';
+        try { label = decodeURIComponent(attrs.alt ?? ''); } catch { label = attrs.alt ?? ''; }
+        const style = Object.entries(frameStyle(frame, 28)).map(([k, v]) => `${k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())}:${v}`).join(';');
+        out += `<span class="rt-controller-icon" role="img" aria-label="${esc(label).replace(/"/g, '&quot;')}" data-glyph="${esc(path)}" style="${style}"><span class="input-icon-label">${esc(label)}</span></span>`;
+        continue;
+      }
       const url = imageUrl(path);
       out += url ? `<img class="rt-icon" src="${url}">` : '';
       continue;

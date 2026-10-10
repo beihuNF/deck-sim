@@ -3,6 +3,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { toCharSelect, embark, viewport, setAspect } from './start.mjs';
+import { pauseButton } from './pause.mjs';
 const out = process.argv[2] ?? '/tmp/sts2screens';
 fs.mkdirSync(out, { recursive: true });
 const url = process.env.URL ?? 'http://127.0.0.1:47173/';
@@ -81,7 +82,8 @@ await shot('32-pause');
 await page.evaluate(() => { window.ui.subscreen = 'library'; window.invalidate(); });
 await shot('33-pause-library');
 await page.keyboard.press('Escape'); await page.waitForTimeout(700); await page.keyboard.press('Escape'); await page.waitForTimeout(700); // the library closes before the pause menu takes Escape
-await page.evaluate(() => { window.ui.pauseOpen = false; window.ui.cardsView = { kind: 'deck' }; window.invalidate(); });
+await page.click('.tb-deck');
+await page.waitForFunction(() => window.ui.cardsView?.kind === 'deck');
 await page.click('.sort-btn >> nth=1');
 await shot('34-deck-sorted');
 await page.click('.ncard-grid .grid-holder .card >> nth=0');
@@ -89,10 +91,10 @@ await page.click('.ic-upgrade').catch((e) => errors.push('inspect upg ' + e.mess
 await shot('35-inspect-upgrade');
 // give up from the pause menu (abandon popup: Yes) → game over → Continue (badges, score bar, discoveries)
 await page.keyboard.press('Escape'); await page.waitForTimeout(700); await page.keyboard.press('Escape'); await page.waitForTimeout(700);
-await page.evaluate(() => { window.ui.cardsView = null; window.invalidate(); });
+if (await page.evaluate(() => !!window.ui.cardsView)) { await page.keyboard.press('Escape'); await page.waitForTimeout(700); }
 if (!(await page.evaluate(() => window.ui.pauseOpen))) await page.keyboard.press('Escape');
 await page.screenshot({ path: `${out}/39-before-giveup.png` });
-await page.click('.pause-btn >> nth=-2'); // Give Up
+await (await pauseButton(page, 'GIVE_UP')).click();
 await page.click('.vp-btn.yes').catch((e) => errors.push('abandon popup ' + e.message));
 await page.waitForSelector('.gameover', { timeout: 30000 }).catch((e) => errors.push('no game over ' + e.message));
 await page.waitForSelector('.gameover .go-btn', { timeout: 30000 }).catch((e) => errors.push('no continue ' + e.message));

@@ -6,6 +6,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { viewport, travel } from './start.mjs';
+import { pauseButton } from './pause.mjs';
 
 const root = fileURLToPath(new URL('../../packages/core/test/fixtures/saves-v0.98.3/ironclad-new-profile/f25/', import.meta.url));
 const out = process.argv[2] ?? '/tmp/sts2-legacy-relics';
@@ -57,7 +58,7 @@ try {
   assert.equal(before.energy, 4); assert.match(before.description, /Extinguishes/);
   await page.click('.tb-settings');
   await page.waitForSelector('.pause-menu');
-  await page.click('.pause-btn >> nth=-1');
+  await (await pauseButton(page, 'SAVE_AND_QUIT')).click();
   await menu(); await page.evaluate(() => window.G.$.vfs.flush());
   await page.reload(); await menu(); await resume();
   assert.deepEqual(await check(), before);

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { viewport } from './start.mjs';
+import { pauseButton } from './pause.mjs';
 
 const root = fileURLToPath(new URL('../../packages/core/test/fixtures/', import.meta.url));
 const out = path.resolve(process.argv[2] ?? '/tmp/sts2-old-saves');
@@ -52,7 +53,7 @@ try {
       assert.deepEqual(first, expected, 'old run changed on first continuation');
       await page.click('.tb-settings');
       await page.waitForSelector('.pause-menu');
-      await page.click('.pause-btn >> nth=-1');
+      await (await pauseButton(page, 'SAVE_AND_QUIT')).click();
       await menu(page);
       await page.evaluate(() => window.G.$.vfs.flush());
       await page.reload();

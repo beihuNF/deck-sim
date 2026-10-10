@@ -13,7 +13,7 @@ import { targetManager } from '../cardnodes';
 import { view, edge, fracX, fracY } from '../view';
 
 /** `model`: IHoverTip.CanonicalModel (marked seen when the tip shows). */
-export interface TipData { title: string; body: string; icon?: string | null; debuff?: boolean; card?: any; model?: any }
+export interface TipData { title: string; body: string; content?: () => { title: string; body: string }; icon?: string | null; debuff?: boolean; card?: any; model?: any }
 export type Rect = [number, number, number, number];
 export type Placement =
   | { kind: 'align'; rect: Rect; align: 'left' | 'right' | 'center' }
@@ -76,6 +76,10 @@ function ownerPlacement(): Placement | null {
 export function setTip(title: string | null, body = '', at?: Placement | null) {
   if (!title && !body) { tips = []; place = null; follow = null; invalidate(); return; }
   setTips([{ title: title ?? '', body: typeof body === 'string' ? body : String(body ?? '') }], at);
+}
+/** Reformat input hints on render, including when the input device changes while a tip is already visible. */
+export function setDynamicTip(content: () => { title: string; body: string }, at?: Placement | null) {
+  setTips([{ ...content(), content }], at);
 }
 /**
  * NHoverTipSet.SetFollowOwner: `owner` returns the owner's global position (null once it is gone); every frame the
@@ -236,7 +240,7 @@ export function Tip() {
     paint();
   }), []);
   if (!cur) return null;
-  const text = cur.tips.filter((t) => !t.card), cards = cur.tips.filter((t) => t.card);
+  const text = cur.tips.filter((t) => !t.card).map((t) => t.content ? { ...t, ...t.content() } : t), cards = cur.tips.filter((t) => t.card);
   return (
     <div class="viewport tips-viewport">
       <div class="stage-root tips-root">
