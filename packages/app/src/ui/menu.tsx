@@ -351,10 +351,15 @@ function SingleplayerSubmenu() {
  * Focus: 1.025 and v 1 at once; unfocus: 1 over 0.5 s Cubic Out, v back over 1 s Expo Out. Disabled: dark grey,
  * the panel desaturated, the icon half grey, the lock and the LOCKED description.
  */
-function SubmenuButton({ x, keyPrefix, icon, hsv, enabled, onClick }: { x: number; keyPrefix: string; icon: string; hsv: number[]; enabled: boolean; onClick: () => void }) {
+export function SubmenuButton({ x, keyPrefix, icon, hsv, enabled, onClick, title, desc }: {
+  x: number; keyPrefix?: string; icon: string; hsv: number[]; enabled: boolean; onClick: () => void;
+  title?: string; desc?: string;
+}) {
   const [hover, setHover] = useState(false);
   const [down, setDown] = useState(false);
   const v = hover ? 1 : hsv[2], s = enabled ? hsv[1] : 0;
+  const t = title ?? (keyPrefix ? m(`${keyPrefix}.title`) : '');
+  const d = desc ?? (keyPrefix ? m(`${keyPrefix}.${enabled ? '' : 'LOCKED.'}description`) : '');
   return (
     <div class={'submenu-btn' + (enabled ? '' : ' disabled') + (hover ? ' hover' : '')} style={{ left: `${x}px` }}
       onPointerEnter={() => { if (!enabled) return; setHover(true); playOneShot('event:/sfx/ui/clicks/ui_hover'); }}
@@ -363,10 +368,10 @@ function SubmenuButton({ x, keyPrefix, icon, hsv, enabled, onClick }: { x: numbe
       onPointerUp={(e) => { if (enabled && e.button === 0 && down) { setDown(false); onClick(); } }}>
       <img class="smb-panel" src={imageUrl('images/packed/common_ui/submenu_panel.png') ?? ''}
         style={{ filter: `${hsvFilter(hsv[0], 1, 1)} saturate(${s}) brightness(${v})`, transition: hover ? 'none' : 'filter 1s cubic-bezier(0.16, 1, 0.3, 1)' }} />
-      <div class="smb-title">{m(`${keyPrefix}.title`)}</div>
+      <div class="smb-title">{t}</div>
       <img class="smb-icon" src={imageUrl(`images/ui/main_menu/${icon}.png`) ?? ''} />
       {!enabled && <img class="smb-icon smb-lock" src={imageUrl('images/ui/main_menu/submenu_lock.png') ?? ''} />}
-      <div class="smb-desc"><RichText text={m(`${keyPrefix}.${enabled ? '' : 'LOCKED.'}description`)} /></div>
+      <div class="smb-desc"><RichText text={d} /></div>
     </div>
   );
 }

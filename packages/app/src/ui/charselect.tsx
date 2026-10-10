@@ -161,7 +161,7 @@ function RegentHovers() {
  * fuzzy nine-patch: the name (Spectral Bold 80, auto-sized down to 48), HP and gold, the description and the starting
  * relic. Locked characters show the unlock text and the relic's silhouette; Random shows ?? and no relic.
  */
-function InfoPanel({ c, locked }: { c: any; locked: boolean }) {
+export function InfoPanel({ c, locked }: { c: any; locked: boolean }) {
   const random = isRandom(c);
   const name = locked ? loc('main_menu_ui', 'CHARACTER_SELECT.locked.title') : cl(c.CharacterSelectTitle);
   const desc = locked ? safe(() => c.GetUnlockText().GetFormattedText(), '') : cl(c.CharacterSelectDesc);

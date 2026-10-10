@@ -109,7 +109,7 @@ function VerticalPopup({ header, body, yes, no, abandon, onYes, onNo }: PopupOpt
  * (a black shadow at 0.5, additive gold #F0B400 while hovered). Hover 1.025 and s / v + .25 (0.05 s); unhover back over
  * 0.5 s Expo Out; press 0.975 and s / v − .1.
  */
-function PopupButton({ yes, text, onClick }: { yes: boolean; text: string; onClick: () => void }) {
+export function PopupButton({ yes, text, onClick, disabled, style }: { yes: boolean; text: string; onClick: () => void; disabled?: boolean; style?: any }) {
   const [st, setSt] = useState<'' | 'hover' | 'press'>('');
   const base = yes ? [0.75, 1.2, 1.1] : [1, 0.75, 1.2];
   const d = st === 'hover' ? 0.25 : st === 'press' ? -0.1 : 0;
@@ -118,11 +118,11 @@ function PopupButton({ yes, text, onClick }: { yes: boolean; text: string; onCli
   const img = frameByName('ui_atlas', name), out = frameByName('compressed', name + '_outline');
   const fit = (f: any) => { const k = f ? Math.min(196 / (f.sw * 2), 96 / (f.sh * 2)) : 1; return frameStyle(f, f ? f.sw * 2 * k : 196, f ? f.sh * 2 * k : 96); };
   return (
-    <div class={'vp-btn ' + (yes ? 'yes' : 'no')}
-      onPointerEnter={() => { setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); setDynamicTip(() => { const hint = actionHint(yes ? 'confirm' : 'cancel'); return { title: hint ? `${text} (${hint})` : text, body: '' }; }); }}
+    <div class={'vp-btn ' + (yes ? 'yes' : 'no') + (disabled ? ' disabled' : '')} style={{ ...style, pointerEvents: disabled ? 'none' : undefined, opacity: disabled ? 0.5 : 1, filter: disabled ? 'grayscale(0.6)' : undefined }}
+      onPointerEnter={() => { if (disabled) return; setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); setDynamicTip(() => { const hint = actionHint(yes ? 'confirm' : 'cancel'); return { title: hint ? `${text} (${hint})` : text, body: '' }; }); }}
       onPointerLeave={() => { setSt(''); setTip(null); }}
-      onPointerDown={(e) => { if (e.button === 0) { setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
-      onPointerUp={(e) => { if (e.button === 0 && st === 'press') { setSt(''); onClick(); } }}>
+      onPointerDown={(e) => { if (disabled) return; if (e.button === 0) { setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
+      onPointerUp={(e) => { if (disabled) return; if (e.button === 0 && st === 'press') { setSt(''); onClick(); } }}>
       <div class="vpb-visuals" style={{ scale: st === 'hover' ? '1.025' : st === 'press' ? '0.975' : '1', transition: `scale ${t}` }}>
         <div class="vpb-outline" style={{ ...fit(out), ...(st === 'hover' ? { filter: tint(0.941, 0.706, 0), mixBlendMode: 'plus-lighter', opacity: 1 } : {}) }} />
         <div class="vpb-image" style={{ ...fit(img), filter: `${hsvFilter(base[0], 1, 1)} saturate(${base[1] + d}) brightness(${base[2] + d})`, transition: `filter ${t}` }} />

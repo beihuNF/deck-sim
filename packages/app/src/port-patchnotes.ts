@@ -5,6 +5,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Added multiplayer co-op between web players, adhering to the original game's 4-player cap and mode structure.
 • Supported hosting rooms for Standard, Daily, and Custom modes with up to 4 players.
+• Rebuilt multiplayer screens and lobby using original game assets and layouts: SubmenuButton cards, nine-patch fuzzy dialogs, CharacterSelectScreen background and RemotePlayerContainer.
 • Added room code invitations and one-click link sharing, with lobby hero selection and ready status.
 • Multiplayer runs run in isolated ephemeral sessions, keeping your singleplayer profile and saves completely intact.
 
@@ -35,6 +36,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     zhs: `[gold][b]多人模式[/b][/gold]
 • 实现网页版玩家之间多人联机合作功能，遵循原版最高 4 人联机与模式设定。
 • 完整提供原版“标准模式”、“多人每日挑战”与“自定模式”多人建房选项。
+• 全面以原作素材与布局重构多人模式界面：复用原版大卡片子菜单、九宫格弹窗、角色选择场景与左上角远程玩家状态面板（RemotePlayerContainer）。
 • 支持房间号邀请与一键复制邀请链接，进入大厅可自由选择角色并准备就绪。
 • 多人对局采用独立临时会话存储，不破坏或覆盖单人本地存档。
 

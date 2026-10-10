@@ -1,571 +1,378 @@
-/* STS2 Multiplayer UI Styles: Premium Parchment and Dark Gold Aesthetics */
+/* STS2 Multiplayer UI Styles: Strictly Reusing Game Assets & Godot Layouts */
 
-.mp-root {
+.mp-screen-container {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   pointer-events: auto;
-  z-index: 100;
-  font-family: var(--font-body, 'Kreon', serif);
+  font-family: var(--font, 'Kreon', serif);
 }
 
+/* 顶部错误轻量提示 */
 .mp-toast-error {
   position: absolute;
   top: 40px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(140, 30, 20, 0.92);
-  border: 1px solid #ff7b72;
+  background: rgba(140, 30, 20, 0.95);
+  border: 2px solid #ff7b72;
   color: #fff;
-  padding: 12px 28px;
-  border-radius: 8px;
-  font-size: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
-  z-index: 1000;
-  animation: mp-fade-in 0.3s ease;
-}
-
-/* 子菜单与卡片选择 */
-.mp-submenu {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 1400px;
-  padding: 40px;
-}
-
-.mp-menu-header {
-  text-align: center;
-  margin-bottom: 48px;
-}
-
-.mp-title {
-  margin: 0 0 12px;
-  font-size: 56px;
-  font-weight: 700;
-  color: #f7e1a0;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.8), 0 0 20px rgba(230, 180, 80, 0.4);
-  letter-spacing: 2px;
-}
-
-.mp-subtitle {
-  margin: 0;
-  font-size: 22px;
-  color: #d1c4a5;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
-}
-
-.mp-cards {
-  display: flex;
-  gap: 36px;
-  justify-content: center;
-  width: 100%;
-}
-
-.mp-card {
-  position: relative;
-  width: 340px;
-  min-height: 440px;
-  background: linear-gradient(180deg, #1b2327f0 0%, #10161af0 100%);
-  border: 2px solid #5a4b32;
-  border-radius: 14px;
-  padding: 32px 24px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.25s;
-}
-
-.mp-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  border-color: #e5b95a;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(229, 185, 90, 0.35);
-}
-
-.mp-card-icon {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-  margin-bottom: 24px;
-  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
-}
-
-.mp-card-title {
-  margin: 0 0 16px;
-  font-size: 32px;
-  color: #f7e1a0;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-}
-
-.mp-card-desc {
-  margin: 0;
-  font-size: 19px;
-  line-height: 1.5;
-  color: #c9bfab;
-}
-
-/* 加入房间输入框面板 */
-.mp-join-panel {
-  width: 580px;
-  background: linear-gradient(180deg, #1b2327f5 0%, #12181cf5 100%);
-  border: 2px solid #8a7550;
-  border-radius: 16px;
-  padding: 40px 48px;
-  text-align: center;
-  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.8);
-}
-
-.mp-join-panel h2 {
-  margin: 0 0 16px;
-  font-size: 40px;
-  color: #f7e1a0;
-}
-
-.mp-join-panel p {
-  margin: 0 0 32px;
-  font-size: 20px;
-  color: #d1c4a5;
-}
-
-.mp-input-row {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  margin-bottom: 24px;
-}
-
-.mp-code-input {
-  font-family: inherit;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 4px;
-  text-align: center;
-  color: #fce8a6;
-  background: #11171b;
-  border: 2px solid #6b5c3e;
-  border-radius: 8px;
-  padding: 12px 20px;
-  width: 260px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.mp-code-input:focus {
-  border-color: #f7e1a0;
-  box-shadow: 0 0 16px rgba(247, 225, 160, 0.3);
-}
-
-/* 按钮通用 */
-.mp-btn {
-  font-family: inherit;
-  font-size: 22px;
-  font-weight: 700;
-  border-radius: 8px;
-  padding: 12px 28px;
-  border: 1px solid #8a7550;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.mp-btn-primary {
-  background: linear-gradient(180deg, #445963 0%, #2a3a42 100%);
-  color: #fce8a6;
-}
-
-.mp-btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #597380 0%, #384c56 100%);
-  border-color: #fce8a6;
-}
-
-.mp-btn-primary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.mp-btn-chip {
-  background: #25333a;
-  border: 1px solid #706248;
-  color: #ecdab0;
+  padding: 10px 28px;
   border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.mp-btn-chip:hover {
-  background: #394d57;
-  color: #fff;
-  border-color: #e5b95a;
-}
-
-/* 房间大厅 (Lobby) */
-.mp-lobby {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 1400px;
-  padding: 24px 36px;
-}
-
-.mp-lobby-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  margin-bottom: 24px;
-  background: rgba(22, 30, 35, 0.75);
-  border: 1px solid #574a35;
-  border-radius: 12px;
-  padding: 14px 28px;
-}
-
-.mp-lobby-badge {
-  font-size: 28px;
-  font-weight: 700;
-  color: #e5b95a;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
-}
-
-.mp-room-info {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.mp-code-label {
   font-size: 20px;
-  color: #c9bfab;
-}
-
-.mp-code-val {
-  font-size: 26px;
   font-weight: 700;
-  color: #fce8a6;
-  letter-spacing: 3px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  letter-spacing: 1px;
 }
 
-/* 4 个玩家槽位 */
-.mp-slots-container {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  width: 100%;
-  margin-bottom: 24px;
-}
-
-.mp-slot {
-  min-height: 250px;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.25s;
-}
-
-.mp-slot.occupied {
-  background: linear-gradient(180deg, #1f2a30f0 0%, #141c21f0 100%);
-  border: 2px solid #6b5c3e;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-}
-
-.mp-slot.occupied.is-me {
-  border-color: #e5b95a;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(229, 185, 90, 0.25);
-}
-
-.mp-slot.empty {
-  background: rgba(18, 24, 28, 0.45);
-  border: 2px dashed #404b50;
-  align-items: center;
-  justify-content: center;
-}
-
-.mp-slot-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.mp-slot-role {
-  font-size: 19px;
-  font-weight: 700;
-  color: #e5c98a;
-}
-
-.mp-me-badge {
-  color: #6ed0e0;
-  margin-left: 4px;
-}
-
-.mp-ready-badge {
-  font-size: 15px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-weight: 700;
-}
-
-.mp-ready-badge.ready {
-  background: rgba(60, 140, 70, 0.35);
-  color: #85e89d;
-  border: 1px solid #48a858;
-}
-
-.mp-ready-badge.not-ready {
-  background: rgba(120, 100, 80, 0.25);
-  color: #baa88c;
-  border: 1px solid #665b4c;
-}
-
-.mp-slot-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.mp-slot-avatar {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
-  margin-bottom: 12px;
-}
-
-.mp-slot-name {
-  font-size: 24px;
-  font-weight: 700;
-  color: #f7e1a0;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
-}
-
-.mp-slot-empty-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  color: #79878f;
-  font-size: 18px;
-  text-align: center;
-  padding: 0 16px;
-}
-
-.mp-empty-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid #526168;
-}
-
-.mp-solo-notice {
-  font-size: 18px;
-  color: #d4c28c;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-/* 底部控制台 */
-.mp-lobby-controls {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  background: rgba(20, 27, 31, 0.85);
-  border: 1px solid #574a35;
-  border-radius: 12px;
-  padding: 20px 28px;
-}
-
-.mp-char-picker {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.mp-control-label {
-  font-size: 20px;
-  color: #c9bfab;
-  white-space: nowrap;
-}
-
-.mp-char-buttons {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.mp-char-btn {
-  background: #172126;
-  border: 1px solid #524735;
-  border-radius: 8px;
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  color: #d1c4a5;
-  font-family: inherit;
-  font-size: 18px;
-  transition: all 0.2s;
-}
-
-.mp-char-btn img {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-}
-
-.mp-char-btn:hover {
-  background: #233138;
-  border-color: #ad9462;
-  color: #fff;
-}
-
-.mp-char-btn.active {
-  background: #2a3d46;
-  border-color: #f7e1a0;
-  color: #f7e1a0;
-  box-shadow: 0 0 12px rgba(247, 225, 160, 0.3);
-}
-
-.mp-actions-bar {
-  display: flex;
-  justify-content: flex-end;
-  gap: 20px;
-}
-
-.mp-btn-ready {
-  background: linear-gradient(180deg, #376340 0%, #204128 100%);
-  color: #e4ffd8;
-  border-color: #5bb36b;
-}
-
-.mp-btn-ready:hover {
-  background: linear-gradient(180deg, #488053 0%, #295434 100%);
-}
-
-.mp-btn-cancel {
-  background: linear-gradient(180deg, #634337 0%, #412820 100%);
-  color: #ffe0d8;
-  border-color: #b36e5b;
-}
-
-.mp-btn-start {
-  background: linear-gradient(180deg, #a68434 0%, #69521d 100%);
-  color: #fff8d6;
-  border-color: #ffd466;
-  min-width: 160px;
-}
-
-.mp-btn-start:hover:not(:disabled) {
-  background: linear-gradient(180deg, #c49d3e 0%, #7d6223 100%);
-  box-shadow: 0 0 20px rgba(255, 212, 102, 0.4);
-}
-
-.mp-btn-start:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-/* 加载动画 */
-.mp-loading-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  font-size: 24px;
-  color: #e5d2a6;
-}
-
-.mp-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(229, 185, 90, 0.2);
-  border-top-color: #e5b95a;
-  border-radius: 50%;
-  animation: mp-spin 1s linear infinite;
-}
-
-@keyframes mp-spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes mp-fade-in {
-  from { opacity: 0; transform: translate(-50%, -10px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-/* 游戏内顶部状态悬浮条 */
-.coop-status {
-  position: absolute;
-  top: 110px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 20px;
-  color: #e9dfc4;
-  background: #172024e6;
-  border: 1px solid #6b5c3e;
-  padding: 8px 24px;
-  border-radius: 20px;
-  pointer-events: none;
-  z-index: 8;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-}
-
-.coop-status-badge {
-  background: #e5b95a;
-  color: #141b1f;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.coop-ended {
+/* -------------------------------------------------- 加入房间九宫格弹窗 */
+.mp-join-modal-backstop {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 50;
+  backdrop-filter: blur(4px);
 }
 
-.coop-panel {
-  width: 600px;
-  padding: 40px;
-  border: 2px solid #8a7550;
-  border-radius: 16px;
-  background: #161c20f5;
-  color: #ece1c4;
+.mp-join-dialog {
+  position: relative;
+  width: 620px;
+  box-sizing: border-box;
+  padding: 48px 56px 40px;
+  border: 42px solid transparent;
+  border-image-slice: 21 fill;
+  border-image-width: 42px;
   text-align: center;
-  box-shadow: 0 16px 70px #0009;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
 }
 
-.coop-panel h1 {
+.mp-dialog-title {
   margin: 0 0 16px;
-  color: #ffafa0;
-  font-size: 40px;
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--gold, #efc851);
+  -webkit-text-stroke: 4px #3D2F20;
+  paint-order: stroke fill;
+  letter-spacing: 2px;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
 }
 
-.coop-panel p {
-  margin: 16px 0;
-  font-size: 22px;
-  line-height: 1.5;
+.mp-dialog-desc {
+  margin: 0 0 28px;
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--cream, #fff6e2);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
 }
 
-.coop-panel .coop-note {
+.mp-dialog-input-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.mp-dialog-input {
+  font-family: inherit;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-align: center;
+  color: var(--gold, #fce8a6);
+  background: rgba(15, 20, 24, 0.85);
+  border: 2px solid #8e7443;
+  border-radius: 4px;
+  padding: 10px 20px;
+  width: 320px;
+  outline: none;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mp-dialog-input:focus {
+  border-color: #f7e1a0;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 12px rgba(247, 225, 160, 0.4);
+}
+
+.mp-dialog-hint {
+  margin-top: 10px;
+  font-size: 15px;
+  color: #a09785;
+}
+
+.mp-dialog-buttons {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  width: 100%;
+}
+
+/* -------------------------------------------------- 连线中与启程过渡动画 */
+.mp-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 12, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.mp-loading-spinner {
+  width: 56px;
+  height: 56px;
+  border: 4px solid rgba(239, 200, 81, 0.2);
+  border-top-color: var(--gold, #efc851);
+  border-radius: 50%;
+  animation: mp-spin 1s linear infinite;
+  margin-bottom: 24px;
+  box-shadow: 0 0 20px rgba(239, 200, 81, 0.3);
+}
+
+.mp-loading-label {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--gold, #efc851);
+  letter-spacing: 2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes mp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* -------------------------------------------------- 原版 RemotePlayerContainer (x: 36, y: 45) */
+.remote-player-container {
+  position: absolute;
+  left: 36px;
+  top: 45px;
+  width: 320px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+/* 邀请按钮：复用 reward_item_button */
+.invite-code-btn {
+  position: relative;
+  width: 240px;
+  height: 52px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: scale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.invite-code-btn:hover {
+  scale: 1.03;
+}
+
+.invite-code-btn:active {
+  scale: 0.97;
+}
+
+.icb-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+}
+
+.icb-label {
+  position: relative;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--cream, #fff6e2);
+  letter-spacing: 1px;
+  -webkit-text-stroke: 4px #261f17;
+  paint-order: stroke fill;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* 玩家槽位列表 */
+.remote-player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.remote-lobby-player {
+  position: relative;
+  width: 250px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(18, 24, 28, 0.65);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(239, 200, 81, 0.25);
+  backdrop-filter: blur(2px);
+}
+
+.remote-lobby-player.is-me {
+  border-color: rgba(239, 200, 81, 0.7);
+  background: rgba(26, 34, 40, 0.85);
+}
+
+.rlp-avatar-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.rlp-avatar {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+/* 准备就绪原版绿色打勾 */
+.rlp-ready-tick {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  pointer-events: none;
+  animation: mp-tick-bounce 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes mp-tick-bounce {
+  from { scale: 0.5; opacity: 0; }
+  to { scale: 1; opacity: 1; }
+}
+
+/* 断开连接红标 */
+.rlp-disconnect {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px #ff4d4f);
+}
+
+.rlp-nameplate {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.rlp-player-name {
   font-size: 18px;
-  color: #bab6a9;
-  margin-bottom: 30px;
+  font-weight: 700;
+  color: var(--gold, #efc851);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-text-stroke: 3px #241d13;
+  paint-order: stroke fill;
+  text-shadow: 2px 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.rlp-char-title {
+  font-size: 14px;
+  color: var(--cream, #fff6e2);
+  letter-spacing: 0.5px;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.remote-solo-label {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--gold, #efc851);
+  -webkit-text-stroke: 3px #261f17;
+  paint-order: stroke fill;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  letter-spacing: 1px;
+  padding: 4px 0;
+}
+
+/* 房主等待全员就绪提示 */
+.mp-host-waiting-tip {
+  position: absolute;
+  right: 170px;
+  bottom: 120px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #e5b95a;
+  -webkit-text-stroke: 3px #261f17;
+  paint-order: stroke fill;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  animation: mp-pulse 1.6s ease-in-out infinite;
+}
+
+/* 非房主准备提示 */
+.mp-client-ready-tip {
+  position: absolute;
+  right: 170px;
+  bottom: 120px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--cream, #fff6e2);
+  -webkit-text-stroke: 3px #261f17;
+  paint-order: stroke fill;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.mp-client-ready-tip.is-ready {
+  color: #7fff00;
+}
+
+@keyframes mp-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* -------------------------------------------------- 局内状态条目 */
+.coop-status {
+  position: absolute;
+  top: 14px;
+  left: 280px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cream, #fff6e2);
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+.coop-status-badge {
+  background: var(--gold, #efc851);
+  color: #1a1610;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.coop-note {
+  font-size: 16px;
+  color: #9cb2be;
+  margin: 0 0 24px;
 }
