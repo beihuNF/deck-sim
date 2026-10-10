@@ -1997,6 +1997,7 @@ export function installBridge() {
   tracker.CombatStateChanged = $.dcombine(tracker.CombatStateChanged, () => { NCombatRoom.Instance?.Ui?.Hand?.OnCombatStateChanged?.(); invalidate(); });
   // NCombatUi.OnCombatWon: offer rewards once the death animations are done (ShowRewards), or proceed after 1 s
   G.CombatManager.Instance.CombatWon = $.dcombine(G.CombatManager.Instance.CombatWon, (room: any) => {
+    (NCombatRoom.Instance?.Ui as any)?.PostCombatCleanUp?.();
     const run = async () => {
       if (!room.Encounter.ShouldGiveRewards) { await G.Cmd.Wait$2(1); await G.RunManager.Instance.ProceedFromTerminalRewardsScreen(); return; }
       const num = deathAnimRemaining();
@@ -2016,8 +2017,12 @@ export function installBridge() {
   G.CombatManager.Instance.CombatEnded = $.dcombine(G.CombatManager.Instance.CombatEnded, () => {
     for (const v of creatureViewsRef.get()) (v as any).OrbManager?.ClearOrbs();
     const u = NCombatRoom.Instance?.Ui;
-    u?.Hand?.AnimOut?.();
-    u?.PlayQueue?.AnimOut?.();
+    if ((u as any)?.AnimOut) (u as any).AnimOut();
+    else {
+      u?.Hand?.AnimOut?.();
+      u?.PlayQueue?.AnimOut?.();
+      (u as any)?.PostCombatCleanUp?.();
+    }
   });
   log('installed');
 }

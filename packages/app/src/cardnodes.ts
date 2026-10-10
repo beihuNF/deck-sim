@@ -267,7 +267,7 @@ NCard.Create = (card: any, visibility = G.ModelVisibility.Visible) => {
 };
 /** NCard.FindOnTable: hand holders, then the play queue, then the play container. */
 NCard.FindOnTable = (card: any, overridePile?: any) => {
-  if (!card || G.TestMode.IsOn || !G.CombatManager.Instance.IsInProgress) return null;
+  if (!card || G.TestMode.IsOn) return null;
   const ui = N('Rooms.NCombatRoom').Instance?.Ui;
   if (!(ui instanceof CombatUiView)) return null;
   // CardPileCmd passes the old pile after it has already updated the model's
@@ -275,7 +275,7 @@ NCard.FindOnTable = (card: any, overridePile?: any) => {
   const t = overridePile ?? card.Pile?.Type;
   if (t === G.PileType.Hand) return ui.Hand.GetCard(card) ?? ui.PlayQueue.GetCardNode(card) ?? ui.GetCardFromPlayContainer(card);
   if (t === G.PileType.Play) return ui.GetCardFromPlayContainer(card);
-  return null;
+  return ui.GetCardFromPlayContainer(card) ?? ui.Hand.GetCard(card);
 };
 
 // ------------------------------------------------------------------ HandPosHelper
@@ -568,6 +568,7 @@ export class HandView extends Web(NPlayerHand) {
   AnimOut() {
     // CancelHandSelectionIfNecessary
     if (this.IsInCardSelection && this.selectTcs) { this.selectTcs.TrySetCanceled?.() ?? this.selectTcs.TrySetResult([]); this.AfterCardsSelected(null); }
+    this.CancelAllCardPlay();
     this.enableTw?.Kill();
     this.enableTw = tween();
     this.enableTw.TweenProperty(this, 'position', v2(0, 500), 0.8).SetEase(0).SetTrans(10);
@@ -965,10 +966,32 @@ export class CombatUiView extends Web(NCombatUi) {
     if (!peeking) this.peekFrom.clear();
     invalidate();
   }
+  /** NCombatUi.AnimOut / OnCombatEnded: hand and play queue anim out, clear play container cards. */
+  AnimOut() {
+    this.Hand.AnimOut();
+    this.PlayQueue.AnimOut();
+    this.PostCombatCleanUp();
+  }
+  /** NCombatUi.PostCombatCleanUp: fades out and cleans up any played cards remaining in PlayContainer. */
+  PostCombatCleanUp() {
+    this.Hand.CancelAllCardPlay();
+    if (this.peekTw) { this.peekTw.Kill(); this.peekTw = null; }
+    if (this.PlayContainerCards.length > 0) {
+      for (const c of this.PlayContainerCards) c.CardHighlight?.AnimHide();
+      const tw = tween();
+      tw.TweenProperty(this.PlayContainer, 'modulate', new $.Color(1, 1, 1, 0), 0.25);
+      tw.Chain().TweenCallback(() => {
+        for (const c of this.PlayContainerCards) c.QueueFree();
+        this.PlayContainer.Modulate = white();
+        invalidate();
+      });
+    }
+  }
   /** The combat room is going away: free every node and drop the play-queue subscription. */
   destroy() {
     this.PlayQueue.detach();
     targetManager.CancelTargeting();
+    for (const c of this.PlayContainerCards) c.QueueFree();
     this.QueueFree();
   }
 }

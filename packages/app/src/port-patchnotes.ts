@@ -32,6 +32,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Combat[/b][/gold]
 • Fixed ending extra player turns and displaying their turn numbers.
 • Fixed area potions being canceled instead of used from the potion belt.
+• Fixed the final killing card lingering in the center of the screen upon combat victory.
 
 [gold][b]Save compatibility[/b][/gold]
 • Preserved the original Doormaker battle and its changing forms in existing runs.`,
@@ -65,6 +66,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]战斗[/b][/gold]
 • 修复额外回合中结束回合可能失效及回合编号显示错误的问题。
 • 修复从药水栏使用范围药水时，操作被取消的问题。
+• 修复战斗胜利（打出最后一击斩杀）后打出的卡牌依然悬浮残留在屏幕正中央的问题。
 
 [gold][b]存档兼容[/b][/gold]
 • 保留旧对局中的门扉制造者战斗及其形态变化。`,
