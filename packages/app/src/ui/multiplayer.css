@@ -355,6 +355,11 @@
   pointer-events: none;
   animation: mp-pulse 1.6s ease-in-out infinite;
 }
+.mp-host-waiting-tip.can-embark {
+  color: #7fff00;
+  -webkit-text-stroke: 3px #122805;
+  filter: drop-shadow(0 0 6px rgba(127, 255, 0, 0.4));
+}
 
 /* 非房主准备提示 */
 .mp-client-ready-tip {

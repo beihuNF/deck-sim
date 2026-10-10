@@ -99,7 +99,7 @@ export class WebRoom extends DurableObject<Env> {
       while (usedIds.has(id) && id <= this.room.maxPlayers) id++;
       if (id > this.room.maxPlayers) return json({ error: 'full' }, 409);
       const token = crypto.randomUUID();
-      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false });
+      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: id === 1 });
       await this.ctx.storage.put('room', this.room);
       await this.ctx.storage.setAlarm(this.room.created + 24 * 60 * 60_000);
       this.broadcast();
@@ -133,7 +133,9 @@ export class WebRoom extends DurableObject<Env> {
         connected: this.ctx.getWebSockets(String(p.id)).length > 0,
       })),
     });
-    for (const ws of this.ctx.getWebSockets()) ws.send(body);
+    for (const ws of this.ctx.getWebSockets()) {
+      try { ws.send(body); } catch {}
+    }
   }
   async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer) {
     const id: number = ws.deserializeAttachment().id;
@@ -169,14 +171,17 @@ export class WebRoom extends DurableObject<Env> {
       if (targetId && targetId !== 1) {
         const targetPlayer = this.room.players.find(p => p.id === targetId);
         if (targetPlayer) {
-          const sockets = this.ctx.getWebSockets(String(targetId));
-          for (const s of sockets) {
-            s.send(JSON.stringify({ type: 'kicked' }));
-            s.close(4003, 'Kicked by host');
-          }
+          // 先从房间列表中移除该玩家并存储
           this.room.players = this.room.players.filter(p => p.id !== targetId);
           await this.ctx.storage.put('room', this.room);
+          // 立即广播最新的房间状态给房主及其他在房玩家
           this.broadcast();
+          // 向被踢玩家发送通知并安全断开连接
+          const sockets = this.ctx.getWebSockets(String(targetId));
+          for (const s of sockets) {
+            try { s.send(JSON.stringify({ type: 'kicked' })); } catch {}
+            try { s.close(4003, 'Kicked by host'); } catch {}
+          }
         }
       }
       return;
@@ -184,11 +189,16 @@ export class WebRoom extends DurableObject<Env> {
     if (msg.type === 'select' && !this.room.started) {
       if (!['IRONCLAD', 'SILENT', 'REGENT', 'NECROBINDER', 'DEFECT'].includes(msg.character)
         || typeof msg.unlock !== 'string' || msg.unlock.length > 48_000) return ws.close(1008, 'Invalid selection');
-      me.character = msg.character; me.unlock = msg.unlock; me.ready = false;
+      me.character = msg.character; me.unlock = msg.unlock;
+      // 房主作为主持人默认就绪，客机切换角色时重置准备状态
+      me.ready = id === 1;
     } else if (msg.type === 'ready' && !this.room.started && me.unlock) {
       me.ready = msg.ready === true;
     } else if (msg.type === 'start' && id === 1 && !this.room.started) {
-      if (this.room.players.length < 2 || this.room.players.some(p => !p.ready || !this.ctx.getWebSockets(String(p.id)).length)) return;
+      // 房主启程判定：至少 2 人，所有客机玩家均已就绪且保持连接，房主自身已连接
+      const guestPlayers = this.room.players.filter(p => p.id !== 1);
+      const allGuestsReady = guestPlayers.length >= 1 && guestPlayers.every(p => p.ready && this.ctx.getWebSockets(String(p.id)).length > 0);
+      if (!allGuestsReady || !this.ctx.getWebSockets('1').length) return;
       this.room.started = true;
       this.room.seed = crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
       await this.ctx.storage.put('room', this.room);

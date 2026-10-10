@@ -34,6 +34,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const [view, setView] = useState<'menu' | 'host' | 'join'>('menu');
   const [joinCode, setJoinCode] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
+  const [, setKickGen] = useState(0);
 
   const charList = characters();
   const me = mp.players.find(p => p.id === mp.id);
@@ -91,9 +92,10 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const custom = epochRevealed(G.CustomAndSeedsEpoch);
   const hasMpSave = false; // 当前暂无断线续玩联机存档
 
-  // 房主启程判定
+  // 房主启程判定：至少 2 人，所有客机玩家均已就绪且保持连接
   const isHost = mp.id === 1;
-  const canEmbark = isHost && mp.players.length >= 2 && mp.players.every(p => p.ready && p.connected);
+  const guestPlayers = mp.players.filter(p => p.id !== 1);
+  const canEmbark = isHost && mp.players.length >= 2 && guestPlayers.length > 0 && guestPlayers.every(p => p.ready && p.connected);
 
   return (
     <div class="mp-screen-container">
@@ -300,8 +302,8 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                         src={imageUrl(`images/ui/top_panel/character_icon_${pChar}.png`) ?? ''}
                         alt={player.character}
                       />
-                      {/* 准备状态打勾 */}
-                      {player.ready && (
+                      {/* 准备状态打勾：房主天生常备就绪，客机准备后打勾 */}
+                      {(isSlotHost || player.ready) && (
                         <div
                           class="rlp-ready-tick"
                           style={{
@@ -339,6 +341,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                           e.stopPropagation();
                           playOneShot('event:/sfx/ui/clicks/ui_click');
                           kickMultiplayerPlayer(slotId);
+                          setKickGen(g => g + 1);
                         }}
                       >
                         <div
@@ -361,11 +364,13 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           </div>
 
           {/* 房主等待全员就绪提示 */}
-          {isHost && !canEmbark && (
-            <div class="mp-host-waiting-tip">
+          {isHost && (
+            <div class={`mp-host-waiting-tip ${canEmbark ? 'can-embark' : ''}`}>
               {mp.players.length < 2
                 ? tr('正在等待其他玩家加入...', 'Waiting for other players to join...')
-                : tr('等待全员就绪后方可启程...', 'Waiting for all players to be ready...')}
+                : !canEmbark
+                  ? tr('等待其他玩家就绪后方可启程...', 'Waiting for all players to be ready...')
+                  : tr('全员已就绪 · 点击右下角启程！', 'All players ready · Click bottom right to embark!')}
             </div>
           )}
 

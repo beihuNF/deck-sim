@@ -66,6 +66,9 @@ export function readyMultiplayer(ready: boolean) { send({ type: 'ready', ready }
 export function beginMultiplayer() { send({ type: 'start' }); }
 export function kickMultiplayerPlayer(targetId: number) {
   if (multiplayer.id !== 1 || multiplayer.phase !== 'lobby') return;
+  // 乐观更新：房主界面即刻移除被踢玩家，提供零延迟视觉反馈
+  multiplayer.players = multiplayer.players.filter(p => p.id !== targetId);
+  changed();
   try { send({ type: 'kick', targetId }); } catch {}
 }
 export async function connectMultiplayer(code?: string, mode: 'standard' | 'daily' | 'custom' = 'standard') {
@@ -123,6 +126,7 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
         } else if (msg.type === 'kicked') {
           clearSession(multiplayer.code);
           failed('kicked');
+          return;
         } else if (msg.type === 'start') {
           multiplayer.phase = 'starting';
           void startCoopRun(msg.players, msg.seed, net, msg.mode ?? multiplayer.mode).then(() => {
@@ -133,7 +137,9 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
       } catch (e) { console.error('Multiplayer packet failed', e); failed('sync'); }
     };
     ws.onerror = () => { if (socket === ws) failed('network'); };
-    ws.onclose = () => { if (socket === ws) failed('disconnected'); };
+    ws.onclose = () => {
+      if (socket === ws && multiplayer.error !== 'kicked') failed('disconnected');
+    };
   } catch (e) { failed(e instanceof Error ? e.message : 'network'); }
 }
 
