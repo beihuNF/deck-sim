@@ -616,10 +616,10 @@ function Toast() {
     if (!el || !toast.gen) return;
     el.getAnimations().forEach((a) => a.cancel());
     el.animate([
-      { translate: '0 0', opacity: 1, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' },
-      { translate: '0 -120px', opacity: 1, offset: 0.25 / 1.75 },
-      { translate: '0 -120px', opacity: 1, offset: 1.25 / 1.75 },
-      { translate: '0 -120px', opacity: 0 },
+      { translate: '-50% 0', opacity: 1, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' },
+      { translate: '-50% -120px', opacity: 1, offset: 0.25 / 1.75 },
+      { translate: '-50% -120px', opacity: 1, offset: 1.25 / 1.75 },
+      { translate: '-50% -120px', opacity: 0 },
     ], { duration: 1750, fill: 'forwards' });
   }, [toast.gen]);
   return (

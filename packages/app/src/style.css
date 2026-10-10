@@ -988,9 +988,9 @@ button { font-family: var(--font); cursor: pointer; }
 .stab-outline { mix-blend-mode: plus-lighter; opacity: .753; }
 .stab-label { position: absolute; left: 0; top: -5px; width: 256px; height: 100px; display: grid; place-items: center; white-space: nowrap; font: 700 32px 'Kreon', var(--font);
   letter-spacing: 2px; -webkit-text-stroke: 8px rgba(0, 0, 0, .25); paint-order: stroke fill; pointer-events: none; }
-.settings-toast { position: absolute; left: 610px; top: 1088px; width: 700px; height: 64px; opacity: 0; pointer-events: none; }
+.settings-toast { position: absolute; left: 50%; translate: -50% 0; top: 1088px; width: fit-content; max-width: 900px; height: 64px; opacity: 0; pointer-events: none; }
 .stt-bg { position: absolute; inset: 0; box-sizing: border-box; border-style: solid; border-width: 16px 32px; border-image-slice: 16 32 fill; filter: brightness(0); opacity: .75; }
-.stt-text { position: absolute; inset: 0; display: grid; place-items: center; font: 400 28px 'Kreon', var(--font); color: #EFC851; white-space: nowrap; }
+.stt-text { position: relative; z-index: 1; height: 64px; padding: 0 44px; display: flex; align-items: center; justify-content: center; font: 400 28px 'Kreon', var(--font); color: #EFC851; white-space: nowrap; }
 
 /* Settings Input Tab Keybinding (Side-by-side keyboard & controller) */
 .settings-row.bind-header { height: 48px; padding-top: 10px; border-bottom: 2px solid rgba(232, 220, 190, 0.25); }
