@@ -146,7 +146,10 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           return;
         } else if (msg.type === 'start') {
           multiplayer.phase = 'starting';
-          void startCoopRun(msg.players, msg.seed, net, msg.mode ?? multiplayer.mode, msg.settings).then(() => {
+          void startCoopRun(msg.players, msg.seed, net, msg.mode ?? multiplayer.mode, msg.settings, () => {
+            console.error('Original multiplayer checksum detected state divergence');
+            failed('divergence');
+          }).then(() => {
             if (multiplayer.phase === 'starting') multiplayer.phase = 'playing'; changed();
           }).catch(e => { console.error('Multiplayer start failed', e); failed('start'); });
         } else if (msg.type === 'ended') failed('disconnected');
@@ -163,6 +166,7 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
 export function multiplayerError() {
   const e = multiplayer.error;
   if (e === 'kicked') return loc('main_menu_ui', 'NETWORK_ERROR.KICKED.body');
+  if (e === 'divergence') return mpText('与队友的游戏状态不同步，联机已停止。请双方刷新页面后重新建房。', 'Game state diverged from your teammate. The session has stopped. Refresh both pages and create a new room.');
   if (e === 'version') return mpText('双方网页版本不同，请刷新后重新建房。', 'Different game builds. Refresh both browsers and create a new room.');
   if (e === 'full') return mpText('房间已满或已开始。', 'The room is full or has already started.');
   if (e === 'room' || e === 'expired') return mpText('房间不存在或已过期。', 'Room not found or expired.');

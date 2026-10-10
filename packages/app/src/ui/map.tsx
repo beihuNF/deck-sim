@@ -281,6 +281,7 @@ function signalOpenedClosed() {
 export const isMapVisible = () => S.visible;
 /** A new run or the main menu: the run's NMapScreen goes away with it. */
 export function resetMap() {
+  mapPings.length = 0;
   disposeMapSync();
   S.tween?.Kill(); S.actTween?.Kill();
   S.actTween = null; S.isOpen = false; ui.mapOpen = false; S.banners = [];
@@ -901,7 +902,7 @@ function NormalPoint({ n, act }: { n: MapNode; act: any }) {
           <CircleFrames play={n.circle.play} />
         </div>
       )}
-      <MapVotes n={n} />
+      <MapPings n={n} /><MapVotes n={n} />
     </div>
   );
 }
@@ -929,7 +930,7 @@ function AncientPoint({ n, act }: { n: MapNode; act: any }) {
         <div class="mp-anc-outline" style={{ maskImage: url(imageUrl(`images/packed/map/ancients/ancient_node_${id}_outline.png`)), backgroundColor: css(hov && tv ? OUTLINE_HOVER : act.MapBgColor), transition: tr('background-color', 'outline') }} />
         <div class="mp-anc-img" style={{ maskImage: url(imageUrl(`images/packed/map/ancients/ancient_node_${id}.png`)), backgroundColor: css(color), transition: tr('background-color', 'alpha') }} />
       </div>
-      <MapVotes n={n} />
+      <MapPings n={n} /><MapVotes n={n} />
     </div>
   );
 }
@@ -947,9 +948,24 @@ function BossPoint({ n, act }: { n: MapNode; act: any }) {
           <div class="mp-boss-img" style={{ maskImage: url(imageUrl(path + '.png')), backgroundColor: css(on ? act.MapTraveledColor : act.MapUntraveledColor) }} />
         </div>
       )}
-      <MapVotes n={n} />
+      <MapPings n={n} /><MapVotes n={n} />
     </div>
   );
+}
+
+// NMapScreen.PingMapCoord / NMapPingVfx: transient feedback carried by FlavorSynchronizer.
+let nextPing = 0;
+const mapPings: { id: number; key: string; color: any }[] = [];
+export function pingMapCoord(coord: any, player: any) {
+  const key = keyOf(coord);
+  if (!S.byKey.has(key)) return;
+  const ping = { id: ++nextPing, key, color: player.Character.MapDrawingColor };
+  mapPings.push(ping); invalidate();
+  setTimeout(() => { const i = mapPings.indexOf(ping); if (i >= 0) { mapPings.splice(i, 1); invalidate(); } }, 700);
+}
+function MapPings({ n }: { n: MapNode }) {
+  return <>{mapPings.filter(p => p.key === n.key).map(p => <div key={p.id} class="map-ping" data-player-color={css(p.color)}
+    style={{ left: `${n.w / 2}px`, top: `${n.h / 2}px`, width: `${n.w}px`, height: `${n.w}px`, backgroundColor: css(p.color), maskImage: url(imageUrl('images/packed/map/icons/map_ping.png')) }} />)}</>;
 }
 
 /** NMapPoint.ShouldDisplayPlayerVote: unvoted players remain at the current node, voted players at their choice. */

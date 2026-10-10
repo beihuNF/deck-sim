@@ -80,12 +80,12 @@ export function Reticle({ on, w = 0, h = 0, corners: given, origin }: { on: bool
  */
 interface MidState { Mid: number; hp: number; max: number; maxFg: number; tween: any; el: HTMLElement | null }
 const mids = new WeakMap<any, MidState>();
-function middleground(c: any, maxFg: number, fgHp: number): MidState {
-  let st = mids.get(c);
+function middleground(c: any, maxFg: number, fgHp: number, key: any): MidState {
+  let st = mids.get(key);
   if (!st || st.maxFg !== maxFg) {
     st?.tween?.Kill();
     st = { Mid: fgHp - 2, hp: c.CurrentHp, max: c.MaxHp, maxFg, tween: null, el: null };
-    mids.set(c, st);
+    mids.set(key, st);
   } else if (c.CurrentHp > 0 && (c.CurrentHp !== st.hp || c.MaxHp !== st.max)) {
     const s = st;
     s.hp = c.CurrentHp; s.max = c.MaxHp;
@@ -116,7 +116,8 @@ function refreshBlock(c: any, tracking: any) {
   } else if (c.Block > 0) { b.shown = true; b.text = String(c.Block); }
   return { ...b, outline };
 }
-function HealthBar({ c, bx, bw, outline }: { c: any; bx: number; bw: number; outline: boolean }) {
+export function HealthBar({ c, bx, bw, outline, compact = false }: { c: any; bx: number; bw: number; outline: boolean; compact?: boolean }) {
+  const midKey = useRef({});
   const r = 24 - safe(() => c.Monster?.HpBarSizeReduction ?? 0, 0);
   const x = bx - r / 2, w = bw + r, maxFg = w - 10;
   const hp = c.CurrentHp, max = Math.max(1, c.MaxHp);
@@ -137,7 +138,7 @@ function HealthBar({ c, bx, bw, outline }: { c: any; bx: number; bw: number; out
     if (doomLethal) { if (!poisonLethal) { doomR = hpRight; } showHp = false; }
     else doomR = Math.min(maxFg, fg(d) + 6);
   }
-  const mid = middleground(c, maxFg, fg(hp));
+  const mid = middleground(c, maxFg, fg(hp), midKey.current);
   const fgColor = infinite ? [0.773, 0.733, 0.929] : outline ? [0.231, 0.435, 0.639] : [0.945, 0.216, 0.243];
   let [txt, outlineCol] = ['#FFF6E2', '#900000'];
   if (infinite) outlineCol = '#34204F';
@@ -150,7 +151,7 @@ function HealthBar({ c, bx, bw, outline }: { c: any; bx: number; bw: number; out
   );
   return (
     <div class="hp-bar" style={{ left: `${x}px`, width: `${w}px` }}>
-      <div class="hp-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/combat/health_bar_bg.png')})`, filter: tint(0.1647, 0.3765, 0.4196, 0.7529) }} />
+      <div class="hp-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/combat/health_bar_bg.png')})`, filter: compact ? tint(0, .0667, .2, .7529) : tint(0.1647, 0.3765, 0.4196, 0.7529) }} />
       {outline && <div class="hp-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/combat/health_bar_stroke.png')})`, filter: tint(0.706, 0.886, 1) }} />}
       <div class="hp-fills" style={{ width: `${maxFg}px` }}>
         {hp > 0 && <div class="hp-fill" ref={(el) => { mid.el = el; }} style={{ left: '1px', width: `${Math.max(12, mid.Mid - 1)}px`, borderImageSource: fillSrc, filter: tint(1, 0.498, 0) }} />}
@@ -386,13 +387,14 @@ export function CreatureOverlay({ c, s, node, fresh, removing }: { c: any; s: Sl
   if (delay == null) stateDelay.set(c, (delay = fresh ? 1.3 + Math.random() * 0.4 : 0));
   const hovered = useRef(false);
   const view = node as CreatureView | null;
-  const visible = safe(() => c.Monster?.IsHealthBarVisible ?? true, true);
+  const remote = c.IsPlayer ? !G.LocalContext.IsMe$Creature(c) : !!c.PetOwner && !G.LocalContext.IsMe$Player(c.PetOwner);
+  const visible = safe(() => c.Monster?.IsHealthBarVisible ?? true, true) && (!remote || (!!view?.IsFocused && !s.hideBounds));
   const block = refreshBlock(c, view?.blockTracking);
   return (
     <div class={'creature' + (c.IsDead ? ' dead' : '') + (removing ? ' removing' : '') + (view?.IsFocused || hovered.current ? ' focused' : '') + (hovered.current ? ' hp-hover' : '')} data-side={c.IsEnemy ? 'enemy' : 'ally'}
       ref={(e) => { if (view) view.overlay = e; }}
       style={{ left: `${s.x}px`, top: `${s.y}px`, transform: `scale(${k})`, visibility: view?.LegacyVisible === false ? 'hidden' : undefined }}>
-      <div class="cr-hitbox" style={{ left: `${bx}px`, top: `${by}px`, width: `${bw}px`, height: `${bh}px`, pointerEvents: view?.HitboxOn === false ? 'none' : undefined }}
+      <div class="cr-hitbox" style={{ left: `${bx}px`, top: `${by}px`, width: `${bw}px`, height: `${bh}px`, pointerEvents: view?.HitboxOn === false || s.hideBounds ? 'none' : undefined }}
         onPointerEnter={() => view?.OnFocus?.()} onPointerLeave={() => view?.OnUnfocus?.()}>
         <Reticle on={!!view?.reticle} w={bw} h={bh} />
       </div>

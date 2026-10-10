@@ -11,12 +11,13 @@ const base = process.env.URL ?? 'http://127.0.0.1:47173/';
 const errors = [];
 try {
   for (const [index, mode] of ['standard', 'daily', 'custom'].entries()) {
+    if (process.env.MODE && process.env.MODE !== mode) continue;
     const pages = [];
     try {
       for (let i = 0; i < 2; i++) {
         const p = await browser.newPage({ viewport }); pages.push(p);
         p.on('pageerror', e => errors.push(`${mode}/${i}: ${e.message}`));
-        await p.goto(base + '?lang=eng&tutorials=off');
+        await p.goto(base + '?lang=' + (process.env.LANG_UI ?? 'eng') + '&tutorials=off');
         await p.waitForFunction(() => window.ui?.screen === 'menu', null, { timeout: 60000 });
         await setAspect(p);
         if (await p.locator('.ea-proceed').count()) await p.click('.ea-proceed');
@@ -33,11 +34,12 @@ try {
       await host.locator('.submenu-btn').nth(0).click();
       await host.locator('.submenu-btn').nth(index).click();
       await host.waitForSelector('.invite-code-btn');
+      if (mode === 'daily') await host.screenshot({ path: `${out}/daily-solo.png` });
       const code = (await host.locator('.invite-code-btn').innerText()).match(/[A-F0-9]{12}/)[0];
       await guest.locator('.submenu-btn').nth(1).click();
       await guest.fill('.mp-dialog-input', code); await guest.press('.mp-dialog-input', 'Enter');
       await guest.waitForSelector('.invite-code-btn');
-      await host.waitForFunction(() => document.querySelectorAll('.remote-lobby-player').length === 2);
+      await host.waitForFunction(n => document.querySelectorAll('.remote-lobby-player').length === n, mode === 'daily' ? 1 : 2);
       if (mode !== 'daily') {
         await host.locator('.chs-arrow.right').click();
         await guest.waitForFunction(() => document.querySelector('.chs-asc-level')?.textContent === '1');
@@ -58,11 +60,31 @@ try {
           await guest.click('.mp-settings-close');
         }
       } else {
+        for (const p of pages) {
+          await p.waitForSelector('.daily-coop .dr-mod');
+          assert.equal(await p.locator('.daily-coop .dr-mod').count(), 3);
+          assert.equal(await p.locator('.dr-mod img').evaluateAll(els => els.every(el => el.complete && el.naturalWidth > 0)), true);
+          assert.equal(await p.locator('.mp-settings-button, .mp-settings-dialog, .chs-info, .chs-asc, .mp-seed-input').count(), 0, 'Daily uses its own original screen, not a character-select settings popup');
+          assert.ok(await p.locator('.dr-date').innerText());
+          assert.match(await p.locator('.dr-time').innerText(), /\d{2}:\d{2}:\d{2}/);
+          assert.ok(await p.locator('.dr-lb-title').innerText());
+        }
         assert.equal(await host.locator('.chs-buttons').count(), 0, 'Daily characters are assigned by the original daily roll');
         assert.equal(await guest.locator('.chs-arrow').count(), 0);
-        await host.click('.mp-settings-button');
-        assert.equal(await host.locator('.mp-mod-row').count(), 3);
-        await host.click('.mp-settings-close');
+        assert.deepEqual(await host.locator('.dr-mod-text').allTextContents(), await guest.locator('.dr-mod-text').allTextContents());
+        assert.equal(await host.locator('.dr-asc-num').innerText(), await guest.locator('.dr-asc-num').innerText());
+        await host.screenshot({ path: `${out}/daily-lobby.png` });
+        await host.click('.daily-coop .confirm-btn.shown');
+        await host.waitForSelector('.dr-ready-tick');
+        await host.waitForSelector('.dr-ready-waiting');
+        await guest.waitForSelector('.remote-lobby-player[data-player-id="1"] .rlp-ready-tick');
+        assert.equal(await host.locator('.confirm-btn.shown').count(), 0, 'Ready hides embark until cancelled');
+        await host.screenshot({ path: `${out}/daily-ready.png` });
+        // The original left back button first cancels ready, leaving the lobby connected.
+        await host.click('.daily-coop .back-btn.shown');
+        await host.waitForSelector('.dr-ready-waiting', { state: 'detached' });
+        await guest.waitForSelector('.remote-lobby-player[data-player-id="1"] .rlp-ready-tick', { state: 'detached' });
+        await host.waitForSelector('.daily-coop .confirm-btn.shown');
       }
       for (const p of pages) await p.click('.mp-lobby-screen .confirm-btn.shown');
       for (const p of pages) await p.waitForFunction(() => window.G.RunManager.Instance.State != null && document.querySelector('.mp-player-states'), null, { timeout: 60000 });

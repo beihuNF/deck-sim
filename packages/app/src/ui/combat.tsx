@@ -13,7 +13,7 @@ import { floaters, bubbles, powerPops } from '../bridge';
 import { t } from '../i18n';
 import { showFtue } from './ftue';
 import { CardLayer, TargetingArrow, TintFilters, usePointer } from './cardlayer';
-import { EnergyCounter, EndTurnButton, PileButton, pileHotkey, endTurnHotkey, combatIsCurrent, hud } from './combat-hud';
+import { EnergyCounter, EndTurnButton, PingButton, PileButton, pileHotkey, endTurnHotkey, combatIsCurrent, hud } from './combat-hud';
 import { CreatureOverlay, FloatNumber, SpeechBubble, PowerPop } from './creature-ui';
 import { OrbLabels } from './orbs';
 import { HandSelectUi, SelectConfirmButton, confirmHotkey, peekHotkey } from './hand-select';
@@ -135,6 +135,7 @@ export function CombatScreen({ view, visualOnly = false }: { view: any; visualOn
           <PileButton kind="discard" pile={pcs.DiscardPile} me={me} out={!cm.IsInProgress || !!ui.gameOver} />
           <PileButton kind="exhaust" pile={pcs.ExhaustPile} me={me} out={!cm.IsInProgress || !!ui.gameOver} />
           <EndTurnButton view={view} me={me} />
+          <PingButton view={view} me={me} />
           <EnergyCounter me={me} pcs={pcs} out={!cm.IsInProgress || !!ui.gameOver} />
           {view.Ui.Hand.IsInCardSelection ? (
             <>

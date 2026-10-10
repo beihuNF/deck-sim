@@ -13,6 +13,7 @@ import { getInputDevice, setInputDevice, setControllerId, getKeyboardBindings } 
 import { modalOpen } from '../ui/modal';
 import { ftueActive } from '../ui/ftue';
 import { edge } from '../view';
+import { pingHotkey } from '../ui/combat-hud';
 
 // Controller state
 let activeGamepadIndex: number | null = null;
@@ -312,7 +313,7 @@ function handleCombatGamepad(
 
   // NControllerCardPlay restricts navigation to valid, hittable enemies or allies.
   if (targetManager.IsInSelection) {
-    const targets = creatureViewsRef.get().filter((n: any) => n.Entity?.IsHittable && targetManager.AllowedToTargetNode(n)
+    const targets = creatureViewsRef.get().filter((n: any) => !n.slot?.hideBounds && n.Entity?.IsHittable && targetManager.AllowedToTargetNode(n)
       && G.Hook.ShouldAllowTargeting(n.Entity.CombatState, n.Entity, { v: null })).sort((a: any, b: any) => a.GlobalPosition.X - b.GlobalPosition.X);
     if (!targets.length) { targetManager.CancelTargeting(); return; }
     let index = targets.indexOf(targetManager.hovered);
@@ -336,6 +337,8 @@ function handleCombatGamepad(
     }
     return;
   }
+
+  if (actionJustPressed('select') && pingHotkey()) return;
 
   // Self/all-target cards use the same two-press preview/confirm flow as the original controller play.
   if (hand?.currentPlay?.directional) {

@@ -1,12 +1,13 @@
 // Two or four isolated browser profiles: locked-character preview, shared drawings, map votes and room entry.
 // Requires the local room server (wrangler dev --port 8787) and app server.
-// CHROME=<path> [PLAYERS=2|4] [VIEW=...] [ASPECT=Auto] node tools/e2e/multiplayer.mjs <outDir>
+// CHROME=<path> [PLAYERS=2|4] [MODE=standard|daily] [FORMATION=1] [DIFFERENT_SPEED=1] [DIVERGENCE=1] [KEYBOARD_PING=1] [VIEW=...] [ASPECT=Auto] node tools/e2e/multiplayer.mjs <outDir>
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { viewport, setAspect } from './start.mjs';
 const out = process.argv[2] ?? '/tmp/sts2-multiplayer';
 fs.mkdirSync(out, { recursive: true });
+const mode = process.env.MODE ?? 'standard';
 const count = Number(process.env.PLAYERS ?? 2);
 assert.ok(count === 2 || count === 4);
 const browser = await chromium.launch({ executablePath: process.env.CHROME });
@@ -31,12 +32,13 @@ try {
     await page.waitForFunction(() => window.ui?.screen === 'menu', null, { timeout: 60000 });
     await setAspect(page);
     if (await page.locator('.ea-proceed').count()) await page.click('.ea-proceed');
-    await page.evaluate(() => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType.Instant; });
+    await page.evaluate(mode => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType.Instant; if (mode === 'daily') { window.G.SaveManager.Instance.ObtainEpochOverride('DAILY_RUN_EPOCH', window.G.EpochState.Revealed); window.G.SaveManager.Instance.ObtainEpochOverride('NEOW_EPOCH', window.G.EpochState.Revealed); } window.invalidate(); }, mode);
     await page.click('.mm-multiplayer');
   }
   const host = pages[0], guest = pages[1];
+  console.log(`Loaded ${count} isolated ${mode} profiles`);
   await host.locator('.submenu-btn').nth(0).click(); // Host
-  await host.locator('.submenu-btn').nth(0).click(); // Standard
+  await host.locator('.submenu-btn').nth(mode === 'daily' ? 1 : 0).click(); // Original standard/daily lobby
   await host.waitForSelector('.invite-code-btn');
   const code = (await host.locator('.invite-code-btn').innerText()).match(/[A-F0-9]{12}/)[0];
   for (const p of pages.slice(1)) {
@@ -45,7 +47,8 @@ try {
     await p.press('.mp-dialog-input', 'Enter');
     await p.waitForSelector('.invite-code-btn');
   }
-  await host.waitForFunction(n => document.querySelectorAll('.remote-lobby-player').length === n, count);
+  await host.waitForFunction(n => document.querySelectorAll('.remote-lobby-player').length === n, mode === 'daily' ? count - 1 : count);
+  if (mode !== 'daily') {
   // Original behavior: a locked character can be previewed, but cannot replace the lobby choice or ready up.
   await guest.locator('.chs-buttons > :nth-child(2)').click();
   await guest.waitForFunction(() => !document.querySelector('.mp-lobby-screen .confirm-btn.shown'));
@@ -59,8 +62,48 @@ try {
   });
   await guest.locator('.chs-buttons > :nth-child(2)').click();
   await guest.waitForFunction(() => document.querySelector('.remote-lobby-player.is-me .rlp-char-title')?.textContent.includes('Silent'));
+  if (process.env.FORMATION) {
+    await host.evaluate(() => { window.G.SaveManager.Instance.ObtainEpochOverride('SILENT1_EPOCH', window.G.EpochState.Revealed); window.invalidate(); });
+    await host.locator('.chs-buttons > :nth-child(2)').click();
+    await guest.evaluate(() => { window.G.SaveManager.Instance.ObtainEpochOverride('NECROBINDER1_EPOCH', window.G.EpochState.Revealed); window.invalidate(); });
+    await guest.locator('.chs-buttons > :nth-child(4)').click();
+    await guest.waitForFunction(() => document.querySelector('.remote-lobby-player.is-me .rlp-char-title')?.textContent.includes('Necrobinder'));
+  }
+  }
   for (const p of pages) await p.click('.mp-lobby-screen .confirm-btn.shown');
+  if (mode === 'daily') {
+    for (const p of pages) await p.waitForFunction(() => window.ui?.screen === 'run' && window.ui.room, null, {timeout:60000});
+    for (let step = 0; step < 100; step++) {
+      if ((await Promise.all(pages.map(p => p.evaluate(() => window.ui.mapOpen)))).every(Boolean)) break;
+      for (const p of pages) {
+        if (await p.evaluate(() => window.ui.mapOpen)) continue;
+        const action = await p.evaluate(() => {
+          const el = document.querySelector('.ftue-confirm, .ancient-next, .card-reward-screen .gh-card, .choose-card-screen .gh-card, .anc-hitbox, .event-option:not(.disabled), .rewards-screen .proceed-btn.shown');
+          if (!el) return null;
+          const r = el.getBoundingClientRect(); return [r.left+r.width/2,r.top+r.height/2];
+        });
+        if (action) await p.mouse.click(...action);
+        await p.waitForTimeout(150);
+      }
+    }
+  }
+  if (process.env.DIFFERENT_SPEED) await host.evaluate(() => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType.Normal; });
   for (const p of pages) await p.waitForFunction(() => window.ui?.mapOpen && document.querySelector('.mp.travelable'), null, { timeout: 60000 });
+  console.log('All peers reached the initial map');
+  for (const p of pages) {
+    assert.equal(await p.locator('.coop-status').count(), 0);
+    assert.equal(await p.locator('.mp-player-state').first().getAttribute('data-player-id'), String(pages.indexOf(p) + 1), 'Local player belongs first');
+    await p.evaluate(() => {
+      window.__mapPings = [];
+      new MutationObserver(records => { for (const r of records) for (const node of r.addedNodes) if (node.classList?.contains('map-ping')) window.__mapPings.push([node.dataset.playerColor, node.style.maskImage]); }).observe(document.body, { childList: true, subtree: true });
+    });
+  }
+  for (const p of pages) await p.evaluate(() => {
+    window.__checksums = []; window.__divergences = [];
+    const G = window.G, tracker = G.RunManager.Instance.ChecksumTracker;
+    tracker.ChecksumGenerated = G.$.dcombine(tracker.ChecksumGenerated, (data, context) => window.__checksums.push({id:data.id, checksum:data.checksum, context}));
+    tracker.StateDiverged = G.$.dcombine(tracker.StateDiverged, id => window.__divergences.push(id));
+  });
   assert.ok(await blank(host));
   await stroke(host, 0.43);
   await guest.waitForFunction(() => {
@@ -81,26 +124,87 @@ try {
     const c = document.querySelector('.map-drawings');
     return !c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v > 0);
   });
+  const initialRoom = await host.evaluate(() => window.ui.room.kind);
   for (let i = 0; i < count; i++) {
     await pages[i].locator('.mp.travelable').first().click();
     if (i < count - 1) {
       for (const p of pages) await p.waitForSelector(`.mp.travelable .map-vote[data-player-id="${i + 1}"]`);
-      assert.equal(await host.evaluate(() => window.ui.room.kind), 'maproom', 'Travel must wait for every player');
+      assert.equal(await host.evaluate(() => window.ui.room.kind), initialRoom, 'Travel must wait for every player');
       await pages[i].screenshot({ path: `${out}/vote-${i + 1}.png` });
+      if (i === 0) {
+        await host.locator('.mp.travelable').first().click();
+        for (const p of pages) {
+          await p.waitForFunction(() => window.__mapPings.length > 0);
+          assert.ok(await p.evaluate(() => window.__mapPings[0][1].includes('map_ping')), 'Original ping texture is present');
+          assert.equal(await p.evaluate(() => window.ui.room.kind), initialRoom, 'Pinging cannot submit a teammate vote');
+        }
+      }
     }
   }
   for (const p of pages) await p.waitForFunction(() => window.ui.room?.kind === 'combat', null, { timeout: 30000 });
   const coords = await Promise.all(pages.map(p => p.evaluate(() => window.G.RunManager.Instance.State.MapLocation.ToString())));
   assert.equal(new Set(coords).size, 1);
   for (let i = 0; i < count; i++) await pages[i].screenshot({ path: `${out}/combat-${i + 1}.png` });
+  if (process.env.FORMATION) for (const p of pages) {
+    const formation = await p.evaluate(() => {
+      const G = window.G, cr = G.$.ext('MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom').Instance;
+      return [...cr.creatures].filter(([c]) => c.IsPlayer || c.PetOwner).map(([c,n]) => ({ owner: c.Player?.NetId ?? c.PetOwner.NetId, player: c.IsPlayer, local: c.IsPlayer ? G.LocalContext.IsMe$Creature(c) : G.LocalContext.IsMe$Player(c.PetOwner), ...n.slot, ostyK: n.OstyK }));
+    });
+    const mine = formation.find(c => c.player && c.local), theirs = formation.filter(c => c.player && !c.local), osty = formation.find(c => !c.player);
+    assert.equal(osty.hideBounds, !osty.local);
+    assert.equal(osty.ostyK != null, osty.local, 'Only local Osty follows its owner');
+    if (osty.local) { assert.ok(osty.x > mine.x); assert.ok(osty.y < mine.y); }
+    else { const owner = theirs.find(c => c.owner === osty.owner); assert.ok(Math.abs(osty.y - owner.y) < 30); }
+    if (count === 4) { assert.equal(new Set(formation.filter(c => c.player).map(c => c.y)).size, 2); assert.ok(theirs.some(c => c.dim === .5)); }
+    fs.writeFileSync(`${out}/formation-${pages.indexOf(p) + 1}.json`, JSON.stringify(formation, null, 2));
+  }
   // A single ready player must be visible to peers, and may undo before the whole team ends the turn.
   for (const p of pages) await p.waitForSelector('.end-turn-btn.shown:not(.disabled)');
+  console.log('All peers reached the first player turn');
   await host.click('.end-turn-btn.shown:not(.disabled)');
   for (const p of pages) await p.waitForSelector('.mp-player-state[data-player-id="1"][data-ready="true"]');
+  for (const p of pages) await p.waitForSelector('.etb-player-vote[data-player-id="1"]');
+  await host.waitForSelector('.ping-btn.shown:not(:disabled)');
+  assert.equal(await guest.locator('.ping-btn.shown').count(), 0);
+  await host.click('.ping-btn.shown');
+  await guest.waitForFunction(() => Number(document.querySelector('.speech-bubble')?.style.opacity) > .1);
+  await guest.waitForFunction(() => document.querySelector('.mp-player-state[data-player-id="1"] .mp-state-ready').getAnimations().length > 0);
+  await host.screenshot({ path: `${out}/end-turn-waiting-host.png` });
+  await guest.screenshot({ path: `${out}/end-turn-waiting-guest.png` });
+  if (process.env.KEYBOARD_PING) {
+    await guest.evaluate(() => {
+      const flavor = window.G.RunManager.Instance.FlavorSynchronizer;
+      window.__keyboardPings = 0;
+      flavor.OnEndTurnPingReceived = window.G.$.dcombine(flavor.OnEndTurnPingReceived, () => window.__keyboardPings++);
+    });
+    await host.waitForTimeout(1100); // Original flavor ping cooldown.
+    await host.evaluate(() => { window.G.SaveManager.Instance.PrefsSave.KeyboardMode = true; });
+    await host.keyboard.press('ArrowLeft');
+    await host.keyboard.press('Space');
+    await guest.waitForFunction(() => window.__keyboardPings === 1);
+    await host.evaluate(() => { window.G.SaveManager.Instance.PrefsSave.KeyboardMode = false; });
+    console.log('Pure keyboard Select uses the controller waiting-ping path');
+  }
   await host.click('.end-turn-btn.shown:not(.disabled)');
-  for (const p of pages) await p.waitForSelector('.mp-player-state[data-player-id="1"][data-ready="false"]');
+  for (const p of pages) {
+    await p.waitForSelector('.mp-player-state[data-player-id="1"][data-ready="false"]');
+    await p.waitForFunction(() => !document.querySelector('.etb-player-vote[data-player-id="1"]'));
+  }
+  assert.equal(await host.locator('.ping-btn.shown').count(), 0);
+  console.log('Waiting ping, ready portraits and undo passed');
+  if (process.env.DIVERGENCE) {
+    await host.waitForTimeout(500);
+    const ids = await Promise.all(pages.map(p => p.evaluate(() => window.G.RunManager.Instance.ChecksumTracker.NextId)));
+    assert.equal(new Set(ids).size, 1);
+    await guest.evaluate(() => { window.G.RunManager.Instance.State.GetPlayer(2).Creature.CurrentHp -= 1; });
+    for (const p of [host, guest]) await p.evaluate(() => window.G.RunManager.Instance.ChecksumTracker.GenerateChecksum$2('e2e forced mismatch', null));
+    for (const p of pages) await p.waitForSelector('.mp-join-dialog');
+    assert.match(await guest.locator('.mp-dialog-desc').innerText(), /diverged/);
+    console.log('OK: original checksum mismatch stops all peers and displays a sync error');
+    process.exitCode = 0;
+  } else {
   // Play hand cards through real mouse drags until combat rewards appear.
-  for (let step = 0; step < 200; step++) {
+  for (let step = 0; step < 400; step++) {
     if ((await Promise.all(pages.map(p => p.locator('.rewards-screen').count()))).every(Boolean)) break;
     for (const p of pages) {
       const next = await p.evaluate(() => {
@@ -123,7 +227,7 @@ try {
         if (!h) return { tap: center(end) };
         return { from: point(h.GlobalPosition.X, h.GlobalPosition.Y - 60), up: point(h.GlobalPosition.X, 500), target: h.CardModel.TargetType === window.G.TargetType.AnyEnemy && target ? center(target) : null };
       });
-      if (!next) continue;
+      if (!next) { await p.waitForTimeout(80); continue; }
       if (next.tap) await p.mouse.click(...next.tap);
       else {
         await p.mouse.move(...next.from); await p.mouse.down(); await p.mouse.move(...next.up, { steps: 6 });
@@ -136,11 +240,24 @@ try {
   for (const p of pages) await p.waitForSelector('.rewards-screen', { timeout: 20000 });
   const combatStates = await Promise.all(pages.map(p => p.evaluate(() => window.G.RunManager.Instance.State.Players.map(x => [x.NetId, x.Creature.CurrentHp, x.Gold]))));
   for (const state of combatStates) assert.deepEqual(state, combatStates[0], 'Combat results must agree');
+  const checksums = await Promise.all(pages.map(p => p.evaluate(() => ({ checksums:window.__checksums, divergences:window.__divergences }))));
+  fs.writeFileSync(`${out}/checksums.json`, JSON.stringify(checksums, null, 2));
+  for (const c of checksums) {
+    assert.deepEqual(c.divergences, [], 'No state divergence during combat');
+    for (const remote of c.checksums) {
+      const local = checksums[0].checksums.find(x => x.id === remote.id);
+      if (local) assert.equal(remote.checksum, local.checksum, `Original checksum ${remote.id}: ${remote.context}`);
+    }
+  }
   // One player can finish rewards and open the map while another is still reviewing rewards.
   await host.click('.rewards-screen .proceed-btn.shown');
-  await guest.waitForFunction(() => document.querySelector('.mp-player-state[data-player-id="1"]')?.textContent.includes('Map'));
+  await guest.waitForFunction(() => document.querySelector('.mp-player-state[data-player-id="1"]')?.querySelector('[data-screen="Map"]'));
   for (const p of pages.slice(1)) await p.click('.rewards-screen .proceed-btn.shown');
   for (const p of pages) await p.waitForFunction(() => window.ui.mapOpen);
+  for (const p of pages) {
+    assert.equal(await p.locator('.proceed-btn.shown:visible').count(), 0, 'Room proceed button is hidden under the map');
+    await p.screenshot({ path: `${out}/map-after-rewards-${pages.indexOf(p) + 1}.png` });
+  }
   // Test-only jump to a treasure node through the original vote/action queue, keeping every simulation synchronized.
   for (const p of pages) await p.evaluate(() => {
     const G = window.G, rm = G.RunManager.Instance, rs = rm.State;
@@ -163,8 +280,13 @@ try {
   for (const state of relicStates) assert.deepEqual(state, relicStates[0], 'Relic allocation must agree');
   for (let i = 0; i < count; i++) await pages[i].screenshot({ path: `${out}/treasure-${i + 1}.png` });
   assert.deepEqual(errors, []);
-  console.log(`OK: ${count} players, locked preview, unlocked selection, shared drawings, eraser/clear ownership, voting avatars, unanimous travel, combat/rewards, peer ready/screen state, shared relic selection/skip`, coords);
+  console.log(`OK: ${mode}, ${count} players, ${mode === 'standard' ? 'locked preview, unlocked selection, ' : ''}shared drawings, eraser/clear ownership, voting avatars, repeated-vote pings, all-player vote resolution, waiting pings and ready portraits, combat/rewards, peer ready/screen state, shared relic selection/skip`, coords);
+  }
 } catch (e) {
+  for (let i = 0; i < pages.length; i++) {
+    const state = await pages[i].evaluate(() => ({checksums:window.__checksums, divergences:window.__divergences, enemies:window.ui?.room?.combatState?.Enemies?.map(c => [c.Monster.Id.Entry,c.CurrentHp]), phase:window.G?.RunManager.Instance.ActionQueueSynchronizer?.CombatState, errors:[]})).catch(() => null);
+    fs.writeFileSync(`${out}/failure-state-${i + 1}.json`, JSON.stringify({state, errors}, null, 2));
+  }
   for (let i = 0; i < pages.length; i++) await pages[i].screenshot({ path: `${out}/failure-${i + 1}.png` }).catch(() => {});
   throw e;
 } finally { await browser.close(); }

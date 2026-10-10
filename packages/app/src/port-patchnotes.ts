@@ -2,11 +2,29 @@
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_11',
-    eng: `[gold][b]Controls[/b][/gold]
+    eng: `[gold][b]Multiplayer[/b][/gold]
+• Daily co-op now uses the original daily challenge layout, with the assigned character, ascension, countdown and three illustrated modifiers displayed directly. Ready indicators and the back button now follow the original ready/cancel flow.
+• Fixed unreadable modifier descriptions on the custom co-op settings popup.
+• Fixed co-op continuing silently after the original game detected a state mismatch; the session now stops with a synchronization error.
+• Restored co-op map ping feedback when clicking your voted node again, and hid underlying room navigation while the map is open.
+• Added the original waiting-for-teammates ping button and ready player portraits on End Turn.
+• Restored compact team health, block, energy, card and location indicators, with the local player listed first; removed the extra in-run room banner.
+• Corrected co-op creature rows and pet placement, keeping remote Osty beside its owner and showing remote health bars on hover.
+
+[gold][b]Controls[/b][/gold]
 • Fixed controller card play waiting for mouse dragging: cards now focus automatically, preview on Select, and play on a second press, with valid targets and aiming arrows snapping to enemies or allies.
 • Map navigation now snaps between reachable nodes with the stick or directional buttons, and restores the current floor after scrolling.
 • Fixed the first mouse click on a map node being ignored after controller navigation.`,
-    zhs: `[gold][b]操作[/b][/gold]
+    zhs: `[gold][b]多人联机[/b][/gold]
+• 多人每日挑战恢复原版每日页面，直接展示指定角色、进阶、倒计时和三个带图标的词缀；准备标记和返回取消准备遵循原版流程。
+• 修复多人自定义词缀设置弹窗的背景和文字对比度。
+• 修复原版校验已发现状态分叉后，网页仍静默继续联机的问题；现在会停止会话并显示同步错误。
+• 重复点击已投票节点恢复原版地图催促反馈，打开地图时隐藏底层房间的前进按钮。
+• 补齐结束回合后的催促按钮，以及结束回合按钮上的已准备角色头像。
+• 恢复紧凑的队伍生命、格挡、能量、手牌和位置图标，本机玩家排在首位；移除游戏内额外的房间提示。
+• 修正多人角色分排与宠物站位，队友的奥斯蒂站在主人旁边，队友血条按原版在悬停时显示。
+
+[gold][b]操作[/b][/gold]
 • 修复手柄出牌仍需鼠标拖动的问题：自动聚焦手牌，按选择预览、再次选择出牌，有效目标与箭头吸附敌人或队友。
 • 地图支持摇杆或方向键在可走节点间吸附切换，滚动后导航自动回到当前楼层。
 • 修复手柄导航后切回鼠标时，第一次点击地图节点被忽略的问题。`,

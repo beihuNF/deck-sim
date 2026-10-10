@@ -22,6 +22,17 @@
 .dr-mod { display: flex; gap: 12px; }
 .dr-mod img { flex: none; width: 64px; height: 64px; object-fit: contain; }
 .dr-mod-text { width: 500px; min-height: 64px; display: flex; align-items: center; font: 400 24px 'Kreon', var(--font); line-height: calc(1.26em - 4px); color: var(--cream); }
+/* DailyRunScreen's HBox contains the local character and RemotePlayerContainer in multiplayer. */
+.daily-coop .dr-char-icon { left: 79px; top: 313.5px; }
+.daily-coop .dr-asc-icon { left: 122.5px; top: 332.5px; }
+.daily-coop .dr-asc-num { left: 125px; top: 349.5px; }
+.daily-coop .dr-char-name { left: 159px; top: 348.5px; color: var(--cream); }
+.dr-player-name { left: 159px; top: 316.5px; width: 205px; height: 32px; font: 400 24px 'Kreon', var(--font); color: var(--cream); text-shadow: 3px 2px #0004; }
+.dr-ready-tick { left: 79px; top: 313.5px; pointer-events: none; }
+.dr-ready-waiting { left: 1010px; top: 866px; width: 736px; height: 122px; display: grid; place-items: center; isolation: isolate;
+  color: var(--cream); font: 400 42px 'Kreon', var(--font); text-align: center; text-shadow: 3px 2px #0004; }
+.dr-waiting-bg { position: absolute; inset: 0; z-index: -1; border: 42px solid transparent; border-image-slice: 21 fill; filter: brightness(0); opacity: .36; pointer-events: none; }
+.dr-disclaimer { left: 313px; top: 993px; width: 1294px; text-align: center; color: #ff6161; font: italic 24px 'Bitter', var(--font); text-shadow: 3px 2px #0008; }
 /* NDailyRunLeaderboard */
 .dr-lb-title { left: 960px; top: 0; width: 960px; height: 180px; display: flex; align-items: flex-end; justify-content: center; white-space: nowrap;
   font: 700 36px/1.522 'Spectral', var(--font); color: var(--gold); text-shadow: 4px 3px 0 rgba(0, 0, 0, .25); }

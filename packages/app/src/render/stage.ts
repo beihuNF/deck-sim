@@ -101,7 +101,7 @@ export function getApp() {
 }
 
 /** Screen placement of one creature: feet at (x, y), visual scale s, bounds w×h (already scaled). */
-export interface Slot { x: number; y: number; w: number; h: number; s: number; intent: [number, number]; flip: boolean; /** bounds' top-left relative to (x, y) */ bl: number; bt: number; /** Visuals.Scale (creature scale changes) */ vis?: number }
+export interface Slot { x: number; y: number; w: number; h: number; s: number; intent: [number, number]; flip: boolean; /** bounds' top-left relative to (x, y) */ bl: number; bt: number; /** Visuals.Scale (creature scale changes) */ vis?: number; dim?: number; hideBounds?: boolean; drawOrder?: number }
 
 /**
  * Port of NCombatRoom's layout (PositionPlayersAndPets / PositionEnemies / PositionCreaturesWithSlots /
@@ -169,20 +169,29 @@ function computeLayout(cs: any): Map<any, Slot> {
   // players + pets (single player: pets hang off their owner)
   const allies = list(cs.Allies ?? []);
   const players = allies.filter((c: any) => c?.IsPlayer);
+  const meIndex = players.findIndex(c => G.LocalContext.IsMe$Creature(c));
+  if (meIndex > 0) players.unshift(players.splice(meIndex, 1)[0]);
+  const dims = new Map<any, number>(), orders = new Map<any, number>();
   const half = 960 / scaling;
   let gap = 70;
   const cols = Math.ceil(Math.sqrt(players.length)) || 1;
-  const width = players.slice(0, cols).reduce((a, c) => a + bw(c), 0);
+  const rows = Math.ceil(players.length / cols);
+  let width = allies.slice(0, cols).reduce((a, c) => a + bw(c), 0);
+  const diagonal = width * .33, rowX = rows > 1 ? diagonal / (rows - 1) : 0, rowY = rows > 1 ? 120 / (rows - 1) : 0;
   let span = width + (cols - 1) * gap;
   let x0 = Math.max((half - span) * 0.5, 150);
+  if (players.length >= cols * 2) width += diagonal;
   if (x0 + span > half && cols > 1) { gap = (half - 150 - width) / (cols - 1); span = width + (cols - 1) * gap; x0 = (half - span) * 0.5; }
   if (players.length && safeBool(() => enc.FullyCenterPlayers)) x0 = -bw(players[0]) * 0.5;
   let tx = x0;
-  for (const p of players) {
-    const py = 200;
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i], row = Math.floor(i / cols);
+    if (i % cols === 0) tx = x0 + rowX * row;
+    const py = 200 - rowY * row;
+    dims.set(p, row > 0 ? .5 : 1); orders.set(p, -i * 10);
     local.set(p, [-tx - bw(p) * 0.5, py]);
     let pets = allies.filter((c: any) => !c.IsPlayer && c.PetOwner === p.Player);
-    if (p.Player?.Character?.Id?.Entry === 'NECROBINDER') {
+    if (G.LocalContext.IsMe$Creature(p) && p.Player?.Character?.Id?.Entry === 'NECROBINDER') {
       // PositionLocalPlayerOsty: the player steps back 150px, Osty stands in front (further out the bigger it is)
       const osty = pets.find((c: any) => c.Monster?.constructor?.$name === 'Osty');
       pets = pets.filter((c: any) => c !== osty);
@@ -194,7 +203,10 @@ function computeLayout(cs: any): Map<any, Slot> {
       tx += 100;
     }
     const step = pets.length > 1 ? bw(p) / (pets.length - 1) : 0;
-    pets.forEach((pet: any, i: number) => local.set(pet, [-tx + 20 - i * step - bw(pet) * 0.5, py + 10]));
+    pets.forEach((pet: any, j: number) => {
+      local.set(pet, [-tx + 20 - j * step - bw(pet) * 0.5, py + 10]);
+      dims.set(pet, row > 0 ? .5 : 1); orders.set(pet, -i * 10 + j + 1);
+    });
     tx += bw(p) + gap;
   }
 
@@ -231,7 +243,7 @@ function computeLayout(cs: any): Map<any, Slot> {
     const [bl, bt, w, h] = e.bounds ?? [-120, -280, 240, 280];
     const s = scaling * k;
     const [sx, sy] = toScreen([p[0] * k, p[1] * k]);
-    out.set(c, { x: sx + (enemies.includes(c) ? shift : 0), y: sy, w: w * s, h: h * s, s, intent: [(e.intentPos?.[0] ?? 0) * s, (e.intentPos?.[1] ?? bt - 40) * s], flip: false, bl: bl * s, bt: bt * s });
+    out.set(c, { x: sx + (enemies.includes(c) ? shift : 0), y: sy, w: w * s, h: h * s, s, intent: [(e.intentPos?.[0] ?? 0) * s, (e.intentPos?.[1] ?? bt - 40) * s], flip: false, bl: bl * s, bt: bt * s, dim: dims.get(c) ?? 1, drawOrder: orders.get(c) ?? 10, hideBounds: !!c.PetOwner && !G.LocalContext.IsMe$Player(c.PetOwner) });
   }
   return out;
 }
@@ -341,9 +353,11 @@ export class CombatStage {
   bg = new Sprite();
   /** NCombatRoom.BackCombatVfxContainer: VFX drawn over the background, behind the creatures (render/vfx-misc). */
   backVfx = new Container();
+  creatureLayer = new Container();
   actors = new Map<any, Actor>();
   constructor(public view: any) {
-    this.root.addChild(this.bg, this.backVfx);
+    this.root.addChild(this.bg, this.backVfx, this.creatureLayer);
+    this.creatureLayer.sortableChildren = true;
   }
   async mount(el: HTMLElement) {
     activeStage = this;
@@ -398,7 +412,7 @@ export class CombatStage {
       if (!a) {
         a = { root: new Container(), key: visualsKey(c), lastAnimCount: 0, dead: false };
         this.actors.set(c, a);
-        this.root.addChild(a.root);
+        this.creatureLayer.addChild(a.root);
         this.spawn(c, a);
       }
       // NCreature.AnimShake (a debuff): Visuals.x = 10·sin(4t)·sin(t/2), t = 2π·CubicOut(τ) over 1 s, not during "hurt"
@@ -406,6 +420,8 @@ export class CombatStage {
       const hurt = a.spine?.state.getCurrent(0)?.animation?.name === 'hurt';
       let dx = 0;
       if (tau >= 0 && tau < 1 && !hurt) { const t = 2 * Math.PI * (1 - (1 - tau) ** 3); dx = 10 * Math.sin(4 * t) * Math.sin(t / 2); }
+      a.root.zIndex = s.drawOrder ?? 10;
+      a.root.tint = s.dim === .5 ? 0x808080 : 0xffffff;
       a.root.x = s.x + dx * s.s;
       a.root.y = s.y;
       a.root.scale.set(s.s * (s.vis ?? 1));
@@ -415,7 +431,7 @@ export class CombatStage {
       if (body) {
         a.root.scale.set(s.s * (s.vis ?? 1) * body.Scale.X, s.s * (s.vis ?? 1) * body.Scale.Y);
         a.root.alpha = body.Modulate.A;
-        a.root.tint = ((body.Modulate.R * 255) << 16) | ((body.Modulate.G * 255) << 8) | (body.Modulate.B * 255);
+        a.root.tint = ((body.Modulate.R * 255 * (s.dim ?? 1)) << 16) | ((body.Modulate.G * 255 * (s.dim ?? 1)) << 8) | (body.Modulate.B * 255 * (s.dim ?? 1));
         const src = body.Texture?.ResourcePath;
         if (src && a.legacyScene && a.legacyTexture !== src) {
           a.legacyTexture = src;
@@ -560,7 +576,8 @@ export class CombatStage {
     layer.addChild(q);
     const it = s?.items.find((x: any) => x.k === 'particles');
     if (it) layer.addChild(particleItem({ ...it, m: [1, 0, 0, 1, cx, cy], ext: [n / 4, n / 4], vel: [50, 75] }, true));
-    this.root.addChildAt(layer, this.root.getChildIndex(a.root));
+    layer.zIndex = a.root.zIndex;
+    this.creatureLayer.addChildAt(layer, this.creatureLayer.getChildIndex(a.root));
     sp.visible = false;
     playOneShot('event:/sfx/enemy/enemy_fade');
     const d = Math.min(((2 * n) / 192) * 2.5, 2.5);

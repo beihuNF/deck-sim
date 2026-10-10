@@ -55,7 +55,9 @@
 /* daily TimeLeft, custom SeedContainer: L,T of the left half */
 :is(.dr-time, .cr-seed) { margin-left: calc(-1 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
 /* daily CharacterContainer, ModifiersLabel, ModifiersContainer: centre of the left half */
-:is(.dr-char-icon, .dr-asc-icon, .dr-asc-num, .dr-char-name, .dr-mods-label, .dr-mods) { margin-left: calc(-.5 * var(--ox)); }
+:is(.dr-char-icon, .dr-asc-icon, .dr-asc-num, .dr-char-name, .dr-player-name, .dr-ready-tick, .daily-coop .remote-player-container, .dr-mods-label, .dr-mods) { margin-left: calc(-.5 * var(--ox)); }
+.dr-disclaimer { margin-top: var(--oy); }
+.dr-ready-waiting { margin-left: var(--ox); margin-top: var(--oy); }
 /* daily_run_leaderboard.tscn: centre of the right half */
 :is(.dr-lb-title, .dr-lb-day, .dr-lb-none, .dr-lb-scores, .dr-lb-arrow) { margin-left: calc(.5 * var(--ox)); }
 /* daily ScoreWarning: R,B */

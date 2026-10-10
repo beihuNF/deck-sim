@@ -24,10 +24,10 @@ export async function recordDailyScore(time: any, score: number) {
 
 export interface DailyBoard { exists: boolean; entries: { rank: number; name: string; score: number }[]; count: number; uploaded: boolean }
 /** NDailyRunLeaderboard.LoadLeaderboard: page `page` (10 a page) of the day's board, and whether today's score is in. */
-export async function loadDailyBoard(time: any, page: number): Promise<DailyBoard> {
+export async function loadDailyBoard(time: any, page: number, playerCount = 1): Promise<DailyBoard> {
   const lm = manager(), ids = localIds();
-  const h = await lm.GetLeaderboard(G.DailyRunUtility.GetLeaderboardName(time, 1));
-  const uploaded = !(await G.DailyRunUtility.ShouldUploadScore(h, ids));
+  const h = await lm.GetLeaderboard(G.DailyRunUtility.GetLeaderboardName(time, playerCount));
+  const uploaded = playerCount === 1 && !(await G.DailyRunUtility.ShouldUploadScore(h, ids));
   if (!h) return { exists: false, entries: [], count: 0, uploaded };
   const rows = list(await lm.QueryLeaderboard(h, G.LeaderboardQueryType.Global, page * 10, 10));
   return {

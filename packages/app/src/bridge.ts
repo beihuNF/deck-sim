@@ -19,7 +19,7 @@ import { openChest, chestSkin, chestGold, playSpriteVfx, extinguishRestFire } fr
 import { playCombatVfx, playItemThrow } from './render/cardfx';
 import { screenShake, screenRumble, screenShakeTrauma, hitStop } from './ui/screenshake';
 import { OrbManagerView } from './ui/orbs';
-import { setMap, openMap, closeMap, isMapVisible, setTravelEnabled, setDebugTravelEnabled, mapTraveling, initMarker, travelToMapCoord, spawnActBanner, initializeMap, refreshMapVotes } from './ui/map';
+import { setMap, openMap, closeMap, isMapVisible, setTravelEnabled, setDebugTravelEnabled, mapTraveling, initMarker, travelToMapCoord, spawnActBanner, initializeMap, refreshMapVotes, pingMapCoord } from './ui/map';
 import { view, fracX } from './view';
 
 const NRun = N('NRun');
@@ -1198,6 +1198,7 @@ export class MapView extends NMapScreen {
   set IsTraveling(v: boolean) { mapTraveling.set(v); }
   InitMarker(coord: any) { initMarker(coord); }
   RefreshAllMapPointVotes() { refreshMapVotes(); }
+  PingMapCoord(coord: any, player: any) { pingMapCoord(coord, player); }
   TravelToMapCoord(coord: any) { return travelToMapCoord(coord); }
   HighlightPointType() {}
   CleanUp() { if (G.RunManager.Instance.IsSingleplayerOrFakeMultiplayer) G.CombatManager.Instance.Unpause(); }
@@ -1815,6 +1816,8 @@ NSpeechBubbleVfx.Create = function (text: string, a: any, b: any, c?: any) {
   // bubble in (0.5 s), hold max(seconds − 1, 1), fade out (0.4 s)
   setTimeout(remove, (0.5 + Math.max(secs - 1, 1) + 0.4) * 1000);
   const node = $.dummy(NSpeechBubbleVfx);
+  const free = node.QueueFree?.bind(node);
+  node.QueueFree = () => { remove(); free?.(); };
   node.SecondsToDisplay = secs;
   node.AnimOut = () => { remove(); return $.Task.CompletedTask; };
   return node;

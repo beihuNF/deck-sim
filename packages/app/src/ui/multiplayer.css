@@ -408,17 +408,42 @@
 }
 
 /* Original multiplayer state list follows the bottom of the local relic inventory. */
-.mp-player-states { position: absolute; z-index: 29; width: 268px; pointer-events: none; }
-.mp-player-state { display: flex; align-items: center; position: relative; min-height: 70px; margin-bottom: 8px; color: #fff6e2; text-shadow: 1px 1px 2px #000; }
-.mp-state-icon { width: 48px; height: 48px; margin-right: 8px; }
-.mp-state-info { width: 175px; font-size: 19px; }
-.mp-state-info small { color: #efc851; font-size: 16px; }
-.mp-state-health { height: 23px; background: #261614; position: relative; border: 1px solid #897357; }
-.mp-state-health span { position: absolute; inset: 0 auto 0 0; background: #8d2923; }
-.mp-state-health b { position: relative; display: block; text-align: center; font-size: 17px; }
-.mp-state-resources { display: flex; align-items: center; font-size: 17px; gap: 5px; }
-.mp-state-resources img { width: 22px; height: 22px; }
-.mp-state-ready { margin-left: 6px; }
+.mp-player-states { position: absolute; z-index: 29; width: 310px; pointer-events: none; }
+.mp-player-state { position: relative; height: 64px; pointer-events: auto; }
+.mp-state-icon, .mp-state-ready { position: absolute; left: 14px; top: 10px; width: 48px; height: 48px; pointer-events: none; }
+.mp-state-info { position: absolute; left: 67px; top: 6px; height: 32px; display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+.mp-state-name { color: #efc851; font: 700 19px 'Kreon', var(--font); text-shadow: 2px 1px 2px #000; }
+.mp-state-count, .mp-state-location { position: relative; width: 28px; height: 28px; background-size: contain; background-repeat: no-repeat; }
+.mp-state-count { margin-left: 4px; }
+.mp-state-count img { width: 100%; height: 100%; }
+.mp-state-count b, .mp-state-block b { position: absolute; inset: 0; display: grid; place-items: center; color: #fff6e2; font: 700 16px 'Kreon', var(--font); -webkit-text-stroke: 3px #332f26; paint-order: stroke fill; }
+.mp-state-count.empty > div { filter: brightness(.35); }
+.mp-state-count.empty b { color: #ff3540; }
+.mp-state-cards .tiny-card { width: 28px; height: 28px; }
+.mp-state-health { position: absolute; left: 63px; top: 41px; }
+.mp-state-health .hp-label { font-size: 18px; opacity: 0; transition: opacity .2s; }
+.mp-player-state:hover .hp-label { opacity: 1; }
+.mp-player-state:hover .reticle { opacity: 1; }
+.mp-state-block { position: absolute; left: -22px; top: -14px; width: 44px; height: 44px; }
+.mp-state-block img { width: 100%; height: 100%; }
+.etb-player-votes { position: absolute; left: -16px; top: -15px; width: 249px; height: 30px; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
+.etb-player-vote { position: relative; width: 30px; height: 30px; animation: coop-vote-in .3s cubic-bezier(.34, 1.56, .64, 1); }
+.etb-player-vote img { position: absolute; width: 100%; height: 100%; }
+.etb-player-vote .vote-outline { filter: brightness(0); opacity: .753; }
+@keyframes coop-vote-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.ping-btn { position: absolute; width: 150px; height: 70px; padding: 0; border: 0; background: none; transform: translateY(250px); visibility: hidden; transition: transform .5s cubic-bezier(.16, 1, .3, 1), visibility .5s; pointer-events: none; }
+.ping-btn.shown { transform: translateY(0); visibility: visible; pointer-events: auto; cursor: pointer; }
+.ping-btn img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ping-btn span { position: relative; color: #fff6e2; font: 700 24px 'Kreon', var(--font); -webkit-text-stroke: 4px #131f2e; paint-order: stroke fill; }
+.ping-hint { position: absolute; left: 123px; top: 30px; width: 48px; height: 48px; scale: .7; transform-origin: top left; pointer-events: none; }
+.ping-btn:hover { filter: brightness(1.5); }
+.ping-btn:active { translate: 0 4px; }
+.ping-btn:disabled { filter: grayscale(1) brightness(.5); pointer-events: none; }
+.map-ping { position: absolute; pointer-events: none; mask-size: 100% 100%; transform: translate(-50%, -50%); animation: coop-map-ping .7s cubic-bezier(.16, 1, .3, 1) forwards, coop-map-ping-fade .15s linear .15s forwards; }
+@keyframes coop-map-ping { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(2.5); } }
+@keyframes coop-map-ping-fade { to { opacity: 0; } }
+/* NMapScreen obscures room navigation while its map is visible. */
+.run:has(.map-screen) .proceed-btn { visibility: hidden; pointer-events: none; }
 .treasure-votes { position: absolute; top: 178px; width: 204px; display: flex; justify-content: center; pointer-events: none; }
 .treasure-votes img { width: 40px; height: 40px; }
 .treasure-skip { position: absolute; top: 430px; left: 330px; width: 240px; padding: 10px; color: #fff6e2; border: 1px solid #897357; background: #332820; font: inherit; font-size: 24px; pointer-events: auto; cursor: pointer; }
@@ -426,8 +451,18 @@
 .mp-run-settings { position: absolute; top: 28px; left: 710px; width: 600px; display: flex; justify-content: center; gap: 24px; align-items: center; color: #fff6e2; font-size: 24px; }
 .mp-seed-input { width: 220px; border: 1px solid #897357; padding: 8px; background: #332820; color: #fff6e2; font: inherit; }
 .mp-settings-button { border: 1px solid #897357; padding: 8px 20px; background: #332820; color: #fff6e2; font: inherit; cursor: pointer; }
-.mp-settings-dialog { position: relative; width: 900px; height: 740px; background: #261f1b; color: #fff6e2; border: 12px solid transparent; border-image-slice: 6 fill; font-size: 24px; }
+.mp-settings-dialog { position: relative; width: 900px; height: 740px; isolation: isolate; color: #fff6e2; font-size: 24px; }
+.mp-settings-bg { position: absolute; inset: 0; z-index: -1; border: 12px solid transparent; border-image-slice: 6 fill; filter: brightness(.12); pointer-events: none; }
 .mp-settings-dialog h2 { margin: 20px 30px; }
 .mp-mod-row { display: flex; align-items: flex-start; gap: 15px; padding: 15px; }
 .mp-mod-row input { width: 24px; height: 24px; flex-shrink: 0; }
 .mp-settings-close { position: absolute; bottom: 30px; right: 30px; }
+/* NDailyRunScreen keeps remote players beside the local character rather than in a character-select corner. */
+.daily-coop .remote-player-container { left: 363px; top: 313.5px; width: 518px; gap: 0; }
+.daily-coop .remote-player-list { gap: 0; }
+.daily-coop .remote-lobby-player { width: 280px; height: 68px; padding: 0 14px; border: none; border-radius: 0; background: none; box-shadow: none; backdrop-filter: none; }
+.daily-coop .rlp-nameplate { gap: 2px; }
+.daily-coop .rlp-char-title { font-size: 18px; }
+.daily-coop .invite-code-btn { order: 2; width: 280px; height: 50px; }
+.daily-coop .icb-label { font-size: 20px; }
+.daily-coop .remote-solo-label { order: -1; color: var(--cream); font-size: 28px; }

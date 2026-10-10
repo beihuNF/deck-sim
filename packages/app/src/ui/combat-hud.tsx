@@ -3,12 +3,12 @@
 // NClickableControl's enable / focus / press state machine with real tweens ($.WebTween), painted every frame.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { toggleCardsView, closeCardsView } from './pause';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { G, $, N, list } from '../game';
 import { ui, invalidate } from '../store';
 import { imageUrl } from '../assets';
 import { setTip } from './tooltip';
-import { t } from '../i18n';
+import { t, loc } from '../i18n';
 import { playOneShot } from '../audio';
 import { curveAt } from '../render/cardfx';
 import { useFit } from './card';
@@ -18,6 +18,8 @@ import { ftueActive, seenFtue, showFtue } from './ftue';
 import { inspectActive } from './inspect';
 import { view, fracX, fracY, anchored } from '../view';
 import { inputTip } from './input-tip';
+import { getInputDevice, actionHint } from '../input/hints';
+import { RichText } from './richtext';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const rgb = (c: number[]) => `rgb(${c[0] * 255}, ${c[1] * 255}, ${c[2] * 255})`;
@@ -536,6 +538,43 @@ export const hud = { endTurn: null as EndTurnCtl | null, piles: {} as Partial<Re
 /** E (MegaInput.accept) while the End Turn button is enabled: pressed now, released with the key. */
 export const endTurnHotkey = () => hud.endTurn?.hotkey() ?? null;
 
+/** NPingButton waits 500 ms after the local vote and uses the original throttled flavor message. */
+export function PingButton({ view, me }: { view: any; me: any }) {
+  const [shown, setShown] = useState(false);
+  const cm = G.CombatManager.Instance;
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const hide = () => { if (timer) clearTimeout(timer); timer = null; setShown(false); };
+    const ended = (p: any) => {
+      if (cm.AllPlayersReadyToEndTurn()) { hide(); return; }
+      if (p !== me) return;
+      hide();
+      timer = setTimeout(() => {
+        timer = null;
+        if (cm.IsInProgress && cm.IsPlayerReadyToEndTurn(me) && !cm.AllPlayersReadyToEndTurn()) setShown(true);
+      }, 500);
+    };
+    const unended = (p: any) => { if (p === me) hide(); };
+    const events: [string, any][] = [['PlayerEndedTurn', ended], ['PlayerUnendedTurn', unended], ['AboutToSwitchToEnemyTurn', hide], ['CombatEnded', hide], ['TurnStarted', hide]];
+    for (const [key, fn] of events) cm[key] = $.dcombine(cm[key], fn);
+    if (cm.IsInProgress && cm.IsPlayerReadyToEndTurn(me)) ended(me);
+    return () => { hide(); for (const [key, fn] of events) cm[key] = $.dremove(cm[key], fn); };
+  }, [view, me]);
+  const enabled = shown && combatIsCurrent() && !view.Ui?.Hand?.IsInCardSelection;
+  return <button class={'ping-btn' + (shown ? ' shown' : '')} disabled={!enabled} data-ctl="ping"
+    style={{ left: `${fracX(1536 / 1920)}px`, top: `${fracY(932 / 1080)}px` }}
+    onClick={() => { if (enabled) G.RunManager.Instance.FlavorSynchronizer.SendEndTurnPing(); }}>
+    <img src={imageUrl('images/packed/common_ui/event_button.png') ?? ''} />
+    <span>{loc('gameplay_ui', 'PING_BUTTON')}</span>
+    {getInputDevice() !== 'keyboard' && <div class="ping-hint"><RichText text={actionHint('select').replace('[img ', '[img size=48 ')} /></div>}
+  </button>;
+}
+export function pingHotkey() {
+  const button = document.querySelector<HTMLButtonElement>('.ping-btn.shown:not(:disabled)');
+  if (!button) return false;
+  button.click(); return true;
+}
+
 export function EndTurnButton({ view, me }: { view: any; me: any }) {
   const ref = useRef<EndTurnCtl | null>(null);
   if (!ref.current || ref.current.me !== me || ref.current.view !== view) ref.current = new EndTurnCtl(view, me);
@@ -543,6 +582,18 @@ export function EndTurnButton({ view, me }: { view: any; me: any }) {
   const els = useRef<Record<string, HTMLElement | null>>({});
   const el = (k: string) => (e: HTMLElement | null) => { els.current[k] = e; };
   const label = useRef<HTMLDivElement>(null);
+  const [votes, setVotes] = useState<any[]>([]);
+  useEffect(() => {
+    const cm = G.CombatManager.Instance, players = list(view.combatState.Players);
+    const refresh = () => setVotes(old => {
+      const ready = players.length > 1 && cm.IsInProgress ? players.filter(p => cm.IsPlayerReadyToEndTurn(p)) : [];
+      return [...old.filter(p => ready.includes(p)), ...ready.filter(p => !old.includes(p))];
+    });
+    const events = ['PlayerEndedTurn', 'PlayerUnendedTurn', 'TurnStarted', 'CombatEnded'];
+    for (const key of events) cm[key] = $.dcombine(cm[key], refresh);
+    refresh();
+    return () => { for (const key of events) cm[key] = $.dremove(cm[key], refresh); };
+  }, [c]);
   useEffect(() => {
     hud.endTurn = c;
     const detach = c.attach();
@@ -561,6 +612,10 @@ export function EndTurnButton({ view, me }: { view: any; me: any }) {
         <img class="etb-glow" ref={el('glow')} src={imageUrl('images/packed/combat_ui/end_turn_button_glow.png') ?? ''} />
         <div class="etb-label" ref={(e) => { label.current = e; els.current.label = e; }}><span>{c.text}</span></div>
       </div>
+      <div class="etb-player-votes">{votes.map(p => <div key={p.NetId} class="etb-player-vote" data-player-id={p.NetId}>
+        <img class="vote-outline" src={imageUrl(p.Character.IconOutlineTexturePath) ?? ''} />
+        <img src={imageUrl(p.Character.IconTexturePath) ?? ''} />
+      </div>)}</div>
       {longPressOn() && <div class="etb-bar"><div class="etb-bar-outline" ref={el('barOutline')} /><div class="etb-bar-fill" ref={el('barFill')} /></div>}
     </div>
   );

@@ -2,6 +2,7 @@
 // singleplayer submenus over the blurred main menu, laid out at their scene rects.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
 import { G, $, list } from '../game';
 import { invalidate } from '../store';
 import { loc, locv } from '../i18n';
@@ -69,14 +70,26 @@ const utcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getU
 /** A UTC instant as a local Date with the same fields (netDate reads local getters; the daily's time is UTC). */
 const utcFields = (d: Date) => new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
 
-export function DailyRun() {
+interface DailyLobby {
+  date: string;
+  setup: { characters: any[]; ascension: number; modifiers: any[] };
+  index: number;
+  playerCount: number;
+  playerName: string;
+  ready: boolean;
+  players: ComponentChildren;
+  onReady: () => void;
+  onBack: () => void;
+}
+export function DailyRun({ lobby }: { lobby?: DailyLobby }) {
   // the time "fetched" on open (no time server: UtcNow), the run's DailyTime
-  const opened = useMemo(() => ({ time: $.ext('System.DateTimeOffset').UtcNow, at: new Date() }), []);
+  const opened = useMemo(() => ({ time: lobby ? $.ext('System.DateTimeOffset').FromUnixTimeMilliseconds(Date.parse(lobby.date)) : $.ext('System.DateTimeOffset').UtcNow }), [lobby?.date]);
   const [now, setNow] = useState(() => new Date());
   const [busy, setBusy] = useState(false);
   useEffect(() => { const h = setInterval(() => setNow(new Date()), 250); return () => clearInterval(h); }, []);
-  const d = useMemo(() => rollDaily(now), [utcDay(now)]);
-  const end = utcDay(now) + 86400000, left = Math.max(0, end - now.getTime());
+  const d = useMemo(() => lobby ? { character: lobby.setup.characters[lobby.index], ascension: lobby.setup.ascension, modifiers: lobby.setup.modifiers, seed: '' } : rollDaily(now), [utcDay(now), lobby?.setup, lobby?.index]);
+  const date = lobby ? new Date(lobby.date) : now;
+  const end = utcDay(date) + 86400000, left = Math.max(0, end - now.getTime());
   const hms = [left / 3600000, (left / 60000) % 60, (left / 1000) % 60].map((x) => String(Math.floor(x) % 100).padStart(2, '0')).join(':');
   const id = String(d.character.Id.Entry).toLowerCase();
   const numRef = useRef<HTMLDivElement>(null);
@@ -87,9 +100,9 @@ export function DailyRun() {
     await embark(d.character, { seed: d.seed, ascension: d.ascension, modifiers: d.modifiers, dailyTime: opened.time });
   };
   return (
-    <div class="daily">
+    <div class={'daily' + (lobby ? ' daily-coop mp-lobby-screen' : '')}>
       <div class="dr-title">{m('DAILY_RUN_MENU.DAILY_TITLE')}</div>
-      <div class="dr-date">{netDate(m('DAILY_RUN_MENU.DATE_FORMAT'), utcFields(now))}</div>
+      <div class="dr-date">{netDate(m('DAILY_RUN_MENU.DATE_FORMAT'), utcFields(date))}</div>
       {/* default colour cream and node modulate cream: the gold label is tinted too */}
       <div class="dr-time" style={{ filter: tint(1, 0.965, 0.886) }}><RichText text={locv('main_menu_ui', 'DAILY_RUN_MENU.TIME_LEFT', { time: hms })} /></div>
       {/* NDailyRunCharacterContainer: icon, the ascension flame with its number (always), the name */}
@@ -97,6 +110,11 @@ export function DailyRun() {
       <div class="dr-asc-icon" style={frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_ascension'), 33, 48)} />
       <div class="dr-asc-num" ref={numRef}>{d.ascension}</div>
       <div class="dr-char-name">{fmt(d.character.Title)}</div>
+      {lobby && <>
+        <div class="dr-player-name">{lobby.playerName}</div>
+        {lobby.ready && <div class="dr-ready-tick" style={{ ...frameStyle(frameByName('compressed', 'confirm_button_tick'), 64, 64), filter: tint(0.498, 1, 0) }} />}
+        {lobby.players}
+      </>}
       <div class="dr-mods-label">{m('DAILY_RUN_MENU.MODIFIERS')}</div>
       <div class="dr-mods">
         {d.modifiers.map((mod) => (
@@ -106,18 +124,23 @@ export function DailyRun() {
           </div>
         ))}
       </div>
-      <Leaderboard time={opened.time} />
-      <BackButton enabled={!busy} onClick={popMenu} />
-      <ConfirmButton enabled={!busy} onClick={() => void go()} />
+      <Leaderboard time={opened.time} playerCount={lobby?.playerCount} />
+      {lobby?.ready && <div class="dr-ready-waiting">
+        <div class="dr-waiting-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }} />
+        <RichText text={m('CHARACTER_SELECT.waitingForPlayers')} />
+      </div>}
+      <div class="dr-disclaimer">{m('DAILY_RUN_MENU.disclaimer')}</div>
+      <BackButton enabled={!busy} onClick={lobby ? lobby.ready ? lobby.onReady : lobby.onBack : popMenu} />
+      <ConfirmButton enabled={!busy && !lobby?.ready} onClick={lobby ? lobby.onReady : () => void go()} />
     </div>
   );
 }
 
 /** NDailyRunLeaderboard (singleplayer: today's board, the day paginator's own arrows hidden). */
-function Leaderboard({ time }: { time: any }) {
+function Leaderboard({ time, playerCount = 1 }: { time: any; playerCount?: number }) {
   const [page, setPage] = useState(0);
   const [b, setB] = useState<DailyBoard | null>(null);
-  useEffect(() => { let dead = false; void loadDailyBoard(time, page).then((x) => { if (!dead) setB(x); }); return () => { dead = true; }; }, [page]);
+  useEffect(() => { let dead = false; setB(null); void loadDailyBoard(time, page, playerCount).then((x) => { if (!dead) setB(x); }); return () => { dead = true; }; }, [page, time, playerCount]);
   const date = netDate(m('DAILY_RUN_MENU.DATE_FORMAT'), utcFields(new Date(Number(safe(() => time.ToUnixTimeMilliseconds(), Date.now())))));
   const shown = b?.entries.filter((e) => e.score >= 0) ?? [];
   const negative = (b?.entries.length ?? 0) > shown.length;
