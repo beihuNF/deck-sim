@@ -45,6 +45,9 @@ export const locv = (table: string, key: string, vars: Record<string, string | n
 export const loc = (table: string, key: string) => {
   try { return new G.LocString().$ctor_LocString(table, key).GetFormattedText(); } catch { return key; }
 };
+export const locExists = (table: string, key: string): boolean => {
+  try { return G.LocString.Exists$2(table, key); } catch { return false; }
+};
 
 /** App labels resolved through the game's own tables (English fallback when a table lacks the key). */
 const UI = {

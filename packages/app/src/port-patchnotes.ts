@@ -10,8 +10,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Implemented session persistence and seamless reconnects on page refresh, preventing slot shifts or phantom players.
 • Restored authentic lobby character selection and ready flow: all players (including the host) can pick characters freely and toggle ready status. Switching hero resets ready status, and the run embarks when all players are ready.
 • Added host kick player support with instant optimistic UI removal and resilient server broadcast.
+• Fixed locked mode cards in the multiplayer host menu showing raw localization keys, now properly falling back to unlock requirement descriptions.
 • Multiplayer runs run in isolated ephemeral sessions, keeping your singleplayer profile and saves completely intact.
-
+ 
 [gold][b]Controls[/b][/gold]
 • Added full gamepad / controller support with console-style combat hand navigation, auto-targeting for single-target cards, and smooth virtual cursor for menus and maps.
 • Unlocked and implemented the Input settings tab with customizable keyboard and controller keybindings and reset support.
@@ -24,7 +25,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Hand shortcut labels now show your assigned keys and hide unassigned controller buttons.
 • Fixed old default shortcuts still triggering after rebinding, and controller pile shortcuts conflicting with hand navigation.
 • Controller cursor hovering now shows button hints and reaches edge controls at different aspect ratios.
-
+ 
 [gold][b]Quality of Life[/b][/gold]
 • Restored the original Mega Crit opening logo drop-in animation and iconic audio (supports click or keypress to skip).
 • Pre-warmed WebGL shader cache and preloaded menu scenes concurrently in the background with high-performance GPU acceleration, eliminating first-trigger stutters.
@@ -33,7 +34,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Added limited retries for temporary game file loading failures, with a reload button when loading fails or takes too long.
 • Adjusted pause menu title line height and spacing to prevent overlapping with buttons.
 • Fixed a black screen issue when traveling to the next room on the map.
-
+ 
 [gold][b]Community[/b][/gold]
 • Updated the QQ group QR code.`,
     zhs: `[gold][b]多人模式[/b][/gold]
@@ -44,6 +45,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 增加大厅会话恢复（Session Persistence）与断线重连机制，解决移动端与浏览器刷新页面时槽位递增或判定为新玩家的问题。
 • 还原原作大厅选人与就绪流程：所有玩家（包含房主）均可在选好角色后自主点击准备/取消就绪，切换角色自动重置准备状态，全员就绪后由房主启程。
 • 房主可在大厅中踢出客机玩家：支持乐观即时响应与安全广播，房主界面卡片立刻移除，被踢玩家准确显示通知。
+• 修复多人建房菜单中未解锁模式大卡片底部显示原始本地化键名的问题，正确展示解锁条件说明。
 • 多人对局采用独立临时会话存储，不破坏或覆盖单人本地存档。
 
 [gold][b]操作[/b][/gold]

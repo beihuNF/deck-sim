@@ -7,7 +7,7 @@ import { G, $, list, GAME_VERSION } from '../game';
 import { playMusic, playOneShot } from '../audio';
 import { ui, invalidate, type MenuSubmenu } from '../store';
 import { imageUrl, frameByName, frameStyle } from '../assets';
-import { loc, locv, appText } from '../i18n';
+import { loc, locv, locExists, appText } from '../i18n';
 import { continueRun, abandonRun } from '../flow';
 import { openTimeline, revealableCount, Timeline } from './timeline';
 import { DailyRun, CustomRun } from './modes';
@@ -30,6 +30,7 @@ import { MultiplayerLobby } from './multiplayer';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const m = (k: string) => loc('main_menu_ui', k);
+const hasM = (k: string) => locExists('main_menu_ui', k);
 const TR = { Linear: 0, Cubic: 7 }, EZ = { Out: 1 };
 const BACK_OUT = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 export const profileId = () => safe(() => G.SaveManager.Instance.CurrentProfileId, 1);
@@ -359,7 +360,20 @@ export function SubmenuButton({ x, keyPrefix, icon, hsv, enabled, onClick, title
   const [down, setDown] = useState(false);
   const v = hover ? 1 : hsv[2], s = enabled ? hsv[1] : 0;
   const t = title ?? (keyPrefix ? m(`${keyPrefix}.title`) : '');
-  const d = desc ?? (keyPrefix ? m(`${keyPrefix}.${enabled ? '' : 'LOCKED.'}description`) : '');
+  const d = useMemo(() => {
+    if (desc !== undefined) return desc;
+    if (!keyPrefix) return '';
+    if (enabled) return m(`${keyPrefix}.description`);
+    const lockedKey = `${keyPrefix}.LOCKED.description`;
+    if (hasM(lockedKey)) return m(lockedKey);
+    // 多人模式回退到单人解锁文案（如 DAILY_MP -> DAILY.LOCKED.description）
+    const baseKey = keyPrefix.replace(/_MP$/, '');
+    const baseLockedKey = `${baseKey}.LOCKED.description`;
+    if (hasM(baseLockedKey)) return m(baseLockedKey);
+    // 若均无锁定文案则回退到原版常规描述
+    if (hasM(`${keyPrefix}.description`)) return m(`${keyPrefix}.description`);
+    return '';
+  }, [desc, keyPrefix, enabled]);
   return (
     <div class={'submenu-btn' + (enabled ? '' : ' disabled') + (hover ? ' hover' : '')} style={{ left: `${x}px` }}
       onPointerEnter={() => { if (!enabled) return; setHover(true); playOneShot('event:/sfx/ui/clicks/ui_hover'); }}
