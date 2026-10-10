@@ -64,120 +64,84 @@ html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); 
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 45%, #18232e 0%, #0d1319 60%, #07090c 100%);
+  background: #000000;
   user-select: none;
   overflow: hidden;
   z-index: 100;
+  cursor: pointer;
+  transition: background 1.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.boot-bg-glow {
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(239, 200, 81, 0.08) 0%, transparent 70%);
-  filter: blur(40px);
+.boot-screen.boot-bg-teal {
+  background: #074254;
+}
+
+/* Mega Crit 原版开场 Logo 容器与弹入动画 */
+.boot-logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  will-change: transform, opacity;
+}
+.boot-logo-enter {
+  opacity: 0;
+  transform: translateY(-240px) scale(0.9);
+}
+.boot-logo-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.25), opacity 0.5s ease-out;
+}
+.boot-logo-fadeout {
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
-  animation: boot-glow-pulse 4s infinite alternate ease-in-out;
 }
-@keyframes boot-glow-pulse {
-  0% { transform: scale(0.9); opacity: 0.6; }
-  100% { transform: scale(1.15); opacity: 1; }
+.boot-logo-img {
+  width: 340px;
+  height: 340px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.8));
+  user-select: none;
+  pointer-events: none;
 }
-.boot-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 36px;
-  z-index: 2;
+.boot-skip-hint {
+  font: 400 14px/1 'Kreon', var(--font);
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
-.boot-title-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+.boot-screen:hover .boot-skip-hint {
+  color: rgba(255, 255, 255, 0.6);
 }
-.boot-title {
-  font: 900 48px 'Kreon', var(--font);
-  letter-spacing: 6px;
-  color: #EFC851;
-  text-shadow: 0 0 24px rgba(239, 200, 81, 0.5), 0 4px 12px rgba(0, 0, 0, 0.9);
+
+/* 原版 NLoadingOverlay (loading_overlay.tscn) 风格 */
+.boot-original-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  pointer-events: none;
 }
-.boot-subtitle {
-  font: 700 16px 'Kreon', var(--font);
-  letter-spacing: 8px;
-  color: #A0C0D0;
-  opacity: 0.75;
+.boot-loading-text {
+  position: absolute;
+  right: 48px;
+  bottom: 40px;
+  font: 700 48px/1.2 'Kreon', var(--font);
+  color: #7FFF00; /* 原版 Color(0.498, 1, 0, 1) */
+  -webkit-text-stroke: 4px #153500; /* 原版 font_outline_color */
+  paint-order: stroke fill;
+  text-shadow: 0 0 16px rgba(127, 255, 0, 0.4);
+  letter-spacing: 2px;
+  text-align: right;
+  animation: boot-loading-breathe 2s infinite ease-in-out;
 }
-.boot-meter-box {
-  width: 520px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.boot-meter-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font: 700 18px 'Kreon', var(--font);
-  color: #FFF6E2;
-  letter-spacing: 1px;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-}
-.boot-pct-text {
-  color: #FFAE19;
-  font-size: 20px;
-}
-.boot-bar-track {
-  width: 100%;
-  height: 12px;
-  background: rgba(10, 16, 22, 0.85);
-  border: 1px solid rgba(239, 200, 81, 0.4);
-  border-radius: 6px;
-  padding: 2px;
-  box-sizing: border-box;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.5);
-  overflow: hidden;
-}
-.boot-bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #EFC851 0%, #FFAE19 60%, #FFF27A 100%);
-  box-shadow: 0 0 12px rgba(255, 174, 25, 0.85);
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.boot-meter-footer {
-  display: flex;
-  justify-content: flex-start;
-  min-height: 20px;
-}
-.boot-detail-text {
-  font: 400 15px monospace;
-  color: rgba(255, 246, 226, 0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 520px;
-}
-.boot-gpu-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  background: rgba(14, 26, 35, 0.7);
-  border: 1px solid rgba(135, 206, 235, 0.3);
-  border-radius: 20px;
-  font: 600 14px 'Kreon', var(--font);
-  color: #87CEEB;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-.boot-gpu-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #7FFF00;
-  box-shadow: 0 0 8px #7FFF00;
+@keyframes boot-loading-breathe {
+  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 4px rgba(127, 255, 0, 0.3)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 14px rgba(127, 255, 0, 0.7)); }
 }
 .fatal { color: #f88; padding: 20px; white-space: pre-wrap; }
 button { font-family: var(--font); cursor: pointer; }

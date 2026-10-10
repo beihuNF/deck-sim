@@ -27,7 +27,7 @@ import { loadShader, prewarmShaders } from './render/canvas';
 import { fullScreenScene, loadScene } from './render/scene';
 import { getApp, gpuDetails } from './render/stage';
 import { BootScreen } from './ui/boot-screen';
-import { updateBootProgress } from './render/boot-status';
+import { updateBootProgress, logoDonePromise, finishLogo } from './render/boot-status';
 import { Backdrop } from './ui/backdrop';
 import { CardLibrary, RelicCollection, PotionLab } from './ui/compendium';
 import { Stats } from './ui/stats';
@@ -269,13 +269,21 @@ async function boot() {
   G.LocManager.Instance.SetLanguage(lang);
   document.documentElement.dataset.lang = lang; // style.css: FontManager's per-language font substitution
 
+  if (st.SkipIntroLogo) {
+    finishLogo();
+  }
+
   updateBootProgress({
     progress: 100,
+    ready: true,
     title: appText('bootReady', lang),
     detail: 'Launching…',
   });
 
-  await new Promise((r) => setTimeout(r, 120));
+  // 等待原版开场 Logo 动画播放完毕或用户跳过
+  await logoDonePromise;
+
+  await new Promise((r) => setTimeout(r, 60));
   await transitionView.FadeOut(); // NGame.LaunchMainMenu: after the logo animation, before the menu fades in
   ui.screen = 'menu';
   invalidate();

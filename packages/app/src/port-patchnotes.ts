@@ -22,9 +22,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Controller cursor hovering now shows button hints and reaches edge controls at different aspect ratios.
 
 [gold][b]Quality of Life[/b][/gold]
-• Enabled GPU acceleration initialization and hardware detection on startup with high-performance power preference.
-• Implemented shader cache pre-warming and scene preloading during the loading screen to eliminate first-trigger stutter.
-• Redesigned the boot loading screen with real-time stage progress and hardware acceleration indicator.
+• Restored the original Mega Crit opening logo drop-in animation and iconic audio (supports click or keypress to skip).
+• Pre-warmed WebGL shader cache and preloaded menu scenes concurrently in the background with high-performance GPU acceleration, eliminating first-trigger stutters.
+• Integrated the original bottom-right LoadingOverlay ("Loading...") indicator when loading is still in progress, smoothly fading in to the main menu upon completion.
 • Built in the "Quick SL Button" mod: reload the current room directly from the pause menu, with an option in Settings to toggle it.
 • Added limited retries for temporary game file loading failures, with a reload button when loading fails or takes too long.
 • Adjusted pause menu title line height and spacing to prevent overlapping with buttons.
@@ -52,9 +52,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 手柄虚拟光标悬停可显示按钮提示，并可在不同宽高比下到达屏幕边缘的控件。
 
 [gold][b]便利功能[/b][/gold]
-• 在游戏启动加载阶段启用 GPU 硬件加速管线初始化与高性能偏好调度，并显示显卡设备状态。
-• 实现加载阶段着色器缓存预热（Shader Cache Pre-warming）与核心场景预热，消除首次触发战斗特效时的编译掉帧。
-• 全新设计暗金风格现代化加载界面，支持实时阶段进度与硬件加速状态展示。
+• 还原 Mega Crit 原版开屏 Logo 弹入动画与标志性开场音效（支持随时点击或按键跳过）。
+• 在开场动画期间后台静默完成高性能 GPU 硬件加速初始化、着色器缓存预热（Shader Cache）与主菜单场景预载，杜绝游戏首次战斗与特效掉帧。
+• 若跳过动画或加载尚未完成，在右下角优雅展示原版样式的“正在加载...”提示（NLoadingOverlay），完成后无缝黑屏淡入主菜单。
 • 内置“快速SL按钮”模组：暂停菜单中可直接原地重新加载当前房间，并可在通用设置中随时开启或关闭。
 • 游戏文件临时加载失败时会有限次数地自动重试；加载失败或等待过久时可直接重新加载。
 • 优化暂停菜单布局与标题行高，修复“已暂停”标题与继续按钮过于靠近重叠的问题。
