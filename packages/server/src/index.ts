@@ -20,7 +20,12 @@ export default {
   async fetch(req: Request, env: Env) {
     const path = new URL(req.url).pathname;
     if (path.startsWith('/api/auth/')) {
-      try { return await authFetch(req, env); } catch { return json({ error: 'steam_service' }, 503); }
+      try {
+        return await authFetch(req, env);
+      } catch (err: any) {
+        console.error('[auth error]:', err);
+        return json({ error: 'steam_service', details: String(err?.message || err) }, 503);
+      }
     }
     if (!path.startsWith('/api/multiplayer/')) return env.ASSETS.fetch(req);
     if (!sameOrigin(req)) return json({ error: 'origin' }, 403);

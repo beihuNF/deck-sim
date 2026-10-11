@@ -8,7 +8,11 @@ const authJson = (body: unknown, status = 200) => Response.json(body, { status, 
 const random = () => crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
 function cookieName(req: Request, name: string) { return (new URL(req.url).protocol === 'https:' ? '__Host-' : '') + name; }
 function readCookie(req: Request, name: string) {
-  return req.headers.get('Cookie')?.split(';').map(v => v.trim()).find(v => v.startsWith(cookieName(req, name) + '='))?.split('=')[1] ?? '';
+  const cookies = req.headers.get('Cookie')?.split(';').map(v => v.trim()) ?? [];
+  const hostMatch = cookies.find(v => v.startsWith(`__Host-${name}=`));
+  if (hostMatch) return hostMatch.split('=')[1] ?? '';
+  const plainMatch = cookies.find(v => v.startsWith(`${name}=`));
+  return plainMatch ? plainMatch.split('=')[1] ?? '' : '';
 }
 function cookie(req: Request, name: string, value: string, maxAge: number) {
   return `${cookieName(req, name)}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${new URL(req.url).protocol === 'https:' ? '; Secure' : ''}`;
@@ -32,6 +36,61 @@ export function validSteamAssertion(params: URLSearchParams, callback: string) {
     && params.get('openid.return_to') === callback
     && ['op_endpoint', 'claimed_id', 'identity', 'return_to', 'response_nonce', 'assoc_handle'].every(k => signed.has(k));
 }
+
+/** Check Steam assertion via GET (standard/recommended) and fallback to POST with browser UA. */
+export async function verifySteamSignature(params: URLSearchParams): Promise<boolean> {
+  const verification = new URLSearchParams();
+  for (const [key, value] of params) {
+    if (key.startsWith('openid.')) verification.set(key, value);
+  }
+  verification.set('openid.mode', 'check_authentication');
+
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Accept': 'text/plain, */*',
+  };
+
+  // 1. 优先尝试 GET 请求
+  try {
+    const getUrl = new URL(endpoint);
+    for (const [k, v] of verification) getUrl.searchParams.set(k, v);
+    const res = await fetch(getUrl.toString(), {
+      method: 'GET',
+      headers,
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (/is_valid\s*:\s*true/i.test(text)) return true;
+    }
+  } catch (err) {
+    console.warn('[steam] GET verification failed:', err);
+  }
+
+  // 2. 回退尝试 POST 请求
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      body: verification,
+      headers: {
+        ...headers,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (/is_valid\s*:\s*true/i.test(text)) return true;
+    }
+  } catch (err) {
+    console.error('[steam] POST verification failed:', err);
+  }
+
+  return false;
+}
+
 export async function authFetch(req: Request, env: AuthEnv) {
   const url = new URL(req.url), path = url.pathname;
   if (path === '/api/auth/me' && req.method === 'GET') return authJson({ profile: await steamIdentity(req, env) });
@@ -61,11 +120,8 @@ export async function authFetch(req: Request, env: AuthEnv) {
     if (!pending.ok) return authJson({ error: 'steam_expired' }, 403);
     const login = await pending.json<{ callback: string; returnTo: string }>();
     if (!validSteamAssertion(url.searchParams, login.callback)) return authJson({ error: 'steam_assertion' }, 403);
-    const verification = new URLSearchParams();
-    for (const [key, value] of url.searchParams) if (key.startsWith('openid.')) verification.set(key, value);
-    verification.set('openid.mode', 'check_authentication');
-    const verified = await fetch(endpoint, { method: 'POST', body: verification, redirect: 'error', signal: AbortSignal.timeout(10_000) });
-    if (!verified.ok || !/^is_valid:true\s*$/m.test(await verified.text())) return authJson({ error: 'steam_verification' }, 403);
+    const verified = await verifySteamSignature(url.searchParams);
+    if (!verified) return authJson({ error: 'steam_verification' }, 403);
     const steamId = url.searchParams.get('openid.claimed_id')!.split('/').at(-1)!;
     const profile: SteamProfile = { steamId, name: `Steam ${steamId}`, avatar: '' };
     if (env.STEAM_WEB_API_KEY) {

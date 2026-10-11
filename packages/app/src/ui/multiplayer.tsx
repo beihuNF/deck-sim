@@ -295,12 +295,12 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 <>
                   <PopupButton
                     yes={false}
-                    text={loc('main_menu_ui', 'GENERIC_POPUP.cancel')}
+                    text={tr('取消', 'Cancel')}
                     onClick={() => setShowAccountDialog(false)}
                   />
                   <PopupButton
                     yes={true}
-                    text={tr('使用 Steam 登录', 'Sign in with Steam')}
+                    text={tr('登录', 'Sign In')}
                     onClick={loginSteam}
                   />
                 </>

@@ -125,7 +125,7 @@ export function PopupButton({ yes, text, onClick, disabled, style }: { yes: bool
       <div class="vpb-visuals" style={{ scale: st === 'hover' ? '1.025' : st === 'press' ? '0.975' : '1', transition: `scale ${t}` }}>
         <div class="vpb-outline" style={{ ...fit(out), ...(st === 'hover' ? { filter: tint(0.941, 0.706, 0), mixBlendMode: 'plus-lighter', opacity: 1 } : {}) }} />
         <div class="vpb-image" style={{ ...fit(img), filter: `${hsvFilter(base[0], 1, 1)} saturate(${base[1] + d}) brightness(${base[2] + d})`, transition: `filter ${t}` }} />
-        <div class="vpb-label">{text}</div>
+        <div class="vpb-label" style={text.length > 5 ? { fontSize: '20px', letterSpacing: '0px' } : text.length > 3 ? { fontSize: '23px', letterSpacing: '1px' } : undefined}>{text}</div>
       </div>
     </div>
   );
