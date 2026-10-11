@@ -33,11 +33,47 @@ const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; }
  * One survey field each (Tianji stores keys it has no field for too). Tianji records the browser, OS, browser language
  * and location from the request itself; the seed is there only in a run.
  */
+function buildDiagnosticReport(): string {
+  const lines: string[] = [
+    '------------------------------',
+    '【环境诊断信息 / System Diagnostics】',
+    `- 游戏版本: v${GAME_VERSION} (${__BUILD_ID__})`,
+    `- 游戏语言: ${safe(() => G.LocManager.Instance.Language, 'zhs')}`,
+    `- 视口分辨率: ${innerWidth}x${innerHeight}`,
+  ];
+
+  const state = safe(() => G.RunManager.Instance?.State, null);
+  if (state) {
+    const isMp = safe(() => state.IsMultiplayer, false);
+    const seed = safe(() => state.Rng?.StringSeed, '');
+    const char = safe(() => state.LocalPlayer?.Character?.Id, '');
+    const act = safe(() => state.CurrentActId, '');
+    const floor = safe(() => state.Floor, 0);
+    const room = safe(() => state.CurrentRoom?.MapRoomType ?? state.CurrentRoom?.constructor?.name, '');
+
+    lines.push(`- 游戏模式: ${isMp ? '多人联机' : '单人模式'}`);
+    if (seed) lines.push(`- 对局种子: ${seed}`);
+    if (char) lines.push(`- 玩家角色: ${char}`);
+    if (act || floor) lines.push(`- 所在关卡: ${act ? `${act} ` : ''}第 ${floor} 层`);
+    if (room) lines.push(`- 当前房间: ${room}`);
+  } else {
+    lines.push('- 对局状态: 主菜单 / 未在对局中');
+  }
+
+  lines.push(`- 浏览器环境: ${navigator.userAgent}`);
+  return lines.join('\n');
+}
+
 async function send(text: string): Promise<boolean> {
   if (!text.trim()) return true; // SendFeedback: nothing to send, success anyway
+  const trimmed = text.trim();
+  const diagnostics = buildDiagnosticReport();
+  const fullContent = `${trimmed}\n\n${diagnostics}`;
+
   const payload = {
-    content: text,
-    field_RnoN: text,
+    content: fullContent,
+    field_RnoN: fullContent,
+    userText: trimmed,
     build: __BUILD_ID__,
     version: `v${GAME_VERSION}`,
     gameLanguage: safe(() => G.LocManager.Instance.Language, ''),
