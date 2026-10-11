@@ -33,7 +33,7 @@ export function listImages(prefix: string): string[] {
 export function imageUrl(res: string | null | undefined): string | null {
   if (!res) return null;
   const p = res.replace(/^res:\/\//, '');
-  const t = textures.get(p);
+  const t = textures.get(p) ?? (p.endsWith('.webp') ? textures.get(p.replace(/\.webp$/, '.png')) : undefined);
   return t ? A + t.out : null;
 }
 /** Original Sprite2D dimensions, before web asset downscaling. */

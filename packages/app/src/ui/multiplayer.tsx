@@ -49,6 +49,8 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const [, setKickGen] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAccountDialog, setShowAccountDialog] = useState(false);
+  const [accountHover, setAccountHover] = useState(false);
   const [seed, setSeed] = useState('');
   const modifiers = useMemo(allModifiers, []);
   useEffect(() => { setSeed(mp.settings.seed); }, [mp.settings.seed]);
@@ -216,13 +218,98 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
   return (
     <div class="mp-screen-container">
-      {mp.phase === 'idle' && <div class="mp-steam-account">
-        {steam.profile?.avatar && <img src={steam.profile.avatar} alt="" referrerPolicy="no-referrer" />}
-        <span>{steam.profile?.name || tr('游客', 'Guest')}</span>
-        {steam.profile ? <button data-ctl onClick={() => void logoutSteam()}>{tr('退出 Steam', 'Sign out of Steam')}</button>
-          : <button data-ctl onClick={loginSteam}>{tr('使用 Steam 登录', 'Sign in through Steam')}</button>}
-        {steam.error && <span role="alert">{tr('账号服务暂不可用', 'Account service unavailable')}</span>}
-      </div>}
+      {/* 原版风格 Steam 档案身份按钮：复用 NOpenProfileScreenButton 规范 */}
+      {mp.phase === 'idle' && view === 'menu' && (
+        <div
+          class={'mp-profile-btn' + (accountHover ? ' hover' : '')}
+          data-ctl
+          onPointerEnter={() => { setAccountHover(true); playOneShot('event:/sfx/ui/clicks/ui_hover'); }}
+          onPointerLeave={() => setAccountHover(false)}
+          onPointerDown={e => { if (e.button === 0) playOneShot('event:/sfx/ui/clicks/ui_click'); }}
+          onPointerUp={e => { if (e.button === 0) setShowAccountDialog(true); }}
+        >
+          <img
+            class="mpp-icon"
+            src={steam.profile?.avatar || imageUrl('images/ui/mods/steam_logo.png') || ''}
+            alt=""
+            referrerPolicy="no-referrer"
+          />
+          <div class="mpp-title">
+            {steam.profile?.name || tr('游客身份', 'Guest')}
+          </div>
+          <div class="mpp-desc">
+            {steam.profile ? tr('已连接 Steam', 'Steam Connected') : tr('点击登录 Steam', 'Click to Sign In')}
+          </div>
+        </div>
+      )}
+
+      {/* 原版九宫格 Steam 账号管理弹窗 */}
+      {showAccountDialog && (
+        <div class="mp-join-modal-backstop" onClick={() => setShowAccountDialog(false)}>
+          <div class="mp-join-dialog mp-account-dialog" onClick={e => e.stopPropagation()}>
+            <RoomDialogBackground />
+            <h2 class="mp-dialog-title">{tr('Steam 账号', 'Steam Account')}</h2>
+
+            <div class="mp-account-card">
+              <img
+                class="mp-account-avatar"
+                src={steam.profile?.avatar || imageUrl('images/ui/mods/steam_logo.png') || ''}
+                alt=""
+                referrerPolicy="no-referrer"
+              />
+              <div class="mp-account-info">
+                <div class="mp-account-name">{steam.profile?.name || tr('游客身份', 'Guest')}</div>
+                <div class="mp-account-sub">
+                  {steam.profile ? tr('Steam 账号已验证', 'Verified Steam Account') : tr('未登录 · 游客模式', 'Not Signed In · Guest')}
+                </div>
+              </div>
+            </div>
+
+            <p class="mp-dialog-desc">
+              {steam.profile
+                ? tr('当前已连接 Steam。在多人联机房间与游戏中，其他玩家将看到你的 Steam 昵称与头像。你的单人游戏存档不受任何影响，仍安全保存在本地。', 'Connected with Steam. Other players will see your verified Steam name and avatar in multiplayer sessions. Your singleplayer saves remain completely intact.')
+                : tr('当前以游客身份联机。使用 Steam 网页登录后，即可向队友展示你的 Steam 昵称与头像。单人游戏存档不受任何影响，仍安全保存在本地。', 'Currently playing as a guest. Sign in with Steam to show your verified Steam name and avatar in multiplayer sessions. Your singleplayer saves remain completely intact.')}
+            </p>
+
+            {steam.error && (
+              <p class="mp-account-error" role="alert">
+                {tr('账号服务暂时不可用，请稍后再试。', 'Account service temporarily unavailable, please try again later.')}
+              </p>
+            )}
+
+            <div class="mp-dialog-buttons">
+              {steam.profile ? (
+                <>
+                  <PopupButton
+                    yes={false}
+                    text={tr('退出登录', 'Sign Out')}
+                    onClick={() => { void logoutSteam(); setShowAccountDialog(false); }}
+                  />
+                  <PopupButton
+                    yes={true}
+                    text={tr('完成', 'Done')}
+                    onClick={() => setShowAccountDialog(false)}
+                  />
+                </>
+              ) : (
+                <>
+                  <PopupButton
+                    yes={false}
+                    text={loc('main_menu_ui', 'GENERIC_POPUP.cancel')}
+                    onClick={() => setShowAccountDialog(false)}
+                  />
+                  <PopupButton
+                    yes={true}
+                    text={tr('使用 Steam 登录', 'Sign in with Steam')}
+                    onClick={loginSteam}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+          <BackButton enabled onClick={() => setShowAccountDialog(false)} />
+        </div>
+      )}
       {mp.error && <div class="mp-toast-error" role="alert">{multiplayerError()}</div>}
 
       {/* 1. 多人主菜单（SubmenuButtons 原版卡片） */}

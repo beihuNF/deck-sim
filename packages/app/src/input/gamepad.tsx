@@ -109,7 +109,7 @@ function clearFocus(mouseTarget: EventTarget | null = null) {
   });
   if (focused.size) virtualHovered = null;
 }
-const CONTROL_SELECTOR = 'button:not(:disabled), input:not(:disabled):not([type="hidden"]), a[href], [data-ctl]:not(.disabled):not(.nscrollbar), .mm-btn, .mm-profile, .settings-tab, .submenu-btn, .chs-btn, .game-btn.shown, .mp.travelable, .event-option, .anc-hitbox, .reward-btn, .bundle, .grid-holder .gh-card, .pause-btn, .vp-btn, .chs-arrow, .rest-btn, .chest-btn, .relic-holder-t, .merchant-btn, .shop-hit, .alt-btn, .view-upgrades, .sort-btn, .inspect-arrow, .ic-upgrade, .ftue-confirm, .cr-arrow, .ea-proceed, .invite-code-btn';
+const CONTROL_SELECTOR = 'button:not(:disabled), input:not(:disabled):not([type="hidden"]), a[href], [data-ctl]:not(.disabled):not(.nscrollbar), .mm-btn, .mm-profile, .mp-profile-btn, .settings-tab, .submenu-btn, .chs-btn, .game-btn.shown, .mp.travelable, .event-option, .anc-hitbox, .reward-btn, .bundle, .grid-holder .gh-card, .pause-btn, .vp-btn, .chs-arrow, .rest-btn, .chest-btn, .relic-holder-t, .merchant-btn, .shop-hit, .alt-btn, .view-upgrades, .sort-btn, .inspect-arrow, .ic-upgrade, .ftue-confirm, .cr-arrow, .ea-proceed, .invite-code-btn';
 function navigationRoot(selector?: string): ParentNode {
   // Only the foremost layer owns focus. Screens underneath remain mounted for the original animations.
   const last = (selector: string) => Array.from(document.querySelectorAll<HTMLElement>(selector)).at(-1);

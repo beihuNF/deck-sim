@@ -28,7 +28,7 @@ import { showEarlyAccessDisclaimer, showAboutDialog, showQQGroupDialog } from '.
 import { openFeedback } from './feedback';
 import { MultiplayerLobby } from './multiplayer';
 import { invitedRoomCode } from '../multiplayer';
-import { loadSteamProfile } from '../steam';
+import { steam, loadSteamProfile } from '../steam';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const m = (k: string) => loc('main_menu_ui', k);
@@ -291,14 +291,18 @@ export function netDate(fmt: string, d: Date): string {
 function ProfileButton() {
   const [hover, setHover] = useState(false);
   const id = profileId();
+  const name = steam.profile?.name || locv('main_menu_ui', 'OPEN_PROFILE_SCREEN.title', { Id: id });
+  const avatar = steam.profile?.avatar || imageUrl(`images/ui/profile/profile_icon_${id}.png`);
+  const isSteam = !!steam.profile;
+  const desc = isSteam ? (safe(() => G.LocManager.Instance.Language, '') === 'zhs' ? '已连接 Steam' : 'Steam Connected') : m('OPEN_PROFILE_SCREEN.description');
   return (
     <div class={'mm-profile' + (hover ? ' hover' : '')}
       onPointerEnter={() => { setHover(true); playOneShot('event:/sfx/ui/clicks/ui_hover'); }} onPointerLeave={() => setHover(false)}
       onPointerDown={(e) => { if (e.button === 0) playOneShot('event:/sfx/ui/clicks/ui_click'); }}
       onPointerUp={(e) => { if (e.button === 0) pushMenu('profile'); }}>
-      <img class="mmp-icon" src={imageUrl(`images/ui/profile/profile_icon_${id}.png`) ?? ''} />
-      <div class="mmp-title">{locv('main_menu_ui', 'OPEN_PROFILE_SCREEN.title', { Id: id })}</div>
-      <div class="mmp-desc">{m('OPEN_PROFILE_SCREEN.description')}</div>
+      <img class="mmp-icon" src={avatar ?? ''} style={isSteam ? { borderRadius: '50%', border: '2px solid #efc851', objectFit: 'cover' } : {}} />
+      <div class="mmp-title" style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+      <div class="mmp-desc">{desc}</div>
     </div>
   );
 }

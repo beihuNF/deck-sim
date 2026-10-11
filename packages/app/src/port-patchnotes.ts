@@ -1,6 +1,15 @@
 /** Web port updates, newest first. Add both languages here; original game notes remain in assets/patch_notes. */
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
+    date: '2026_10_12',
+    eng: `[gold][b]Interface[/b][/gold]
+• Restored the authentic profile button design and layout for Steam identity in multiplayer, adhering to Sts2 typography, icons, and audio feedback.
+• Account management dialog now uses the authentic nine-patch parchment frame and standard popup action buttons.`,
+    zhs: `[gold][b]界面[/b][/gold]
+• 多人联机身份入口完全遵循原版档案按钮设计与排版规范，复用 Kreon 字体、金色边框、悬停动效与原版音效。
+• 账号管理弹窗改用原版九宫格羊皮纸底框与标准确认/取消按钮。`,
+  },
+  {
     date: '2026_10_11',
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Added Steam sign-in with verified account identities, names and avatars; guest play remains available.
