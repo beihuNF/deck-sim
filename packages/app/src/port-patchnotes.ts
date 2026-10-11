@@ -2,167 +2,55 @@
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
-    eng: `[gold][b]Interface[/b][/gold]
-• Restored the authentic profile button design and layout for Steam identity in multiplayer, adhering to Sts2 typography, icons, and audio feedback.
-• Account management dialog now uses the authentic nine-patch parchment frame, natural button copy, and auto-scaling popup buttons.
-• Custom co-op lobby now cleanly aligns with the authentic NCustomRunScreen, natively supporting seeds, ascension, scrollable modifier lists, and original tickbox slices while removing custom dialog styles.
-• Replaced web-style spinning loader with authentic screen fade transitions (FadeOut / FadeIn) for room creation, navigation, and co-op embarkation.
-
-[gold][b]Multiplayer[/b][/gold]
-• Steam sign-in now opens in a dedicated popup window, seamlessly completing authentication without refreshing the page or restarting introductory animations.
-• Automatically fetches authentic Steam usernames and avatars via public profile fallbacks, preserving full profile display even without dedicated server API keys.
-• Hardened Steam OpenID callback verification with standard GET query verification and POST fallback, preventing edge network 503 service failures.`,
-    zhs: `[gold][b]界面[/b][/gold]
-• 多人联机身份入口完全遵循原版档案按钮设计与排版规范，复用 Kreon 字体、金色边框、悬停动效与原版音效。
-• 账号管理弹窗改用原版九宫格羊皮纸底框与精炼对称的弹窗操作按钮，支持文字长度自适应字号。
-• 多人自定义模式大厅完全对齐原版 NCustomRunScreen 场景架构，原生支持种子、进阶、原版词缀滚动列表与原版切片复选框，彻底移除手写弹窗与冗余样式。
-• 移除网页式旋转菊花，创建房间、大厅切换与多人启程全面接入原版黑幕过渡（FadeOut / FadeIn）。
-
-[gold][b]多人联机[/b][/gold]
-• Steam 登录改为独立弹出窗口完成授权，登录成功后自动无感同步，无需整页刷新或重播开场动画。
-• 增加 Steam 公开个人资料解析兜底，无需服务器配置 API 密钥即可直接展示真实 Steam 昵称与高清头像。
-• 加固 Steam OpenID 登录回调验证逻辑，采用规范 GET 验证并保留 POST 回退，修复部分边缘网络下登录返回 503 错误的问题。`,
+    eng: `[gold][b]Multiplayer[/b][/gold]
+• Steam sign-in now completes smoothly in a popup window without reloading the page.
+• Restored original game layouts and fade transitions for multiplayer room creation and custom run lobbies.
+• Improved Steam profile resolution and account connection reliability.`,
+    zhs: `[gold][b]多人联机[/b][/gold]
+• Steam 登录支持独立弹窗授权，无需重新加载页面。
+• 多人房间创建与自定义模式大厅全面对齐原版场景布局与黑幕转场。
+• 优化 Steam 个人资料获取与账号连接稳定性。`,
   },
   {
     date: '2026_10_11',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Added Steam sign-in with verified account identities, names and avatars; guest play remains available.
-• Running co-op sessions now reconnect after temporary network loss while the original page stays open, retaining player slots, combat and pending choices.
-• Unacknowledged game messages are redelivered without repeating actions; teammates wait for the connection to recover.
-• Invitation links now open the lobby and join automatically. Fixed the white join/disconnection panel and buttons appearing outside the panel.
-• Pasting a full invitation link into the join input now extracts its room code automatically.
-• Daily co-op now uses the original daily challenge layout, with the assigned character, ascension, countdown and three illustrated modifiers displayed directly. Ready indicators and the back button now follow the original ready/cancel flow.
-• Fixed unreadable modifier descriptions on the custom co-op settings popup.
-• Fixed co-op continuing silently after the original game detected a state mismatch; the session now stops with a synchronization error.
-• Restored co-op map ping feedback when clicking your voted node again, and hid underlying room navigation while the map is open.
-• Added the original waiting-for-teammates ping button and ready player portraits on End Turn.
-• Restored compact team health, block, energy, card and location indicators, with the local player listed first; removed the extra in-run room banner.
-• Corrected co-op creature rows and pet placement, keeping remote Osty beside its owner and showing remote health bars on hover.
-• Clicking a player's status now opens the original inventory overview, with read-only deck, relic and potion inspection; ally targeting also works from the player list.
-• Added teammate card, relic and potion previews, synchronized mouse/controller aiming lines and player-choice waiting indicators.
-• Shared events now show voting portraits, and lethal co-op event options display the original character warning instead of executing the choice.
-• Restored event portrait effects that change during the Trial event.
+• Added Steam account sign-in support alongside guest play.
+• Improved co-op reconnection handling, state synchronization, and room invitation links.
+• Refined in-game co-op HUD, teammate previews, voting indicators, and daily challenge lobby.
 
 [gold][b]Controls[/b][/gold]
-• Left-stick and directional navigation now snap between menu, event, reward, rest, treasure, shop and popup choices, with focus confined to the active screen and controller button hints on focused choices.
-• Fixed controller selection losing button releases and triggering Back twice; blocked choices are skipped and card/modifier lists scroll to focused items.
-• Card grids now wrap within rows; settings sliders use the original five-percent directional steps, and dropdown choices support focus navigation and cancel.
-• Fixed controller card play waiting for mouse dragging: cards now focus automatically, preview on Select, and play on a second press, with valid targets and aiming arrows snapping to enemies or allies.
-• Map navigation now snaps between reachable nodes with the stick or directional buttons, and restores the current floor after scrolling.
-• Fixed the first mouse click on a map node being ignored after controller navigation.`,
+• Enhanced gamepad navigation, snap targeting, card play flow, and input responsiveness across all screens.`,
     zhs: `[gold][b]多人联机[/b][/gold]
-• 接入 Steam 登录，显示验证后的账号名称和头像，同时保留游客联机。
-• 保留原页面时，运行中的联机支持网络断线重连，恢复原槽位并保留战斗与待选操作。
-• 补发未确认的规则消息并避免重复执行操作；队友掉线后显示等待重连。
-• 邀请链接现在直接打开大厅并自动加入；修复加入和断线窗口的白色背景，以及按钮跑到面板外的问题。
-• 加入框支持粘贴完整邀请链接，自动提取房间代码。
-• 多人每日挑战恢复原版每日页面，直接展示指定角色、进阶、倒计时和三个带图标的词缀；准备标记和返回取消准备遵循原版流程。
-• 修复多人自定义词缀设置弹窗的背景和文字对比度。
-• 修复原版校验已发现状态分叉后，网页仍静默继续联机的问题；现在会停止会话并显示同步错误。
-• 重复点击已投票节点恢复原版地图催促反馈，打开地图时隐藏底层房间的前进按钮。
-• 补齐结束回合后的催促按钮，以及结束回合按钮上的已准备角色头像。
-• 恢复紧凑的队伍生命、格挡、能量、手牌和位置图标，本机玩家排在首位；移除游戏内额外的房间提示。
-• 修正多人角色分排与宠物站位，队友的奥斯蒂站在主人旁边，队友血条按原版在悬停时显示。
-• 点击玩家状态可打开原版遗物、药水和牌组概览，支持只读查看详情；瞄准队友时也可从玩家列表选择。
-• 补齐队友卡牌、遗物和药水意图，同步鼠标与手柄瞄准线，并显示等待玩家选牌的提示。
-• 共享事件显示投票角色头像；多人事件的致死选项按原版拦截并显示角色警告。
-• 补齐审判事件在选项切换时调用的肖像特效。
+• 新增 Steam 账号登录支持，同时保留游客联机。
+• 优化对局断线重连、房间邀请链接与多人数据同步稳定性。
+• 完善联机局内队伍状态、队友意图预览、事件投票与每日挑战大厅展示。
 
 [gold][b]操作[/b][/gold]
-• 左摇杆与方向键补齐菜单、事件、奖励、休息、宝箱、商店和弹窗选项吸附，焦点限制在当前界面，并显示聚焦选项的手柄按键提示。
-• 修复手柄选择丢失按钮抬起，以及返回被重复触发的问题；跳过不可用选项，牌组和词缀列表随焦点滚动。
-• 选牌网格支持行内循环，设置滑条按原版每次增减 5%，下拉选项支持吸附切换和取消。
-• 修复手柄出牌仍需鼠标拖动的问题：自动聚焦手牌，按选择预览、再次选择出牌，有效目标与箭头吸附敌人或队友。
-• 地图支持摇杆或方向键在可走节点间吸附切换，滚动后导航自动回到当前楼层。
-• 修复手柄导航后切回鼠标时，第一次点击地图节点被忽略的问题。`,
+• 优化手柄按键吸附、指向性出牌与各界面的摇杆导航体验。`,
   },
   {
     date: '2026_10_10',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Added multiplayer co-op between web players, adhering to the original game's 4-player cap and mode structure.
-• Supported hosting rooms for Standard, Daily, and Custom modes with up to 4 players.
-• Rebuilt multiplayer screens and lobby using original game assets and layouts: SubmenuButton cards, nine-patch fuzzy dialogs, CharacterSelectScreen background and RemotePlayerContainer.
-• Added room code invitations and one-click link sharing, with lobby hero selection and ready status.
-• Implemented session persistence and seamless reconnects on page refresh, preventing slot shifts or phantom players.
-• Restored authentic lobby character selection and ready flow: all players (including the host) can pick characters freely and toggle ready status. Switching hero resets ready status, and the run embarks when all players are ready.
-• Added host kick player support with instant optimistic UI removal and resilient server broadcast.
-• Fixed locked mode cards in the multiplayer host menu showing raw localization keys, now properly falling back to unlock requirement descriptions.
-• Fixed co-op map votes failing to advance; player portraits now show each player's selected node.
-• Shared map drawings now sync between players in their character colors; erasing and clearing affect only your own drawings.
-• Fixed locked characters being usable in co-op and preserved each player's unlock progress when starting a run.
-• Added shared ascension and seed settings, custom modifier selection, and original UTC daily character and modifier rolls.
-• Team status now shows health, energy, hand size, turn readiness, and the screen each player is viewing.
-• Treasure chests now show every shared relic, player votes, and a skip option, using the original allocation rules.
-• Multiplayer runs run in isolated ephemeral sessions, keeping your singleplayer profile and saves completely intact.
- 
+• Introduced web multiplayer co-op supporting up to 4 players across Standard, Daily, and Custom modes.
+• Added room code invitations, lobby player management, shared ascension, and voting systems.
+
 [gold][b]Controls[/b][/gold]
-• Restored the original mouse/keyboard, controller, and keyboard-only binding columns, with independent keyboard settings and keyboard navigation.
-• Corrected controller defaults: A selects, Y confirms/ends turns, bumpers page, and triggers open piles; character selection now shows the matching button hints.
-• Added full gamepad / controller support with console-style combat hand navigation, auto-targeting for single-target cards, and smooth virtual cursor for menus and maps.
-• Unlocked and implemented the Input settings tab with customizable keyboard and controller keybindings and reset support.
-• Controller bindings in Input settings now render original button icons from the controller atlas.
-• Prevented the browser from capturing the Tab key for focus navigation, allowing Tab to be reliably bound and triggered in-game.
-• Enabled opening the deck via hotkey from any room, not just in combat.
-• Fixed deck and map shortcut hints to show the current keyboard bindings; rebinding the deck no longer keeps D as an extra shortcut.
-• Shortcut hints now follow your custom bindings and switch between keyboard and controller buttons when you change input devices, including deck, map, piles, end turn, peek, confirm, and back.
-• Controller hints use the original Xbox, PlayStation, or Switch button icons, matching the detected controller.
-• Hand shortcut labels now show your assigned keys and hide unassigned controller buttons.
-• Fixed old default shortcuts still triggering after rebinding, and controller pile shortcuts conflicting with hand navigation.
-• Controller cursor hovering now shows button hints and reaches edge controls at different aspect ratios.
-• Prevented controller cursor jumps after slow frames or returning to the browser tab.
- 
+• Added comprehensive controller support with authentic button prompts and customizable keybindings.
+
 [gold][b]Quality of Life[/b][/gold]
-• Restored the original Mega Crit opening logo drop-in animation and iconic audio (supports click or keypress to skip).
-• Pre-warmed WebGL shader cache and preloaded menu scenes concurrently in the background with high-performance GPU acceleration, eliminating first-trigger stutters.
-• Integrated the original bottom-right LoadingOverlay ("Loading...") indicator when loading is still in progress, smoothly fading in to the main menu upon completion.
-• Built in the "Quick SL Button" mod: reload the current room directly from the pause menu, with an option in Settings to toggle it.
-• Added limited retries for temporary game file loading failures, with a reload button when loading fails or takes too long.
-• Adjusted pause menu title line height and spacing to prevent overlapping with buttons.
-• Fixed a black screen issue when traveling to the next room on the map.
- 
+• Restored the original opening animation and audio, optimized loading performance, and added an in-game reload option.
+
 [gold][b]Community[/b][/gold]
 • Updated the QQ group QR code.`,
     zhs: `[gold][b]多人模式[/b][/gold]
-• 实现网页版玩家之间多人联机合作功能，遵循原版最高 4 人联机与模式设定。
-• 完整提供原版“标准模式”、“多人每日挑战”与“自定模式”多人建房选项。
-• 全面以原作素材与布局重构多人模式界面：复用原版大卡片子菜单、九宫格弹窗、角色选择场景与左上角远程玩家状态面板（RemotePlayerContainer）。
-• 支持房间号邀请与一键复制邀请链接，进入大厅可自由选择角色并准备就绪。
-• 增加大厅会话恢复（Session Persistence）与断线重连机制，解决移动端与浏览器刷新页面时槽位递增或判定为新玩家的问题。
-• 还原原作大厅选人与就绪流程：所有玩家（包含房主）均可在选好角色后自主点击准备/取消就绪，切换角色自动重置准备状态，全员就绪后由房主启程。
-• 房主可在大厅中踢出客机玩家：支持乐观即时响应与安全广播，房主界面卡片立刻移除，被踢玩家准确显示通知。
-• 修复多人建房菜单中未解锁模式大卡片底部显示原始本地化键名的问题，正确展示解锁条件说明。
-• 修复多人地图投票后无法前进的问题，节点旁现在显示各玩家选择的角色头像。
-• 地图绘画按角色颜色同步给其他玩家，擦除和清空只影响自己的绘画。
-• 修复多人模式可使用锁定角色的问题，开局正确继承各玩家的解锁进度。
-• 补齐共享进阶难度、种子与自定义词缀设置，每日挑战按原版规则生成角色和词缀。
-• 新增队友生命、能量、手牌数量、回合准备与所在界面的状态显示。
-• 宝箱展示全部共享遗物、玩家选择与放弃选项，按原版规则分配遗物。
-• 多人对局采用独立临时会话存储，不破坏或覆盖单人本地存档。
+• 新增网页版多人联机功能，支持最多 4 人游玩标准、每日与自定义模式。
+• 支持房间代码与链接邀请、大厅玩家管理、共享进阶及局内投票等联机机制。
 
 [gold][b]操作[/b][/gold]
-• 操作设置还原鼠标+键盘、控制器、纯键盘三列，支持独立键位保存与纯键盘导航。
-• 手柄默认操作遵循原版：A 选择、Y 确认/结束回合，肩键翻页、扳机查看牌堆；角色选择页显示对应按键提示。
-• 新增完整手柄（控制器）支持：战斗中采用主机版手牌轮盘与指向性卡牌敌人自动吸附切换；菜单、地图与商店支持摇杆虚拟光标与右摇杆滚屏。
-• 解锁并完整实现设置中的“操作设置”：支持自定义键盘按键与手柄按钮绑定，并可一键重置为默认。
-• 操作设置中的手柄按键列现在渲染原作图集专用按键图标。
-• 阻止浏览器默认焦点切换对 Tab 键的截获，确保将查看卡牌组等快捷键绑定至 Tab 时可在游戏内稳定触发。
-• 允许在任意房间（包括地图、事件、商店等）通过快捷键直接打开卡牌组，不再局限于战斗中。
-• 修复查看牌组和地图的按键提示未跟随当前键位的问题；修改牌组快捷键后，D 不再额外触发。
-• 快捷键提示跟随自定义绑定，并按最近使用的键鼠或手柄自动切换：包括牌组、地图、牌堆、结束回合、查看战场、确认和返回。
-• 手柄按键提示使用原作专用图标，并根据识别到的 Xbox、PlayStation 或 Switch 手柄切换。
-• 手牌快捷键标签显示当前绑定，手柄模式下隐藏未绑定按钮的标签。
-• 修复修改键位后旧默认键仍然触发，以及手柄牌堆快捷键与手牌切换冲突的问题。
-• 手柄虚拟光标悬停可显示按钮提示，并可在不同宽高比下到达屏幕边缘的控件。
-• 修复低帧率或返回浏览器标签页后手柄光标跳跃过大的问题。
+• 完整接入手柄控制器支持，提供原作风格按键提示与自定义键位设置。
 
-[gold][b]便利功能[/b][/gold]
-• 还原 Mega Crit 原版开屏 Logo 弹入动画与标志性开场音效（支持随时点击或按键跳过）。
-• 在开场动画期间后台静默完成高性能 GPU 硬件加速初始化、着色器缓存预热（Shader Cache）与主菜单场景预载，杜绝游戏首次战斗与特效掉帧。
-• 若跳过动画或加载尚未完成，在右下角优雅展示原版样式的“正在加载...”提示（NLoadingOverlay），完成后无缝黑屏淡入主菜单。
-• 内置“快速SL按钮”模组：暂停菜单中可直接原地重新加载当前房间，并可在通用设置中随时开启或关闭。
-• 游戏文件临时加载失败时会有限次数地自动重试；加载失败或等待过久时可直接重新加载。
-• 优化暂停菜单布局与标题行高，修复“已暂停”标题与继续按钮过于靠近重叠的问题。
-• 修复在地图上选择节点进入下一关/房间时黑屏的问题。
+[gold][b]体验优化[/b][/gold]
+• 还原开场动画与音效，优化资源加载与流畅度，并新增重载当前房间功能。
 
 [gold][b]社区[/b][/gold]
 • 更新 QQ 群二维码。`,
