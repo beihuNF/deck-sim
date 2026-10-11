@@ -484,7 +484,7 @@ export function TinyCard({ card }: { card: any }) {
   );
 }
 /** NDeckHistoryEntry: tiny card, enchantment icon, "{n}x Title" (green upgraded, purple enchanted); hover 1.5 and the label +8 px. */
-function DeckEntry({ g, all, setHl }: { g: Loaded['deck'][number]; all: any[]; setHl: (s: Set<number>) => void }) {
+export function DeckEntry({ g, all, setHl }: { g: Loaded['deck'][number]; all: any[]; setHl: (s: Set<number>) => void }) {
   const [hot, setHot] = useState(false);
   const pressed = useRef(false);
   const ref = useRef<HTMLDivElement>(null);

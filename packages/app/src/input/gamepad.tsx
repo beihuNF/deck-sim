@@ -14,6 +14,7 @@ import { modalOpen } from '../ui/modal';
 import { ftueActive } from '../ui/ftue';
 import { edge } from '../view';
 import { pingHotkey } from '../ui/combat-hud';
+import { syncControllerFocus } from './peer-input';
 
 // Controller state
 let activeGamepadIndex: number | null = null;
@@ -131,6 +132,8 @@ function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = C
   clearFocus();
   next?.classList.add('input-focus');
   if (next) {
+    const root = document.querySelector('.stage-root')!.getBoundingClientRect(), r = next.getBoundingClientRect();
+    syncControllerFocus((r.left + r.width / 2 - root.left) / root.width * 1920, (r.top + r.height / 2 - root.top) / root.height * 1080);
     if (next.closest('.settings-panel')) {
       const r = next.getBoundingClientRect(), root = document.querySelector('.stage-root')!.getBoundingClientRect(), scale = root.width / 1920;
       const upper = root.top + 200 * scale;
@@ -160,7 +163,7 @@ window.addEventListener('keydown', e => {
       navigateMap(direction[1]);
     }
     else if (direction) focusControls(direction[1]);
-    else if (matches('topPanel')) focusControls('up', '.tb-map, .tb-deck, .tb-settings');
+    else if (matches('topPanel')) focusControls('up', '.tb-map, .tb-deck, .tb-settings, .mp-player-state');
     else {
       const focused = document.querySelector<HTMLElement>('.input-focus');
       if (focused) activateControl(focused);
@@ -302,12 +305,12 @@ function handleCombatGamepad(
     selectedHandIndex = Math.floor((hand?.ActiveHolders.length ?? 0) / 2);
     stickXTimer = 0;
   }
-  const topFocus = document.querySelector<HTMLElement>('.top-bar .input-focus');
+  const topFocus = document.querySelector<HTMLElement>('.top-bar .input-focus, .mp-player-states .input-focus');
   if (topFocus && !targetManager.IsInSelection) {
     if (actionJustPressed('select')) { activateControl(topFocus); return; }
     if (actionJustPressed('cancel') || actionJustPressed('topPanel')) { clearFocus(); return; }
     for (const [action, direction] of [['up', 'up'], ['down', 'down'], ['handPrev', 'left'], ['handNext', 'right']] as const) {
-      if (actionJustPressed(action)) { focusControls(direction, '.tb-map, .tb-deck, .tb-settings'); return; }
+      if (actionJustPressed(action)) { focusControls(direction, '.tb-map, .tb-deck, .tb-settings, .mp-player-state'); return; }
     }
   }
 
@@ -323,6 +326,8 @@ function handleCombatGamepad(
     else if (actionJustPressed('handNext') || direction === 'right') index = (index + 1) % targets.length;
     const target = targets[index];
     if (targetManager.hovered !== target) targetManager.OnNodeHovered(target);
+    const s = target.slot;
+    if (s) syncControllerFocus(s.x + s.bl + s.w / 2, s.y + s.bt + s.h / 2);
 
     // Select plays a card; confirm/end turn are separate original actions.
     if (actionJustPressed('select')) {
@@ -380,6 +385,7 @@ function handleCombatGamepad(
       selectedHandIndex = (selectedHandIndex + step + holders.length) % holders.length;
     }
     selectedHolder = holders[selectedHandIndex];
+    syncControllerFocus(selectedHolder.GlobalPosition.X, selectedHolder.GlobalPosition.Y);
     for (const holder of holders) holder.focus(holder === selectedHolder);
 
     // Play highlighted card (A button)
@@ -397,7 +403,7 @@ function handleCombatGamepad(
   }
 
   // Combat shortcuts
-  if (actionJustPressed('topPanel')) { focusControls('up', '.tb-map, .tb-deck, .tb-settings'); return; }
+  if (actionJustPressed('topPanel')) { focusControls('up', '.tb-map, .tb-deck, .tb-settings, .mp-player-state'); return; }
   if (actionJustPressed('endTurn')) { // Y button -> End Turn
     endTurnHotkey()?.();
     return;

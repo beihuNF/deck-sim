@@ -13,7 +13,7 @@ export const ui = {
   toast: '' as string,
   gameOver: null as any,
   live: false,               // combat: periodic safety-net re-render (see loop)
-  cardsView: null as null | { kind: 'deck' | 'draw' | 'discard' | 'exhaust' }, // NDeckViewScreen / NCardPileScreen
+  cardsView: null as null | { kind: 'deck' | 'draw' | 'discard' | 'exhaust' } | { kind: 'player'; player: any; cards: any[]; relics: any[]; potions: any[] }, // NDeckViewScreen / NCardPileScreen / NMultiplayerPlayerExpandedState
   pauseOpen: false,          // NPauseMenu
   subscreen: null as Screen | null, // a compendium screen opened from the pause menu, over the run
   menuStack: [] as MenuSubmenu[], // NMainMenuSubmenuStack: submenus over the (blurred) main menu

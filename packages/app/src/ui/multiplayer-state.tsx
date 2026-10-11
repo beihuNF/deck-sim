@@ -10,6 +10,9 @@ import { loc } from '../i18n';
 import { tint } from '../filters';
 import { HealthBar, Reticle } from './creature-ui';
 import { TinyCard } from './history';
+import { openPlayerState } from './pause';
+import { creatureViewsRef, targetManager } from '../cardnodes';
+import { trackPeerPointer } from '../input/peer-input';
 
 /** NScreenStateTracker's priority: capstones/overlays take precedence over the room. */
 function screenType() {
@@ -17,7 +20,7 @@ function screenType() {
   if (ui.gameOver) return S.GameOver;
   if (ui.subscreen) return ui.subscreen === 'menu' ? S.Settings : S.Compendium;
   if (ui.pauseOpen) return S.PauseMenu;
-  if (ui.cardsView) return ui.cardsView.kind === 'deck' ? S.DeckView : S.CardPile;
+  if (ui.cardsView) return ui.cardsView.kind === 'player' ? S.RemotePlayerExpandedState : ui.cardsView.kind === 'deck' ? S.DeckView : S.CardPile;
   if (ui.mapOpen) return S.Map;
   const top = ui.overlays.at(-1);
   if (top) return top.kind === 'rewards' ? S.Rewards : S.CardSelection;
@@ -32,6 +35,7 @@ const screenLabel = (s: number) => {
   if (s === S.CardSelection) return mpText('选牌中', 'Choosing cards');
   if (s === S.SharedRelicPicking) return mpText('选遗物', 'Choosing a relic');
   if (s === S.DeckView || s === S.CardPile) return mpText('查看卡牌', 'Viewing cards');
+  if (s === S.RemotePlayerExpandedState) return mpText('查看玩家', 'Viewing player');
   if (s === S.PauseMenu || s === S.Settings || s === S.Compendium) return mpText('菜单', 'Menu');
   return '';
 };
@@ -41,7 +45,8 @@ export function MultiplayerPlayerStates({ rs }: { rs: any }) {
   const sync = rm.InputSynchronizer;
   useEffect(() => {
     if (players.length < 2 || !sync) return;
-    const subscriptions: [any, string][] = [[sync, 'StateChanged'], [sync, 'ScreenChanged'], [cm, 'PlayerEndedTurn'], [cm, 'PlayerUnendedTurn'], [cm, 'TurnStarted'], [rm.MapSelectionSynchronizer, 'PlayerVoteChanged'], [rm.MapSelectionSynchronizer, 'PlayerVoteCancelled'], [rm.MapSelectionSynchronizer, 'PlayerVotesCleared']];
+    const stopPointer = trackPeerPointer(sync);
+    const subscriptions: [any, string][] = [[sync, 'ScreenChanged'], [cm, 'PlayerEndedTurn'], [cm, 'PlayerUnendedTurn'], [cm, 'TurnStarted'], [rm.MapSelectionSynchronizer, 'PlayerVoteChanged'], [rm.MapSelectionSynchronizer, 'PlayerVoteCancelled'], [rm.MapSelectionSynchronizer, 'PlayerVotesCleared']];
     for (const p of players) for (const event of ['CurrentHpChanged', 'MaxHpChanged', 'BlockChanged']) subscriptions.push([p.Creature, event]);
     for (const p of players) if (p.PlayerCombatState) {
       for (const key of ['EnergyChanged', 'StarsChanged']) subscriptions.push([p.PlayerCombatState, key]);
@@ -58,9 +63,9 @@ export function MultiplayerPlayerStates({ rs }: { rs: any }) {
       if (current !== lastScreen) { lastScreen = current; sync.SyncLocalScreen(current); }
       return true;
     });
-    return () => { stop(); flavor.OnEndTurnPingReceived = $.dremove(flavor.OnEndTurnPingReceived, ping); for (const [owner, event] of subscriptions) owner[event] = $.dremove(owner[event], invalidate); };
+    return () => { stop(); stopPointer(); flavor.OnEndTurnPingReceived = $.dremove(flavor.OnEndTurnPingReceived, ping); for (const [owner, event] of subscriptions) owner[event] = $.dremove(owner[event], invalidate); };
   }, [rs, sync, ...players.map(p => p.PlayerCombatState)]);
-  if (players.length < 2) return null;
+  if (players.length < 2 || ui.cardsView?.kind === 'player' || ui.pauseOpen) return null;
   const me = localPlayer(rs);
   const columns = Math.max(1, Math.floor((view.w - 96) / 68));
   const [x, y] = anchored(12, 90 + Math.max(1, Math.ceil(list(me.Relics).length / columns)) * 68, 'lt');
@@ -72,7 +77,11 @@ export function MultiplayerPlayerStates({ rs }: { rs: any }) {
       const location = p !== me ? G.NetScreenTypeExtensions.GetLocationIcon(sync.GetScreenType(p.NetId))?.ResourcePath : null;
       const pool = p.Character.CardPool;
       const tiny = { Pool: pool, VisualCardPool: pool, Type: G.CardType.Attack, Rarity: G.CardRarity.Common };
-      return <div class={'mp-player-state' + (ready ? ' ready' : '')} key={p.NetId} data-player-id={p.NetId} data-ready={String(ready)}>
+      const node = () => creatureViewsRef.get().find(n => n.Entity === c);
+      return <div class={'mp-player-state' + (ready ? ' ready' : '')} key={p.NetId} data-ctl data-player-id={p.NetId} data-ready={String(ready)}
+        onPointerEnter={() => { const n = node(); if (n && targetManager.IsInSelection) targetManager.OnNodeHovered(n); }}
+        onPointerLeave={() => { const n = node(); if (n && targetManager.hovered === n) targetManager.OnNodeUnhovered(n); }}
+        onClick={() => { if (!targetManager.IsInSelection && !targetManager.BlockPlayerStateClick) openPlayerState(p); }}>
         <img class="mp-state-icon" src={imageUrl(p.Character.IconTexturePath) ?? ''} alt={loc('characters', `${p.Character.Id.Entry}.title`)} />
         {ready && <div class="mp-state-ready" style={{ ...frameStyle(frameByName('compressed', 'confirm_button_tick'), 48, 48), filter: tint(.498, 1, 0) }} title={mpText('已准备', 'Ready')} />}
         <div class="mp-state-info"><span class="mp-state-name">{mpText('玩家', 'Player')} {p.NetId}{p === me ? mpText('（你）', ' (You)') : ''}</span>

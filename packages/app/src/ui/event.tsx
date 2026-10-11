@@ -16,6 +16,7 @@ import { eventPortrait, fullScreenScene } from '../render/scene';
 import { Container, Matrix } from 'pixi.js';
 import { tint } from '../filters';
 import { view as vp } from '../view'; // `view` is the room's here
+import { SpeechBubble } from './creature-ui';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const fmt = (ls: any) => safe(() => ls?.GetFormattedText?.() ?? String(ls ?? ''), '');
@@ -25,6 +26,11 @@ const img = (p: string) => imageUrl(p) ?? '';
 const col = (c: any) => (c ? `rgba(${Math.round(c.R * 255)}, ${Math.round(c.G * 255)}, ${Math.round(c.B * 255)}, ${c.A ?? 1})` : 'transparent');
 
 export function EventScreen({ view }: { view: any }) {
+  const sync = G.RunManager.Instance.EventSynchronizer;
+  useEffect(() => {
+    sync.PlayerVoteChanged = $.dcombine(sync.PlayerVoteChanged, invalidate);
+    return () => { sync.PlayerVoteChanged = $.dremove(sync.PlayerVoteChanged, invalidate); };
+  }, [sync, view]);
   if (view.layout === 'combat') return <CombatLayout view={view} />;
   if (view.layout === 'ancient') return <AncientLayout view={view} />;
   return <DefaultLayout view={view} />;
@@ -38,7 +44,7 @@ function DefaultLayout({ view }: { view: any }) {
   useTitleFade(title, view.descGen);
   return (
     <div class="event event-default" data-shake>
-      <Backdrop id={`event:${id}:${view.portrait}`} build={() => eventPortrait(view.portrait, `scenes/vfx/events/${id}_vfx.tscn`)} />
+      <Backdrop id={`event:${id}:${view.portrait}:${view.portraitVfxGen}`} build={() => eventPortrait(view.portrait, view.portraitVfxCleared ? null : `scenes/vfx/events/${id}_vfx.tscn`, view.portraitVfx)} />
       <div class="ev-column">
         <div class="ev-title" ref={title}>{view.title}</div>
         <div class="ev-desc"><Typewriter text={view.description} gen={view.descGen} /></div>
@@ -112,6 +118,12 @@ function OptionButton({ view, o, i, ancient }: { view: any; o: any; i: number; a
   const [st, setSt] = useState<'' | 'hover' | 'press'>('');
   const [on, setOn] = useState(false);
   const [v, setV] = useState(0.9);
+  const [deathHint, setDeathHint] = useState<any>(null);
+  useEffect(() => {
+    if (!deathHint) return;
+    const timer = setTimeout(() => setDeathHint(null), 2900);
+    return () => clearTimeout(timer);
+  }, [deathHint]);
   const locked = !!o.IsLocked;
   const kills = safe(() => !!o.WillKillPlayer?.(ev.Owner), false);
   // _Ready: the event's vars go into the option's texts once
@@ -133,7 +145,7 @@ function OptionButton({ view, o, i, ancient }: { view: any; o: any; i: number; a
   const bright = locked ? 0.65 : v;
   const color = safe(() => ev.ButtonColor, null);
   return (
-    <div class={'event-option' + (ancient ? ' ancient' : '') + (locked ? ' locked' : '') + (st === 'hover' ? ' hover' : '')} ref={el}
+    <div class={'event-option' + (!active ? ' disabled' : '') + (ancient ? ' ancient' : '') + (locked ? ' locked' : '') + (st === 'hover' ? ' hover' : '')} ref={el}
       style={{ scale: String(scale), transition: st === 'hover' ? 'scale .05s linear' : `scale .5s ${EXPO_OUT}` }}
       onPointerEnter={() => {
         if (locked || !on) return;
@@ -145,7 +157,17 @@ function OptionButton({ view, o, i, ancient }: { view: any; o: any; i: number; a
       }}
       onPointerLeave={() => { if (st) { setSt(''); setV(0.9); } setTip(null); }}
       onPointerDown={(e) => { if (e.button === 0 && active) { setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
-      onPointerUp={(e) => { if (e.button === 0 && st === 'press' && active) { setSt('hover'); setTip(null); view.OptionButtonClicked(o, i); } }}>
+      onPointerUp={(e) => {
+        if (e.button !== 0 || st !== 'press' || !active) return;
+        setSt('hover'); setTip(null);
+        // NEventOptionButton.OnRelease prevents lethal choices in multiplayer, including Trial's abandon option.
+        if (kills && list(ev.Owner.RunState.Players).length > 1) {
+          setDeathHint({ id: performance.now(), c: null, pos: [-50, -15], text: fmt(ev.Owner.Character.EventDeathPreventionLine), thought: true, secs: 2.5, side: 2 });
+          el.current?.animate([{ translate: '-8px 0' }, { translate: '8px 0' }, { translate: '0 0' }], { duration: 300 });
+          return;
+        }
+        view.OptionButtonClicked(o, i);
+      }}>
       {!ancient && <div class={'eo-kill' + (kills ? (st === 'hover' ? ' pulse' : ' on') : '')} style={maskBox('images/packed/common_ui/event_button_sdf.png', '125.5 114.5 125.5 118.5 fill / 251px 229px 251px 237px')} />}
       {!ancient && <div class="eo-shadow" style={{ WebkitMaskImage: `url(${EB('images/packed/common_ui/event_button_outline.png')})` }} />}
       <div class="eo-outline" style={{
@@ -160,6 +182,11 @@ function OptionButton({ view, o, i, ancient }: { view: any; o: any; i: number; a
         }} />}
       {ancient && o.Relic && <RelicIcon relic={o.Relic} />}
       <div class="eo-text" style={{ opacity: locked ? 0.7 : 1, left: ancient ? (o.Relic ? '92px' : '32px') : '42px' }}><RichText text={text} /></div>
+      {!o.IsProceed && ev.IsShared && <div class="event-votes">
+        {list(ev.Owner.RunState.Players).filter(p => G.RunManager.Instance.EventSynchronizer.GetPlayerVote(p) === i).map(p =>
+          <img key={p.NetId} data-player-id={p.NetId} src={imageUrl(p.Character.IconTexturePath) ?? ''} />)}
+      </div>}
+      {deathHint && <SpeechBubble key={deathHint.id} b={deathHint} s={undefined} />}
     </div>
   );
 }

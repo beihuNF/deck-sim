@@ -79,6 +79,13 @@ export function closeCardsView() {
   capstoneClose();
   invalidate();
 }
+/** NMultiplayerPlayerExpandedState takes a read-only snapshot when opened, like the original node. */
+export function openPlayerState(player: any) {
+  capstoneOpen();
+  ui.potionMenu = null;
+  ui.cardsView = { kind: 'player', player, cards: list(player.Deck.Cards), relics: list(player.Relics), potions: list(player.Potions) };
+  invalidate();
+}
 export function pushSubmenu(s: Submenu) { submenus.push(s); invalidate(); }
 /** NSubmenuStack.Pop: the stack closes the capstone once empty. */
 export function popSubmenu() { submenus.pop(); if (!submenus.length) closePauseMenu(); else invalidate(); }

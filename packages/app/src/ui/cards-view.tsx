@@ -61,6 +61,7 @@ const FRAME_H: Record<string, number> = { ironclad: 0.025, silent: 0.32, defect:
 /** NCardPileScreen (draw / discard / exhaust) and NDeckViewScreen, over the capstone backstop. */
 export function CardsView() {
   const v = ui.cardsView!;
+  if (v.kind === 'player') return null;
   const me = localPlayer(G.RunManager.Instance.State);
   if (!me) return null;
   const [pileName, info] = PILE[v.kind];

@@ -51,6 +51,16 @@ export class Vector2I extends Vector2 {
   static op_Inequality(a: Vector2I, b: Vector2I) { return !Vector2I.op_Equality(a, b); }
   CompareTo(o: Vector2I) { return compare(this.X, o.X) || compare(this.Y, o.Y); }
 }
+/** Godot's affine canvas transform. PeerInputSynchronizer needs the real transform, not the generated zero stub. */
+export class Transform2D {
+  constructor(public X = new Vector2(1, 0), public Y = new Vector2(0, 1), public Origin = new Vector2()) {}
+  static $default() { return new Transform2D(new Vector2(), new Vector2(), new Vector2()); }
+  static get Identity() { return new Transform2D(); }
+  static op_Multiply(t: Transform2D, p: Vector2) {
+    return new Vector2(t.X.X * p.X + t.Y.X * p.Y + t.Origin.X, t.X.Y * p.X + t.Y.Y * p.Y + t.Origin.Y);
+  }
+}
+provide('Godot.Transform2D', Transform2D);
 export class Color {
   constructor(public R = 0, public G = 0, public B = 0, public A = 1) {
     if (typeof R === 'string') { const c = Color.FromHtml(R); this.R = c.R; this.G = c.G; this.B = c.B; this.A = typeof G === 'number' && arguments.length === 2 ? G : c.A; }

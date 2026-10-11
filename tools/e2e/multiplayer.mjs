@@ -1,6 +1,6 @@
 // Two or four isolated browser profiles: locked-character preview, shared drawings, map votes and room entry.
 // Requires the local room server (wrangler dev --port 8787) and app server.
-// CHROME=<path> [PLAYERS=2|4] [MODE=standard|daily] [FORMATION=1] [DIFFERENT_SPEED=1] [DIVERGENCE=1] [KEYBOARD_PING=1] [VIEW=...] [ASPECT=Auto] node tools/e2e/multiplayer.mjs <outDir>
+// CHROME=<path> [PLAYERS=2|4] [MODE=standard|daily] [PARITY=1] [FORMATION=1] [DIFFERENT_SPEED=1|guest] [DIVERGENCE=1] [KEYBOARD_PING=1] [VIEW=...] [ASPECT=Auto] node tools/e2e/multiplayer.mjs <outDir>
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -27,6 +27,7 @@ async function stroke(p, y, button = 'right') {
 try {
   for (let i = 0; i < count; i++) {
     const page = await browser.newPage({ viewport }); pages.push(page);
+    await page.addInitScript(() => performance.setResourceTimingBufferSize(10000));
     page.on('pageerror', e => errors.push(`${i}: ${e.message}`));
     await page.goto(base + '?lang=eng&tutorials=off');
     await page.waitForFunction(() => window.ui?.screen === 'menu', null, { timeout: 60000 });
@@ -87,9 +88,14 @@ try {
       }
     }
   }
-  if (process.env.DIFFERENT_SPEED) await host.evaluate(() => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType.Normal; });
+  if (process.env.DIFFERENT_SPEED) await (process.env.DIFFERENT_SPEED === 'guest' ? guest : host).evaluate(() => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType.Normal; });
   for (const p of pages) await p.waitForFunction(() => window.ui?.mapOpen && document.querySelector('.mp.travelable'), null, { timeout: 60000 });
   console.log('All peers reached the initial map');
+  // Travelable points exist during the original act intro, which still rejects drawing input.
+  for (const p of pages) await p.waitForFunction(() => {
+    const map = document.querySelector('.map-scroll');
+    return map && Math.abs(new DOMMatrix(getComputedStyle(map).transform).m42 + 600) < .01;
+  });
   for (const p of pages) {
     assert.equal(await p.locator('.coop-status').count(), 0);
     assert.equal(await p.locator('.mp-player-state').first().getAttribute('data-player-id'), String(pages.indexOf(p) + 1), 'Local player belongs first');
@@ -161,6 +167,70 @@ try {
   // A single ready player must be visible to peers, and may undo before the whole team ends the turn.
   for (const p of pages) await p.waitForSelector('.end-turn-btn.shown:not(.disabled)');
   console.log('All peers reached the first player turn');
+  if (process.env.PARITY) {
+    // Original compact-player click -> read-only expanded deck / relic / potion capstone.
+    const before = await host.evaluate(() => window.G.RunManager.Instance.State.Players.map(p => ({ id:p.NetId, cards:p.Deck.Cards.map(c => c.Id.Entry), relics:p.Relics.map(r=>r.Id.Entry), potions:Array.from(window.G.$.iter(p.Potions),x=>x.Id.Entry) })));
+    await host.locator('.mp-player-state[data-player-id="2"]').click({position:{x:22,y:22}});
+    await host.waitForSelector('.mp-expanded[data-player-id="2"] .rhs-entry');
+    await guest.waitForFunction(() => window.G.RunManager.Instance.InputSynchronizer.GetScreenType(1) === window.G.NetScreenType.RemotePlayerExpandedState);
+    assert.equal(await host.locator('.mp-expanded-relic').count(), before[1].relics.length);
+    assert.equal(await host.locator('.mp-expanded-potion').count(), before[1].potions.length);
+    await host.screenshot({ path: `${out}/expanded-player.png` });
+    const aspect = await host.evaluate(() => window.G.SaveManager.Instance.SettingsSave.AspectRatioSetting);
+    for (const [width,height,name] of [[2580,1080,'wide'],[1680,1260,'tall']]) {
+      await host.setViewportSize({width,height});
+      await host.evaluate(() => { window.G.SaveManager.Instance.SettingsSave.AspectRatioSetting=window.G.AspectRatioSetting.Auto; window.dispatchEvent(new Event('resize')); window.invalidate(); });
+      await host.waitForTimeout(200);
+      const r=await host.locator('.mp-expanded-content').boundingBox();
+      assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=width+1 && r.y+r.height<=height+1,'Expanded state stays inside the viewport');
+      await host.screenshot({path:`${out}/expanded-player-${name}.png`});
+    }
+    await host.setViewportSize(viewport);
+    await host.evaluate(aspect => { window.G.SaveManager.Instance.SettingsSave.AspectRatioSetting=aspect; window.dispatchEvent(new Event('resize')); window.invalidate(); },aspect);
+    await host.locator('.mp-expanded .rhs-entry').first().click();
+    await host.waitForSelector('.inspect-backstop');
+    await host.keyboard.press('Escape');
+    await host.waitForTimeout(300);
+    assert.equal(await host.locator('.mp-expanded').count(), 1, 'Inspect closes back to the expanded state');
+    await host.keyboard.press('Escape');
+    await host.waitForSelector('.mp-expanded', { state: 'detached' });
+    await host.evaluate(async () => {
+      const entry=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname==='/src/cardnodes.ts');
+      const nodes=await import(entry.name), G=window.G;
+      window.__panelTarget=null;
+      nodes.targetManager.StartTargeting(G.TargetType.AnyAlly,new G.$.Vector2(960,800),2,null).then(n=>window.__panelTarget=n?.Entity?.Player?.NetId);
+    });
+    await host.locator('.mp-player-state[data-player-id="2"]').hover();
+    await host.locator('.mp-player-state[data-player-id="2"]').click({position:{x:22,y:22}});
+    await host.waitForFunction(()=>window.__panelTarget===2);
+    assert.equal(await host.locator('.mp-expanded').count(),0,'The targeting release must not open a player inventory');
+    assert.deepEqual(await host.evaluate(() => window.G.RunManager.Instance.State.Players.map(p => ({ id:p.NetId, cards:p.Deck.Cards.map(c=>c.Id.Entry), relics:p.Relics.map(r=>r.Id.Entry), potions:Array.from(window.G.$.iter(p.Potions),x=>x.Id.Entry) }))), before, 'Inspecting a teammate must not mutate any inventory');
+    await host.locator('.relic-holder').first().hover();
+    await guest.waitForSelector('.mp-combat-intent[data-player-id="1"]');
+    const relic = await host.evaluate(() => window.G.RunManager.Instance.State.Players[0].Relics[0].Id.Entry);
+    assert.equal(await guest.locator('.mp-combat-intent[data-player-id="1"]').getAttribute('data-model-id'), relic);
+    await host.mouse.move(960, 500);
+    await guest.waitForSelector('.mp-combat-intent[data-player-id="1"]', { state: 'detached' });
+    const card = await host.evaluate(() => {
+      const G=window.G, hand=G.$.ext('MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom').Instance.Ui.Hand;
+      const h=hand.ActiveHolders.find(h=>h.hitboxEnabled && h.CardModel.CanPlay$0() && h.CardModel.TargetType===G.TargetType.AnyEnemy);
+      const r=document.querySelector('.stage-root').getBoundingClientRect(), s=r.width/1920;
+      return h ? { id:h.CardModel.Id.Entry, from:[r.left+h.GlobalPosition.X*s,r.top+(h.GlobalPosition.Y-60)*s], up:[r.left+h.GlobalPosition.X*s,r.top+500*s] } : null;
+    });
+    if (!card) assert.equal(mode, 'daily', 'Standard fixture has a playable targeted card');
+    if (card) {
+    await host.mouse.move(...card.from); await host.mouse.down(); await host.mouse.move(...card.up, {steps:6});
+    const target=await host.locator('.creature[data-side="enemy"]:not(.dead) .cr-hitbox').first().boundingBox();
+    const to=[target.x+target.width/2,target.y+target.height/2];
+    await host.mouse.move(...to, {steps:6});
+    await guest.waitForFunction(id => document.querySelector('.mp-combat-intent[data-player-id="1"]')?.dataset.modelId===id, card.id);
+    await guest.waitForFunction(() => document.querySelector('.mp-targeting-line[data-player-id="1"]')?.style.display==='');
+    await guest.screenshot({ path: `${out}/remote-targeting.png` });
+    await host.mouse.up();
+    await guest.waitForFunction(() => document.querySelector('.mp-targeting-line[data-player-id="1"]')?.style.display==='none');
+    }
+    console.log(`Expanded inventories and remote hover previews passed${card ? ', including real mouse targeting' : ' (daily opening hand has no targeted card)'}`);
+  }
   await host.click('.end-turn-btn.shown:not(.disabled)');
   for (const p of pages) await p.waitForSelector('.mp-player-state[data-player-id="1"][data-ready="true"]');
   for (const p of pages) await p.waitForSelector('.etb-player-vote[data-player-id="1"]');
@@ -204,6 +274,7 @@ try {
     process.exitCode = 0;
   } else {
   // Play hand cards through real mouse drags until combat rewards appear.
+  let choiceFeedbackChecked = false;
   for (let step = 0; step < 400; step++) {
     if ((await Promise.all(pages.map(p => p.locator('.rewards-screen').count()))).every(Boolean)) break;
     for (const p of pages) {
@@ -218,7 +289,7 @@ try {
         if (hand?.IsInCardSelection) {
           const confirm = document.querySelector('.combat-ui .confirm-btn.shown');
           const h = hand.ActiveHolders[0];
-          return confirm ? { tap: center(confirm) } : h ? { tap: point(h.GlobalPosition.X, h.GlobalPosition.Y - 60) } : null;
+          return confirm ? { tap: center(confirm), choice: true } : h ? { tap: point(h.GlobalPosition.X, h.GlobalPosition.Y - 60), choice: true } : null;
         }
         if (hand?.currentPlay && target) return { tap: center(target) };
         const end = document.querySelector('.end-turn-btn.shown:not(.disabled)');
@@ -228,6 +299,12 @@ try {
         return { from: point(h.GlobalPosition.X, h.GlobalPosition.Y - 60), up: point(h.GlobalPosition.X, 500), target: h.CardModel.TargetType === window.G.TargetType.AnyEnemy && target ? center(target) : null };
       });
       if (!next) { await p.waitForTimeout(80); continue; }
+      if (process.env.PARITY && next.choice && !choiceFeedbackChecked) {
+        const playerId = pages.indexOf(p) + 1;
+        for (const peer of pages) await peer.waitForSelector(`.mp-combat-intent[data-player-id="${playerId}"][data-waiting="true"]`);
+        await pages.find(peer => peer !== p).screenshot({ path: `${out}/remote-player-choice.png` });
+        choiceFeedbackChecked = true;
+      }
       if (next.tap) await p.mouse.click(...next.tap);
       else {
         await p.mouse.move(...next.from); await p.mouse.down(); await p.mouse.move(...next.up, { steps: 6 });
@@ -237,6 +314,7 @@ try {
       await p.waitForTimeout(80);
     }
   }
+  if (process.env.PARITY && mode === 'standard') assert.ok(choiceFeedbackChecked, 'Original player-choice pause is visible to peers');
   for (const p of pages) await p.waitForSelector('.rewards-screen', { timeout: 20000 });
   const combatStates = await Promise.all(pages.map(p => p.evaluate(() => window.G.RunManager.Instance.State.Players.map(x => [x.NetId, x.Creature.CurrentHp, x.Gold]))));
   for (const state of combatStates) assert.deepEqual(state, combatStates[0], 'Combat results must agree');
@@ -279,6 +357,49 @@ try {
   const relicStates = await Promise.all(pages.map(p => p.evaluate(() => window.G.RunManager.Instance.State.Players.map(x => [x.NetId, Array.from(x.Relics, r => r.Id.Entry)]))));
   for (const state of relicStates) assert.deepEqual(state, relicStates[0], 'Relic allocation must agree');
   for (let i = 0; i < count; i++) await pages[i].screenshot({ path: `${out}/treasure-${i + 1}.png` });
+  if (process.env.PARITY) {
+    for (const p of pages) await p.click('.treasure .proceed-btn.shown');
+    const enterEvent = async id => {
+      // Debug room entry still constructs each event through the original EventSynchronizer.
+      for (const p of pages) await p.evaluate(async id => {
+        const G=window.G, rm=G.RunManager.Instance;
+        G.$.ext('MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapScreen').Instance.Close();
+        const ev=Array.from(G.ModelDb.AllEvents).find(e=>e.Id.Entry===id);
+        rm.State.AppendToMapPointHistory(G.MapPointType.Unknown,G.RoomType.Event,ev.Id);
+        await rm.EnterRoom(new G.EventRoom().$ctor_EventRoom$EventModel(ev));
+      }, id);
+      for (const p of pages) await p.waitForFunction(id => window.ui.room?.event?.Id.Entry===id && window.ui.room.ready && !window.ui.mapOpen, id);
+    };
+    await enterEvent('MORPHIC_GROVE');
+    await host.locator('.event-option').nth(1).click();
+    for (const p of pages) await p.waitForSelector('.event-option:nth-child(2) .event-votes [data-player-id="1"]');
+    await host.locator('.event-option').nth(0).click();
+    for (const p of pages) await p.waitForSelector('.event-option:nth-child(1) .event-votes [data-player-id="1"]');
+    await host.locator('.event-option').nth(1).click();
+    await host.screenshot({path:`${out}/shared-event-vote.png`});
+    for (const p of pages.slice(1)) await p.locator('.event-option').nth(1).click();
+    for (const p of pages) await p.waitForFunction(() => window.ui.room.event.IsFinished);
+    const health=await Promise.all(pages.map(p=>p.evaluate(()=>window.G.RunManager.Instance.State.Players.map(x=>[x.NetId,x.Creature.CurrentHp,x.Creature.MaxHp]))));
+    for (const state of health) assert.deepEqual(state,health[0],'Shared event outcome agrees');
+    await enterEvent('TRIAL');
+    for (const p of pages) await p.locator('.event-option').nth(1).click();
+    for (const p of pages) await p.waitForFunction(() => window.ui.room.options[1]?.WillKillPlayer(window.ui.room.event.Owner));
+    for (const p of pages) {
+      await p.locator('.event-option').nth(1).click();
+      await p.waitForFunction(() => Number(document.querySelector('.thought-bubble')?.style.opacity) > .1);
+      assert.equal(await p.locator('.modal-viewport.open').count(),0,'Lethal co-op option must not open abandon confirmation');
+      assert.equal(await p.evaluate(()=>window.ui.room.options[1].TextKey),'TRIAL.pages.REJECT.options.DOUBLE_DOWN');
+      if (p === host) await p.screenshot({path:`${out}/event-death-prevention.png`});
+    }
+    for (const p of pages) await p.locator('.event-option').nth(0).click();
+    for (const p of pages) {
+      await p.waitForFunction(() => window.ui.room.portraitVfxGen===2 && window.ui.room.portraitVfx.length===1);
+      assert.match(await p.evaluate(()=>window.ui.room.portraitVfx[0].path),/trial_(merchant|noble|nondescript)_vfx/);
+      assert.match(await p.evaluate(()=>window.ui.room.portrait),/trial_started/);
+    }
+    await host.screenshot({path:`${out}/trial-dynamic-portrait.png`});
+    console.log('Shared event votes, original outcomes, lethal choice prevention and dynamic portrait effects passed');
+  }
   assert.deepEqual(errors, []);
   console.log(`OK: ${mode}, ${count} players, ${mode === 'standard' ? 'locked preview, unlocked selection, ' : ''}shared drawings, eraser/clear ownership, voting avatars, repeated-vote pings, all-player vote resolution, waiting pings and ready portraits, combat/rewards, peer ready/screen state, shared relic selection/skip`, coords);
   }

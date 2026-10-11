@@ -245,6 +245,7 @@ function PotionSlot({ p, i, me }: any) {
   );
   const open = !!p && ui.potionMenu === p;
   const hover = () => {
+    if (p) G.RunManager.Instance.HoveredModelTracker?.OnLocalPotionHovered(p);
     if (open) return;
     bounce(holder.current);
     if (p) slosh(0.5);
@@ -254,7 +255,7 @@ function PotionSlot({ p, i, me }: any) {
   };
   return (
     <div class={'tb-potion' + (p ? '' : ' empty') + (open ? ' open' : '')} style={{ left: `${x}px`, top: `${y}px` }}
-      onPointerEnter={hover} onPointerLeave={() => setTip(null)}
+      onPointerEnter={hover} onPointerLeave={() => { G.RunManager.Instance.HoveredModelTracker?.OnLocalPotionUnhovered(); setTip(null); }}
       onClick={() => { if (!p) return; setTip(null); ui.potionMenu = open ? null : p; tipBlock.on = !open; invalidate(); }}>
       <div class="tb-potion-holder" ref={holder} style={p && greyed.has(p) ? { filter: 'brightness(.5)' } : undefined}>
         {p && flashT > 0 && <div class="tb-potion-flash" key={flashT} style={frameStyle(atlasFrame(safe(() => p.ImagePath, '')), 54, 54)} onAnimationEnd={() => setFlashT(0)} />}
@@ -360,8 +361,8 @@ function RelicHolder({ r, i }: { r: any; i: number }) {
   return (
     <div class={'relic-holder' + (status === 1 ? ' active' : status === 2 ? ' disabled' : '')} style={{ left: `${x}px`, top: `${y}px` }}
       // an NButton whose OnFocus skips the hover sound; NButton.OnPress plays ui_click
-      onPointerEnter={() => setTips(hoverTipsOf(r), { kind: 'relic', rect: [x + 4, y + 4, 60, 60] })}
-      onPointerLeave={() => setTip(null)}
+      onPointerEnter={() => { G.RunManager.Instance.HoveredModelTracker?.OnLocalRelicHovered(r); setTips(hoverTipsOf(r), { kind: 'relic', rect: [x + 4, y + 4, 60, 60] }); }}
+      onPointerLeave={() => { G.RunManager.Instance.HoveredModelTracker?.OnLocalRelicUnhovered(); setTip(null); }}
       onPointerDown={(e) => { if (e.button === 0) playOneShot('event:/sfx/ui/clicks/ui_click'); }}
       onPointerUp={(e) => { if (e.button === 0) { setTip(null); inspectRelic(list(r.Owner?.Relics ?? []), r); } }}>
       <div class="relic-icon" ref={icon}>

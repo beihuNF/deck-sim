@@ -1110,6 +1110,7 @@ function arrowHighlight(on: boolean, enemy = true) {
 const TM = { None: 0, ReleaseMouseToTarget: 1, ClickMouseToTarget: 2, Controller: 3 };
 class TargetManager {
   mode = TM.None;
+  BlockPlayerStateClick = false;
   private validType = 0;
   hovered: any = null;
   private exitEarly: (() => boolean) | null = null;
@@ -1156,6 +1157,9 @@ class TargetManager {
   /** NTargetManager._Input: directional selection does not depend on mouse release or position. */
   ConfirmTargeting() { if (this.IsInSelection && this.hovered && this.allowed(this.hovered)) this.FinishTargeting(false); }
   private FinishTargeting(cancel: boolean) {
+    // NMultiplayerPlayerState ignores the click that completed targeting in this frame.
+    this.BlockPlayerStateClick = true;
+    $.onFrame(() => { this.BlockPlayerStateClick = false; return false; });
     const r = this.resolve, node = cancel ? null : this.hovered;
     this.resolve = null;
     this.exitEarly = null;

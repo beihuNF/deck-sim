@@ -21,6 +21,7 @@ import { CardFxCanvas } from '../render/cardfx';
 import { arrow, ftueHook, targetManager, TrailVfx, ShuffleFlyVfx, type HandView } from '../cardnodes';
 
 import { getKeyboardBindings } from '../input/hints';
+import { MultiplayerIntents } from './multiplayer-intents';
 
 export { pileHotkey, endTurnHotkey, peekHotkey, confirmHotkey };
 export function getCombatHand(): HandView | null {
@@ -128,6 +129,7 @@ export function CombatScreen({ view, visualOnly = false }: { view: any; visualOn
         {bubbles.map((b) => <SpeechBubble key={'b' + b.id} b={b} s={b.c ? slots.get(b.c) : undefined} />)}
       </div>
       {!visualOnly && <CardLayer root={view.CombatVfxContainer} />}
+      {!visualOnly && <MultiplayerIntents room={view} slots={slots} />}
       <div class="card-fx-host" ref={fxHost} />
       {pcs && !visualOnly && (
         <div class="combat-ui">

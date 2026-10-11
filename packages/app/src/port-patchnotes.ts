@@ -10,6 +10,10 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Added the original waiting-for-teammates ping button and ready player portraits on End Turn.
 • Restored compact team health, block, energy, card and location indicators, with the local player listed first; removed the extra in-run room banner.
 • Corrected co-op creature rows and pet placement, keeping remote Osty beside its owner and showing remote health bars on hover.
+• Clicking a player's status now opens the original inventory overview, with read-only deck, relic and potion inspection; ally targeting also works from the player list.
+• Added teammate card, relic and potion previews, synchronized mouse/controller aiming lines and player-choice waiting indicators.
+• Shared events now show voting portraits, and lethal co-op event options display the original character warning instead of executing the choice.
+• Restored event portrait effects that change during the Trial event.
 
 [gold][b]Controls[/b][/gold]
 • Fixed controller card play waiting for mouse dragging: cards now focus automatically, preview on Select, and play on a second press, with valid targets and aiming arrows snapping to enemies or allies.
@@ -23,6 +27,10 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 补齐结束回合后的催促按钮，以及结束回合按钮上的已准备角色头像。
 • 恢复紧凑的队伍生命、格挡、能量、手牌和位置图标，本机玩家排在首位；移除游戏内额外的房间提示。
 • 修正多人角色分排与宠物站位，队友的奥斯蒂站在主人旁边，队友血条按原版在悬停时显示。
+• 点击玩家状态可打开原版遗物、药水和牌组概览，支持只读查看详情；瞄准队友时也可从玩家列表选择。
+• 补齐队友卡牌、遗物和药水意图，同步鼠标与手柄瞄准线，并显示等待玩家选牌的提示。
+• 共享事件显示投票角色头像；多人事件的致死选项按原版拦截并显示角色警告。
+• 补齐审判事件在选项切换时调用的肖像特效。
 
 [gold][b]操作[/b][/gold]
 • 修复手柄出牌仍需鼠标拖动的问题：自动聚焦手牌，按选择预览、再次选择出牌，有效目标与箭头吸附敌人或队友。

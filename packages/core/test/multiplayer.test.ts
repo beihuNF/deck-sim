@@ -6,6 +6,36 @@ const G: any = boot();
 const characterUnlocks = () => new G.UnlockState().$ctor_UnlockState$3(
   ['SILENT1_EPOCH', 'REGENT1_EPOCH', 'NECROBINDER1_EPOCH', 'DEFECT1_EPOCH'], [], 0);
 describe('web multiplayer packets', () => {
+  it('preserves mouse and controller focus coordinates through the original peer-input packets', async () => {
+    const V = G.$.ext('Godot.Vector2'), T = G.$.ext('Godot.Transform2D');
+    const root = { Size: new V(1920, 1080), GetGlobalTransformWithCanvas: () => T.Identity };
+    const translated = { Size: root.Size, GetGlobalTransformWithCanvas: () => new T(new V(2, 0), new V(0, 3), new V(10, 20)) };
+    expect(G.NetCursorHelper.GetNormalizedPosition(new V(100, 200), translated)).toEqual(new V((210 - 960) / 960, (620 - 540) / 540));
+    const client = new G.WebNetService(2, () => {}, 'cursor');
+    const host = new G.WebNetService(1, (packet: number[]) => client.receive(packet, 1), 'cursor');
+    const a = new G.PeerInputSynchronizer().$ctor_PeerInputSynchronizer(host);
+    const b = new G.PeerInputSynchronizer().$ctor_PeerInputSynchronizer(client);
+    try {
+      a.SyncLocalMousePos(new V(1440, 270), root);
+      a.SyncLocalMouseDown(true);
+      await new Promise(resolve => setTimeout(resolve, 80));
+      const mouse = b.GetControlSpaceFocusPosition(1, root);
+      expect(mouse.X).toBeCloseTo(1440, 0); expect(mouse.Y).toBeCloseTo(270, 0);
+      expect(b.GetMouseDown(1)).toBe(true);
+      a.SyncLocalControllerFocus(new V(640, 720), root);
+      a.SyncLocalIsUsingController(true);
+      a.SyncLocalIsTargeting(true);
+      await new Promise(resolve => setTimeout(resolve, 80));
+      const pad = b.GetControlSpaceFocusPosition(1, root);
+      expect(pad.X).toBeCloseTo(640, 0); expect(pad.Y).toBeCloseTo(720, 0);
+      expect(b.GetIsTargeting(1)).toBe(true);
+      a.SyncLocalIsUsingController(false);
+      a.SyncLocalMouseDown(false);
+      await new Promise(resolve => setTimeout(resolve, 80));
+      expect(b.GetControlSpaceFocusPosition(1, root).X).toBeCloseTo(1440, 0);
+      expect(b.GetMouseDown(1)).toBe(false);
+    } finally { a.Dispose(); b.Dispose(); host.Disconnect(); client.Disconnect(); }
+  });
   it('derives daily parameters from the UTC day and roster with original rule helpers', () => {
     const a = G.webDailySetup('2026-10-10', [{ id: 1 }, { id: 2 }]);
     const b = G.webDailySetup('2026-10-10', [{ id: 1 }, { id: 2 }]);

@@ -543,6 +543,9 @@ export class EventRoomView extends NEventRoom {
   /** Options were cleared by a pick and the next state has not come yet (the coverage harness waits on it). */
   choosing = false;
   portrait: string | null = null;
+  portraitVfx: { path: string; x: number; y: number }[] = [];
+  portraitVfxCleared = false;
+  portraitVfxGen = 0;
   /** NCombatEventLayout.HideEventVisuals: the event's text and options go once its combat starts. */
   hidden = false;
   /** NAncientEventLayout dialogue: lines shown one at a time; the options come with the last one. */
@@ -559,8 +562,10 @@ export class EventRoomView extends NEventRoom {
     const view = this;
     this.Layout = {
       SetPortrait: (t: any) => view.SetPortrait(t),
-      RemoveNodesOnPortrait() {},
-      AddVfxAnchoredToPortrait() {},
+      RemoveNodesOnPortrait: () => { view.portraitVfx = []; view.portraitVfxCleared = true; view.portraitVfxGen++; invalidate(); },
+      AddVfxAnchoredToPortrait: (node: any) => {
+        if (node?.SceneFilePath) { view.portraitVfx.push({ path: node.SceneFilePath, x: node.Position?.X ?? 0, y: node.Position?.Y ?? 0 }); view.portraitVfxGen++; invalidate(); }
+      },
       get OptionButtons() { return []; },
       DisableEventOptions: () => { view.disabled = true; invalidate(); },
     };

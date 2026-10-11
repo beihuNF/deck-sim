@@ -443,6 +443,30 @@
 @keyframes coop-map-ping { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(2.5); } }
 @keyframes coop-map-ping-fade { to { opacity: 0; } }
 /* NMapScreen obscures room navigation while its map is visible. */
+.run:has(.mp-expanded) :is(.top-bar, .relic-inventory) { translate: 0 -400px !important; pointer-events: none; }
+.mp-expanded-content { position: absolute; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
+.mp-expanded-title { padding-top: 24px; padding-bottom: 6px; min-height: 64px; font-size: 48px; line-height: 64px; text-shadow: 3px 2px 0 #0008; }
+.mp-expanded-spacer { height: 12px; flex-shrink: 0; }
+.mp-expanded section { min-height: 100px; flex-shrink: 0; }
+.mp-expanded-header { min-height: 36px; font-size: 24px; }
+.mp-expanded-icons { display: flex; flex-wrap: wrap; padding: 0 24px 8px 64px; }
+.mp-expanded-relic, .mp-expanded-potion { position: relative; width: 68px; height: 68px; cursor: help; }
+.mp-expanded-relic > div, .mp-expanded-potion > div { position: absolute; left: 4px; top: 4px; }
+.mp-expanded-relic:hover > div { scale: 1.25; }
+.mp-expanded-potion > div { left: 7px; top: 7px; }
+.event-votes { position: absolute; right: 19px; top: 75px; height: 30px; display: flex; gap: 4px; pointer-events: none; }
+.event-option.disabled { pointer-events: none; }
+.event-votes img { width: 30px; height: 30px; animation: event-vote-in .25s cubic-bezier(.34,1.56,.64,1); }
+.mp-combat-intents { position: absolute; inset: 0; pointer-events: none; }
+.mp-targeting-lines { position: absolute; overflow: visible; pointer-events: none; }
+.mp-combat-intent { position: absolute; width: 68px; height: 68px; pointer-events: auto; }
+.mp-intent-card { position: absolute; left: -11px; top: -24px; }
+.mp-intent-card .card { pointer-events: none; }
+.mp-intent-icon { position: absolute; left: 4px; top: 4px; }
+.mp-intent-thinking { position: absolute; left: 52px; top: 18px; font-size: 60px; font-weight: bold; -webkit-text-stroke: 2px black; }
+.mp-intent-thinking b { display: inline-block; animation: mp-thinky 1s ease-in-out infinite; }
+@keyframes mp-thinky { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
+@keyframes event-vote-in { from { scale: 0; } to { scale: 1; } }
 .run:has(.map-screen) .proceed-btn { visibility: hidden; pointer-events: none; }
 .treasure-votes { position: absolute; top: 178px; width: 204px; display: flex; justify-content: center; pointer-events: none; }
 .treasure-votes img { width: 40px; height: 40px; }

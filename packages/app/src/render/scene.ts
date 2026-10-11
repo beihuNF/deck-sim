@@ -326,7 +326,7 @@ export function attachCreatureFx(root: Container, s: SceneData, sp: Spine | null
  * NEventLayout's portrait: the art keep-aspect in a 2560 × 1200 rect at (−320, −55) scaled 1.04 about its centre (screen
  * (960, 545)), with the event's VFX scene (vfx/events/<id>_vfx, when there is one) at portrait-local EventModel.VfxOffset.
  */
-export async function eventPortrait(path: string | null, vfx: string | null): Promise<Container | null> {
+export async function eventPortrait(path: string | null, vfx: string | null, extra: { path: string; x: number; y: number }[] = []): Promise<Container | null> {
   const root = new Container();
   root.setFromMatrix(new Matrix().translate(-1280, -600).scale(1.04, 1.04).translate(960, 545));
   const [t, s] = await Promise.all([path ? texture(path) : null, vfx ? loadScene(vfx) : null]);
@@ -341,6 +341,13 @@ export async function eventPortrait(path: string | null, vfx: string | null): Pr
     const c = buildScene(s);
     const r = s.root;
     c.setFromMatrix(new Matrix().scale(r.scale[0], r.scale[1]).rotate(r.rot).translate(268, 49));
+    root.addChild(c);
+  }
+  for (const fx of extra) {
+    const scene = await loadScene(fx.path);
+    if (!scene) continue;
+    const c = buildScene(scene);
+    c.setFromMatrix(new Matrix().scale(scene.root.scale[0], scene.root.scale[1]).rotate(scene.root.rot).translate(fx.x, fx.y));
     root.addChild(c);
   }
   return root;
