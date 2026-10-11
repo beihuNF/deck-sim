@@ -220,7 +220,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         {steam.profile?.avatar && <img src={steam.profile.avatar} alt="" referrerPolicy="no-referrer" />}
         <span>{steam.profile?.name || tr('游客', 'Guest')}</span>
         {steam.profile ? <button data-ctl onClick={() => void logoutSteam()}>{tr('退出 Steam', 'Sign out of Steam')}</button>
-          : <button data-ctl disabled={steam.loading} onClick={loginSteam}>{tr('使用 Steam 登录', 'Sign in through Steam')}</button>}
+          : <button data-ctl onClick={loginSteam}>{tr('使用 Steam 登录', 'Sign in through Steam')}</button>}
         {steam.error && <span role="alert">{tr('账号服务暂不可用', 'Account service unavailable')}</span>}
       </div>}
       {mp.error && <div class="mp-toast-error" role="alert">{multiplayerError()}</div>}

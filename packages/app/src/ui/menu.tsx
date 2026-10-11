@@ -28,6 +28,7 @@ import { showEarlyAccessDisclaimer, showAboutDialog, showQQGroupDialog } from '.
 import { openFeedback } from './feedback';
 import { MultiplayerLobby } from './multiplayer';
 import { invitedRoomCode } from '../multiplayer';
+import { loadSteamProfile } from '../steam';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const m = (k: string) => loc('main_menu_ui', k);
@@ -67,8 +68,17 @@ export function MainMenu() {
   useEffect(() => {
     if (!inviteChecked.current) {
       inviteChecked.current = true;
-      if (invitedRoomCode() && !ui.menuStack.length) pushMenu('multiplayer');
+      const params = new URLSearchParams(location.search);
+      if ((invitedRoomCode() || params.get('menu') === 'multiplayer') && !ui.menuStack.length) {
+        if (params.get('menu') === 'multiplayer') {
+          params.delete('menu');
+          const clean = params.toString();
+          history.replaceState(null, '', location.pathname + (clean ? '?' + clean : ''));
+        }
+        pushMenu('multiplayer');
+      }
     }
+    void loadSteamProfile();
     playMusic('event:/music/menu_update');
     // a menu entered with submenus open (back from a menu-side screen) has its backstop up already
     bs.K = ui.menuStack.length ? 1 : 0; bs.LogoA = ui.menuStack.length ? 0 : 1;
