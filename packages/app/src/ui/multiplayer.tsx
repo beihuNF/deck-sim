@@ -92,22 +92,15 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   };
 
   const exit = () => {
-    void (async () => {
-      await transitionView.FadeOut(0.3);
-      try {
-        if (mp.phase === 'lobby' || mp.phase === 'connecting') {
-          leaveMultiplayer();
-          setView('menu');
-        } else if (view !== 'menu') {
-          setView('menu');
-        } else {
-          leaveMultiplayer();
-          onBack();
-        }
-      } finally {
-        await transitionView.FadeIn(0.3);
-      }
-    })();
+    if (mp.phase === 'lobby' || mp.phase === 'connecting') {
+      leaveMultiplayer();
+      setView('menu');
+    } else if (view !== 'menu') {
+      setView('menu');
+    } else {
+      leaveMultiplayer();
+      onBack();
+    }
   };
 
   const handleSelectChar = (c: any, locked: boolean) => {
