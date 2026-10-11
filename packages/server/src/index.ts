@@ -217,6 +217,24 @@ export class WebRoom extends DurableObject<Env> {
       for (const { id: recipient, packet } of outgoing) for (const other of this.ctx.getWebSockets(String(recipient))) other.send(JSON.stringify({ type: 'packet', ...packet }));
       return;
     }
+    if (msg.type === 'quick_reload' && id === 1 && this.room.started) {
+      if (typeof msg.saveJson !== 'string' || msg.saveJson.length > 5 * 1024 * 1024) return ws.close(1008, 'Invalid saveJson');
+      for (const p of this.room.players) {
+        const target = this.channel(p.id);
+        target.pending = [];
+        target.received = 0;
+        target.sent = 0;
+      }
+      await this.ctx.storage.put('delivery', this.delivery);
+      const reloadPacket = JSON.stringify({
+        type: 'quick_reload',
+        saveJson: msg.saveJson,
+      });
+      for (const client of this.ctx.getWebSockets()) {
+        try { client.send(reloadPacket); } catch {}
+      }
+      return;
+    }
     if (msg.type === 'leave' && !this.room.started) {
       if (id === 1) {
         for (const other of this.ctx.getWebSockets()) if (other !== ws) other.close(1000, 'Host left');

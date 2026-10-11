@@ -1,6 +1,6 @@
 import { G, $, GAME_VERSION, list } from './game';
 import { ui, invalidate } from './store';
-import { startCoopRun } from './flow';
+import { startCoopRun, quickReloadCoopRun } from './flow';
 import { loc } from './i18n';
 
 export const multiplayer = {
@@ -148,6 +148,34 @@ export function kickMultiplayerPlayer(targetId: number) {
   changed();
   try { send({ type: 'kick', targetId }); } catch {}
 }
+export async function requestMultiplayerQuickReload() {
+  if (multiplayer.phase !== 'playing' || multiplayer.id !== 1) return;
+  try {
+    await G.SaveManager.Instance.CurrentRunSaveTask;
+    await $.vfs.flush();
+    const sm = G.SaveManager.Instance;
+    let saveJson: string | null = null;
+    try {
+      const savePath = sm.CurrentMultiplayerRunSavePath;
+      saveJson = sm._saveStore.ReadFile(savePath);
+    } catch (err) {
+      console.warn('Direct ReadFile for coop save failed, falling back to LoadMultiplayerRunSave', err);
+    }
+    if (!saveJson) {
+      const res = sm.LoadMultiplayerRunSave();
+      if (res?.Success && res.SaveData) {
+        saveJson = G.serializeWebRunSave(res.SaveData);
+      }
+    }
+    if (!saveJson) {
+      console.error('No multiplayer save data available for quick reload');
+      return;
+    }
+    send({ type: 'quick_reload', saveJson });
+  } catch (err) {
+    console.error('Failed to request multiplayer quick reload', err);
+  }
+}
 export async function connectMultiplayer(code?: string, mode: 'standard' | 'daily' | 'custom' = 'standard') {
   const reconnecting = multiplayer.phase === 'reconnecting';
   if (multiplayer.phase !== 'idle' && !reconnecting) return;
@@ -250,6 +278,12 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           }).then(() => {
             if (multiplayer.phase === 'starting') multiplayer.phase = 'playing'; changed();
           }).catch(e => { console.error('Multiplayer start failed', e); failed('start'); });
+        } else if (msg.type === 'quick_reload') {
+          received = 0;
+          sent = 0;
+          outgoing = [];
+          void quickReloadCoopRun(msg.saveJson);
+          return;
         } else if (msg.type === 'ended') failed(msg.error ?? 'disconnected');
         changed();
       } catch (e) { console.error('Multiplayer packet failed', e); failed('sync'); }

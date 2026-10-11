@@ -12,7 +12,17 @@ import { transitionView } from './ui/transition';
 const stopAudio = () => { stopMusic(); stopAmbience(); stopAllLoops(); };
 
 export let run: any = null;
+let currentCoopRunParams: {
+  players: any[];
+  seed: string;
+  net: any;
+  mode: string;
+  settings: any;
+  onStateDiverged: () => void;
+} | null = null;
+
 export async function startCoopRun(players: any[], seed: string, net: any, mode = 'standard', settings = { ascension: 0, modifiers: [] as string[], dailyDate: '' }, onStateDiverged: () => void = () => {}) {
+  currentCoopRunParams = { players, seed, net, mode, settings, onStateDiverged };
   await G.SaveManager.Instance.CurrentRunSaveTask;
   await $.vfs.beginEphemeralSession();
   stopAudio();
@@ -28,6 +38,50 @@ export async function startCoopRun(players: any[], seed: string, net: any, mode 
     settings.ascension, G.webRunModifiers(settings.modifiers), mode === 'daily' ? settings.dailyDate : null);
   invalidate();
   await transitionView.FadeIn(0.4);
+}
+
+/** 多人快速SL：重开当前房间/战斗，全员基于房主广播的存档快照原地重新加载。 */
+export async function quickReloadCoopRun(saveJson?: string): Promise<boolean> {
+  if (!currentCoopRunParams) return false;
+  const rm = G.RunManager.Instance;
+  try {
+    await G.SaveManager.Instance.CurrentRunSaveTask;
+    await $.vfs.flush();
+    safe(() => rm.ActionQueueSet?.Reset());
+    stopAudio();
+    await transitionView.FadeOut(0.4);
+    try { rm.CleanUp(true); } catch (e) { console.warn(e); }
+    run = null;
+    ui.pauseOpen = false;
+    resetUi();
+    let save: any = null;
+    if (saveJson) {
+      save = G.deserializeWebRunSave(saveJson);
+    }
+    const rs = await G.continueWebMultiplayerRun(
+      currentCoopRunParams.players,
+      currentCoopRunParams.net,
+      (newRunState: any) => {
+        const tracker = G.RunManager.Instance.ChecksumTracker;
+        tracker.StateDiverged = $.dcombine(tracker.StateDiverged, currentCoopRunParams!.onStateDiverged);
+        run = newRunState;
+        attachRun(newRunState);
+      },
+      save,
+    );
+    if (!rs) {
+      ui.screen = 'menu';
+      ui.toast = loc('main_menu_ui', 'INVALID_SAVE_POPUP.description_run');
+    }
+    invalidate();
+    await transitionView.FadeIn(0.4);
+    return !!rs;
+  } catch (e) {
+    console.error('Quick reload coop run failed', e);
+    invalidate();
+    await transitionView.FadeIn(0.4);
+    return false;
+  }
 }
 function resetUi() {
   ui.screen = 'run';

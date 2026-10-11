@@ -50,6 +50,10 @@ export class WebNetService {
   SetPeers(ids: number[]) {
     this.ConnectedPeers.splice(0, this.ConnectedPeers.length, ...ids.filter(id => id !== this.NetId).map(peerId => ({ peerId, readyForBroadcasting: true, versionInfo: this.LocalVersion })));
   }
+  resetBus() {
+    this.bus = new G.NetMessageBus().$ctor_NetMessageBus(
+      new G.PacketReader().$ctor_PacketReader(), new G.PacketWriter().$ctor_PacketWriter());
+  }
   GetVersionInfoForPeer() { return this.LocalVersion; }
   DisconnectClient() { this.Disconnect(); }
   Disconnect() { this.IsConnected = false; }
@@ -96,6 +100,15 @@ export function webRunModifiers(keys: string[]) {
 export function serializeWebUnlockState(unlock: any): string {
   return (ext('System.Text.Json.JsonSerializer') as any).Serialize(unlock.ToSerializable(), { $type: G.SerializableUnlockState });
 }
+
+export function serializeWebRunSave(save: any): string {
+  return (ext('System.Text.Json.JsonSerializer') as any).Serialize(save, G.JsonSerializationUtility.GetTypeInfo$1(G.SerializableRun));
+}
+
+export function deserializeWebRunSave(jsonStr: string): any {
+  return (ext('System.Text.Json.JsonSerializer') as any).Deserialize(G.SerializableRun, jsonStr, G.JsonSerializationUtility.GetTypeInfo$1(G.SerializableRun));
+}
+
 /** Preserve original DTOs: serialized unlock state is only an initial network snapshot, never a save migration. */
 export async function startWebMultiplayerRun(
   players: WebRunPlayer[],
@@ -130,10 +143,42 @@ export async function startWebMultiplayerRun(
   rm.SetUpNewMultiplayer(state, {
     NetService: net, InputSynchronizer: new G.PeerInputSynchronizer().$ctor_PeerInputSynchronizer(net),
     Players: players.map(p => ({ id: p.id, isModded: false })),
-  }, false, dailyTime);
+  }, true, dailyTime);
   await rm.FinalizeStartingRelics();
   attach(state);
   rm.Launch();
   await rm.EnterAct(0, false);
   return state;
+}
+
+export async function continueWebMultiplayerRun(
+  players: WebRunPlayer[],
+  net: WebNetService,
+  attach: (rs: any) => void,
+  saveData?: any,
+) {
+  const rm = G.RunManager.Instance;
+  const sm = G.SaveManager.Instance;
+  let save = saveData;
+  if (!save) {
+    const res = sm.LoadMultiplayerRunSave();
+    if (!res?.Success || !res.SaveData) throw new Error('Multiplayer save not found');
+    save = res.SaveData;
+  }
+  const runState = G.RunState.FromSerializable(save);
+  net.IsConnected = true;
+  net.resetBus();
+  net.SetPeers(players.map(p => p.id));
+  const lobby = {
+    Run: save,
+    NetService: net,
+    InputSynchronizer: new G.PeerInputSynchronizer().$ctor_PeerInputSynchronizer(net),
+    Players: players.map(p => ({ id: p.id, isModded: false })),
+  };
+  await rm.SetUpSavedMultiplayer(runState, lobby);
+  rm.Launch();
+  attach(runState);
+  await rm.GenerateMap();
+  await rm.LoadIntoLatestMapCoord(G.AbstractRoom.FromSerializable$SerializableRoom_IRunState(save.PreFinishedRoom, runState));
+  return runState;
 }

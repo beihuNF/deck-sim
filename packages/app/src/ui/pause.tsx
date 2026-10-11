@@ -14,7 +14,7 @@ import { SettingsScreen } from './settings';
 import { CompendiumSubmenu } from './compendium-menu';
 import { abandonRunPopup } from './modal';
 import { toMenu, quickReloadRun } from '../flow';
-import { leaveMultiplayer, mpText } from '../multiplayer';
+import { leaveMultiplayer, mpText, requestMultiplayerQuickReload, multiplayer } from '../multiplayer';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const EXPO_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
@@ -119,7 +119,8 @@ function PauseMenu() {
   // OnBackOrResumeButtonPressed
   const resume = () => { playOneShot('event:/sfx/ui/map/map_close'); closePauseMenu(); };
   const giveUp = async () => { if (await abandonRunPopup()) { closePauseMenu(); rm.Abandon(); } };
-  const quickSlEnabled = !$.vfs.ephemeral && safe(() => localStorage.getItem('sts2web.quickSl') !== 'false', true);
+  const isHost = $.vfs.ephemeral && multiplayer.phase === 'playing' && multiplayer.id === 1;
+  const quickSlEnabled = (!$.vfs.ephemeral && safe(() => localStorage.getItem('sts2web.quickSl') !== 'false', true)) || isHost;
   // Quick SL: 原地快速重开当前房间
   const quickSl = async () => {
     setQuitting(true);
@@ -128,10 +129,14 @@ function PauseMenu() {
       ui.pauseOpen = false;
       capstone.A = 0;
       capstone.fade = false;
-      const ok = await quickReloadRun();
-      if (!ok) {
-        ui.toast = appText('storageFull');
-        invalidate();
+      if (isHost) {
+        await requestMultiplayerQuickReload();
+      } else {
+        const ok = await quickReloadRun();
+        if (!ok) {
+          ui.toast = appText('storageFull');
+          invalidate();
+        }
       }
     } finally {
       setQuitting(false);
@@ -156,7 +161,7 @@ function PauseMenu() {
     [p('RESUME'), resume, [1, 0.8, 0.9], '#25545C', true],
     [p('SETTINGS'), () => pushSubmenu('settings'), [1, 1, 1], '#25545C', true],
     ...(compendium ? [[p('COMPENDIUM'), () => pushSubmenu('compendium'), [1, 1, 1], '#25545C', true] as [string, () => void, number[], string, boolean]] : []),
-    ...(quickSlEnabled ? [[appText('quickSl'), () => void quickSl(), [1, 1, 1], '#25545C', canGiveUp] as [string, () => void, number[], string, boolean]] : []),
+    ...(quickSlEnabled ? [[isHost ? mpText('全员重开战斗 (SL)', 'Restart Room (SL)') : appText('quickSl'), () => void quickSl(), [1, 1, 1], '#25545C', canGiveUp] as [string, () => void, number[], string, boolean]] : []),
     [$.vfs.ephemeral ? mpText('离开联机', 'Leave co-op') : p('SAVE_AND_QUIT'), $.vfs.ephemeral ? leaveMultiplayer : saveAndQuit, [1, 1, 1], '#25545C', true],
     ...(!$.vfs.ephemeral ? [[p('GIVE_UP'), () => void giveUp(), [0.5, 1, 1], '#5C3225', canGiveUp] as [string, () => void, number[], string, boolean]] : []),
   ];
