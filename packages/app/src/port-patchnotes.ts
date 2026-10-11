@@ -3,7 +3,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Added quick room reload (SL) for hosts to restart the current room or combat seamlessly.
+• Added quick room reload (SL) for hosts to restart the current room or combat seamlessly, with button text aligned with singleplayer.
 • Added independent remote teammate mouse cursors with smooth interpolation, drawing quills, eraser tools, and player tags.
 • Restored event split vote wheel animation with tick sounds, teammate bouncing, and golden confirmation flashes.
 • Fixed unexpected black screen fade when canceling or exiting multiplayer lobbies.
@@ -11,6 +11,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Restored co-op audio effects for map pings, split route votes, and combat pings.
 
 [gold][b]Visuals & Audio[/b][/gold]
+• Aligned boot screen 1:1 with original NLogoAnimation (timing, logo drop, background color transition, and removed non-original hint texts).
 • Integrated original hand-drawn cursor textures across the game and gamepad virtual cursor.
 • Restored deck view close sound and fallback audio for opening act chests.
 • Simulated rolling boulder sequence with impacts, screen shakes, and progressive damage timing.
@@ -18,7 +19,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Controls[/b][/gold]
 • Aligned controller selection indicator with the original game's golden reticle corners and subtle highlights.`,
     zhs: `[gold][b]多人联机[/b][/gold]
-• 新增多人对局房主快速重开 (SL) 功能，支持原地重新开始当前战斗或房间。
+• 新增多人对局房主快速重开 (SL) 功能，按钮文案完全对齐单人统一为“快速SL”。
 • 新增独立远程队友鼠标光标，支持平滑插值移动、地图羽毛笔/橡皮擦显示及队友标签。
 • 还原多人事件分票摇奖轮盘动画、音效、头像弹跳及获胜金光闪烁。
 • 修复多人菜单与房间大厅点击取消/退出时黑屏的问题，恢复原版即时返回。
@@ -26,6 +27,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 补齐多人地图催促、分路投票及局内快捷 Ping 提示音效。
 
 [gold][b]视听表现[/b][/gold]
+• 开屏启动动画 1:1 对齐原版 NLogoAnimation（还原落差时序、背景过渡与音效，移除多余非原版文字提示）。
 • 全局及手柄虚拟光标接入原版石刻尖角指针与按压倾斜贴图。
 • 补齐牌组浏览关闭音效与宝箱房间开启音效回退保障。
 • 还原巨石翻滚（Rolling Boulder）逐个撞击目标受击伤害时序与震屏音效。

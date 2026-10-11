@@ -69,34 +69,33 @@ html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); 
   overflow: hidden;
   z-index: 100;
   cursor: pointer;
-  transition: background 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 2.0s cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 .boot-screen.boot-bg-teal {
   background: #074254;
 }
 
-/* Mega Crit 原版开场 Logo 容器与弹入动画 */
+/* Mega Crit 原版开场 Logo 容器与弹入动画 (NLogoAnimation) */
 .boot-logo-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
   will-change: transform, opacity;
 }
 .boot-logo-enter {
   opacity: 0;
-  transform: translateY(-240px) scale(0.9);
+  transform: translateY(-800px);
 }
-.boot-logo-active {
+.boot-logo-active, .boot-logo-teal {
   opacity: 1;
-  transform: translateY(0) scale(1);
-  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.25), opacity 0.5s ease-out;
+  transform: translateY(0);
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s ease-out;
 }
 .boot-logo-fadeout {
   opacity: 0;
-  transform: scale(0.96);
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(0);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 .boot-logo-img {
@@ -106,17 +105,6 @@ html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); 
   filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.8));
   user-select: none;
   pointer-events: none;
-}
-.boot-skip-hint {
-  font: 400 14px/1 'Kreon', var(--font);
-  letter-spacing: 2px;
-  color: rgba(255, 255, 255, 0.35);
-  text-transform: uppercase;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
-.boot-screen:hover .boot-skip-hint {
-  color: rgba(255, 255, 255, 0.6);
 }
 
 /* 原版 NLoadingOverlay (loading_overlay.tscn) 风格 */
