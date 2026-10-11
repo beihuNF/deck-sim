@@ -1112,9 +1112,23 @@ button { font-family: var(--font); cursor: pointer; }
 .settings-page-hint { position: absolute; top: 21px; width: 64px; text-align: center; font: 400 24px var(--font); }
 .settings-page-hint.left { left: 352px; }
 .settings-page-hint.right { left: 1500px; }
-.settings-page-hint .rt-controller-icon { width: 64px; height: 48px; }
-.input-focus { outline: 3px solid #EFC851 !important; outline-offset: 3px; }
-.game-btn .input-button-hint { position: absolute; top: 87px; left: 60px; pointer-events: none; font: 400 24px var(--font); }
+.input-focus { outline: none !important; }
+.event-option.input-focus,
+.rest-btn.input-focus,
+.reward-btn.input-focus,
+.vp-btn.input-focus,
+.mm-btn.input-focus,
+.chs-btn.input-focus,
+.st-tab-btn.input-focus,
+.top-bar button.input-focus {
+  filter: brightness(1.18) drop-shadow(0 0 8px rgba(239, 200, 81, 0.55)) !important;
+  transform: scale(1.015);
+  transition: transform .12s ease-out, filter .12s ease-out;
+}
+.map-node.input-focus,
+.map-point.input-focus {
+  filter: brightness(1.22) drop-shadow(0 0 10px rgba(239, 200, 81, 0.65)) !important;
+}
 .game-btn.confirm-btn .input-button-hint { left: 112px; }
 .input-button-hint .rt-controller-icon { width: 48px; height: 48px; }
 .chs-page-hint { position: absolute; top: 780px; pointer-events: none; font: 400 24px var(--font); }

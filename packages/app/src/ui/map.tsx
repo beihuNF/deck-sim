@@ -22,6 +22,7 @@ import { wheelDrag } from './scrollbar';
 import { fullView, view, mapDy } from '../view';
 import { renderResolution } from '../render/quality';
 import { CoopMapDrawings } from './map-coop';
+import { flashPlayerReady } from './multiplayer-state';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const TR = { Linear: 0, Sine: 1, Quad: 4, Expo: 5, Elastic: 6, Cubic: 7, Back: 10 }, EZ = { In: 0, Out: 1, InOut: 2 };
@@ -77,8 +78,15 @@ const nodeAt = (c: any) => (c ? S.byKey.get(keyOf(c)) ?? null : null);
 const playerVotes = new Map<number, any>();
 let mapSync: any = null;
 let coopDrawings: CoopMapDrawings | null = null;
+const playVoteTick = () => {
+  try { $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('map_split_tick.mp3', 0.15, G.PitchVariance.Small); } catch { /* no audio */ }
+};
 const voteChanged = (player: any, _old: any, vote: any) => {
-  if (player.NetId !== G.LocalContext.NetId) { playerVotes.set(player.NetId, vote?.coord ?? null); invalidate(); }
+  if (player.NetId !== G.LocalContext.NetId) {
+    playerVotes.set(player.NetId, vote?.coord ?? null);
+    playVoteTick();
+    invalidate();
+  }
 };
 const voteCancelled = (player: any) => { playerVotes.delete(player.NetId); invalidate(); };
 const votesCleared = () => { playerVotes.clear(); invalidate(); };
@@ -961,6 +969,10 @@ export function pingMapCoord(coord: any, player: any) {
   if (!S.byKey.has(key)) return;
   const ping = { id: ++nextPing, key, color: player.Character.MapDrawingColor };
   mapPings.push(ping); invalidate();
+  try {
+    $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('map_ping.mp3', 1, G.PitchVariance.Medium);
+  } catch { /* no audio */ }
+  if (player?.NetId != null) flashPlayerReady(player.NetId);
   setTimeout(() => { const i = mapPings.indexOf(ping); if (i >= 0) { mapPings.splice(i, 1); invalidate(); } }, 700);
 }
 function MapPings({ n }: { n: MapNode }) {

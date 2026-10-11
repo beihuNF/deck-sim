@@ -40,6 +40,12 @@ const screenLabel = (s: number) => {
   return '';
 };
 
+export function flashPlayerReady(id: any) {
+  const el = document.querySelector(`.mp-player-state[data-player-id="${id}"] .mp-state-ready`)
+    ?? document.querySelector(`.mp-player-state[data-player-id="${id}"]`);
+  el?.animate([{ filter: tint(.498, 1, 0) + ' brightness(3)' }, { filter: tint(.498, 1, 0) }], { duration: 700 });
+}
+
 export function MultiplayerPlayerStates({ rs }: { rs: any }) {
   const players = list(rs.Players), rm = G.RunManager.Instance, cm = G.CombatManager.Instance;
   const sync = rm.InputSynchronizer;
@@ -53,7 +59,7 @@ export function MultiplayerPlayerStates({ rs }: { rs: any }) {
       for (const key of ['CardAdded', 'CardRemoved']) subscriptions.push([p.PlayerCombatState.Hand, key]);
     }
     const flavor = rm.FlavorSynchronizer;
-    const ping = (id: number) => document.querySelector(`.mp-player-state[data-player-id="${id}"] .mp-state-ready`)?.animate([{ filter: tint(.498, 1, 0) + ' brightness(3)' }, { filter: tint(.498, 1, 0) }], { duration: 700 });
+    const ping = (id: number) => flashPlayerReady(id);
     flavor.OnEndTurnPingReceived = $.dcombine(flavor.OnEndTurnPingReceived, ping);
     for (const [owner, event] of subscriptions) owner[event] = $.dcombine(owner[event], invalidate);
     let lastScreen: number | null = null;

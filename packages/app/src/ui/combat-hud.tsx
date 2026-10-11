@@ -563,7 +563,12 @@ export function PingButton({ view, me }: { view: any; me: any }) {
   const enabled = shown && combatIsCurrent() && !view.Ui?.Hand?.IsInCardSelection;
   return <button class={'ping-btn' + (shown ? ' shown' : '')} disabled={!enabled} data-ctl="ping"
     style={{ left: `${fracX(1536 / 1920)}px`, top: `${fracY(932 / 1080)}px` }}
-    onClick={() => { if (enabled) G.RunManager.Instance.FlavorSynchronizer.SendEndTurnPing(); }}>
+    onClick={() => {
+      if (enabled) {
+        playOneShot('event:/sfx/ui/clicks/ui_click');
+        G.RunManager.Instance.FlavorSynchronizer.SendEndTurnPing();
+      }
+    }}>
     <img src={imageUrl('images/packed/common_ui/event_button.png') ?? ''} />
     <span>{loc('gameplay_ui', 'PING_BUTTON')}</span>
     {getInputDevice() !== 'keyboard' && <div class="ping-hint"><RichText text={actionHint('select').replace('[img ', '[img size=48 ')} /></div>}

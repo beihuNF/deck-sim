@@ -12,6 +12,7 @@ import { toggleCardsView, closeCardsView } from '../ui/pause';
 import { topBarMapPressed, restoreMapControllerScroll, mapControllerNavigationAllowed, scrollMapWithController } from '../ui/map';
 import { getInputDevice, setInputDevice, setControllerId, getKeyboardBindings, actionHint } from './hints';
 import { RichText } from '../ui/richtext';
+import { imageUrl } from '../assets';
 import { modalOpen } from '../ui/modal';
 import { ftueActive } from '../ui/ftue';
 import { edge } from '../view';
@@ -739,6 +740,100 @@ export function ControllerFocusHint() {
     return true;
   }), []);
   return at && <div class="controller-focus-hint" style={{ position: 'fixed', left: at.x, top: at.y, width: at.width, height: 48, pointerEvents: 'none', zIndex: 10000 }}><RichText text={at.hint.replaceAll('[img ', '[img size=48 ')} /></div>;
+}
+
+/** 对齐原版 NSelectionReticle 设计的四角金箔折角瞄准框：自适应紧贴手柄选中的目标 */
+export function ControllerSelectionReticle() {
+  const [target, setTarget] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  useEffect(() => $.onFrame(() => {
+    if (getInputDevice() !== 'gamepad') {
+      if (target) setTarget(null);
+      return true;
+    }
+    const el = document.querySelector<HTMLElement>('.input-focus');
+    // 如果战斗内已由生物自身的 Reticle 渲染瞄准框，则不重复叠加全局 Reticle
+    if (!el || el.closest('.cr-hitbox')) {
+      if (target) setTarget(null);
+      return true;
+    }
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0 || r.right < 0 || r.left > innerWidth || r.bottom < 0 || r.top > innerHeight) {
+      if (target) setTarget(null);
+      return true;
+    }
+    const isMapNode = el.matches('.map-point, .mp');
+    const pad = isMapNode ? 8 : 4;
+    const next = {
+      x: r.left - pad,
+      y: r.top - pad,
+      w: r.width + pad * 2,
+      h: r.height + pad * 2,
+    };
+    setTarget(prev => {
+      if (!prev) return next;
+      if (Math.abs(prev.x - next.x) < 0.5 && Math.abs(prev.y - next.y) < 0.5 && Math.abs(prev.w - next.w) < 0.5 && Math.abs(prev.h - next.h) < 0.5) return prev;
+      return next;
+    });
+    return true;
+  }), []);
+
+  if (!target) return null;
+  const src = imageUrl('images/ui/combat/combat_reticle.png') ?? '';
+  const corners = [
+    { left: -10, top: -10, sx: 1, sy: 1 },
+    { left: -10, top: target.h - 22, sx: 1, sy: -1 },
+    { left: target.w - 22, top: -10, sx: -1, sy: 1 },
+    { left: target.w - 22, top: target.h - 22, sx: -1, sy: -1 },
+  ];
+
+  return (
+    <div
+      class="controller-selection-reticle"
+      style={{
+        position: 'fixed',
+        left: `${target.x}px`,
+        top: `${target.y}px`,
+        width: `${target.w}px`,
+        height: `${target.h}px`,
+        pointerEvents: 'none',
+        zIndex: 9998,
+        transition: 'all 0.12s cubic-bezier(.16, 1, .3, 1)',
+      }}
+    >
+      {corners.map((c, i) => (
+        <img
+          key={`s-${i}`}
+          class="reticle-shadow"
+          src={src}
+          style={{
+            position: 'absolute',
+            left: `${c.left + 4}px`,
+            top: `${c.top + 3}px`,
+            width: '32px',
+            height: '32px',
+            transform: `scale(${c.sx}, ${c.sy})`,
+            filter: 'brightness(0)',
+            opacity: 0.5,
+          }}
+        />
+      ))}
+      {corners.map((c, i) => (
+        <img
+          key={`c-${i}`}
+          src={src}
+          style={{
+            position: 'absolute',
+            left: `${c.left}px`,
+            top: `${c.top}px`,
+            width: '32px',
+            height: '32px',
+            transform: `scale(${c.sx}, ${c.sy})`,
+            filter: 'drop-shadow(0 0 6px rgba(239, 200, 81, 0.5))',
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 /**
