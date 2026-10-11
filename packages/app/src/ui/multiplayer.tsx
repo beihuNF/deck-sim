@@ -6,7 +6,7 @@ import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
   readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode, parseRoomInvitation, multiplayerPlayerName, retryMultiplayer,
 } from '../multiplayer';
-import { BackButton, ConfirmButton } from './buttons';
+import { BackButton, ConfirmButton, UnreadyButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
 import { CharacterSelectButton, InfoPanel, AscensionPanel } from './charselect';
 import { DailyRun, CustomRun } from './modes';
@@ -124,7 +124,14 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
   const remotePlayers = (
     <div class="remote-player-container">
-      {/* 邀请代码与复制按钮 */}
+      {/* 单人等待其他玩家提示（对齐原版场景节点顺序：SoloLabel 位于 InviteButtonContainer 上方） */}
+      {mp.players.length === 1 && (
+        <div class="remote-solo-label">
+          {loc('main_menu_ui', 'MULTIPLAYER_CHAR_SELECT.SOLO')}
+        </div>
+      )}
+
+      {/* 邀请代码与复制按钮（原版 InviteButton 布局） */}
       <div
         class="invite-code-btn"
         onClick={() => copyText(`${location.origin}?room=${mp.code}`, 'link')}
@@ -137,7 +144,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         </span>
       </div>
 
-      {/* 房间玩家卡片列表（最多 4 人） */}
+      {/* 房间玩家列表（最多 4 人，对齐原版无框纯净悬浮铭牌） */}
       <div class="remote-player-list">
         {[1, 2, 3, 4].map(slotId => {
           const player = mp.players.find(p => p.id === slotId);
@@ -210,13 +217,6 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           );
         })}
       </div>
-
-      {/* 单人等待其他玩家提示 */}
-      {mp.players.length === 1 && (
-        <div class="remote-solo-label">
-          {loc('main_menu_ui', 'MULTIPLAYER_CHAR_SELECT.SOLO')}
-        </div>
-      )}
     </div>
   );
 
@@ -521,25 +521,41 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           {/* 原版 RemotePlayerContainer（左上角玩家状态与邀请码） */}
           {remotePlayers}
 
-          {/* 大厅就绪与启程提示 */}
-          <div class={`mp-lobby-ready-tip ${allReady ? 'all-ready' : me?.ready ? 'is-ready' : ''}`}>
-            {mp.players.length === 1
-              ? loc('main_menu_ui', 'MULTIPLAYER_CHAR_SELECT.SOLO')
-              : allReady
-                ? tr('全员已就绪 · 即将启程！', 'All players ready · Embarking!')
-                : me?.ready
-                  ? tr('已就绪 · 等待其他玩家就绪...', 'Ready · Waiting for other players...')
-                  : tr('点击右下角按钮准备就绪', 'Click bottom right button to ready up')}
-          </div>
+          {/* 原版 ReadyAndWaitingPanel：准备后且等待其他玩家时展示 */}
+          {me?.ready && (
+            <div class="ready-and-waiting-panel">
+              <div
+                class="raw-bg"
+                style={{
+                  borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})`,
+                }}
+              />
+              <div class="raw-text">
+                {allReady
+                  ? tr('全员已就绪，即将启程', 'All players ready, embarking')
+                  : tr('等待其他玩家...', 'Waiting for other players...')}
+                <span class="thinky-dots">
+                  <span>.</span><span>.</span><span>.</span>
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* 左下角原版返回按钮 */}
           <BackButton enabled onClick={exit} />
 
-          {/* 右下角原版确认/启程按钮 */}
-          <ConfirmButton
-            enabled={!!me && !selectedCharObj?.locked && me.character === currentHeroId}
-            onClick={() => readyMultiplayer(!me?.ready)}
-          />
+          {/* 右下角原版按钮：未准备时为 ConfirmButton（打勾确认），已准备时为 UnreadyButton（红叉取消准备） */}
+          {!me?.ready ? (
+            <ConfirmButton
+              enabled={!!me && !selectedCharObj?.locked && me.character === currentHeroId}
+              onClick={() => readyMultiplayer(true)}
+            />
+          ) : (
+            <UnreadyButton
+              enabled={true}
+              onClick={() => readyMultiplayer(false)}
+            />
+          )}
         </div>
       )}
     </div>

@@ -135,3 +135,25 @@ export function NGoldArrowButton({ left, flip, size = 128, class: cls, style, on
     </div>
   );
 }
+
+/** NUnreadyButton: in multiplayer lobby when readied up, replace ConfirmButton with unready button (red X icon). */
+export function UnreadyButton({ enabled: on, onClick, style }: { enabled: boolean; onClick: () => void; style?: any }) {
+  const [st, set] = useState<'' | 'hover' | 'press'>('');
+  const enabled = useMounted() && on;
+  return (
+    <div
+      class={`game-btn confirm-btn unready-btn ${enabled ? 'shown' : ''} ${st}`}
+      style={style}
+      onPointerEnter={() => { if (enabled) { set('hover'); hover(); setDynamicTip(() => ({ title: actionHintTitle('cancel'), body: '' })); } }}
+      onPointerLeave={() => { if (enabled) set(''); setTip(null); }}
+      onPointerDown={(e) => { if (enabled && e.button === 0) { set('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
+      onPointerUp={(e) => { if (enabled && e.button === 0 && st === 'press') { set('hover'); onClick(); } }}
+    >
+      <div class="gb-shadow" style={fit('ui_atlas', 'confirm_button', -41, -1, 267, 150)} />
+      <div class="gb-outline" style={{ ...fit('compressed', 'confirm_button_outline', -56, -16, 273, 156), filter: tint(0.9, 0.25, 0.25) }} />
+      <div class="gb-image" style={fit('ui_atlas', 'confirm_button', -53, -13, 267, 150)} />
+      <div class="gb-icon" style={{ ...fit('compressed', 'back_button_x', 35, 15, 80, 80), filter: tint(1, 0.35, 0.35) }} />
+      {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint('cancel').replace('[img ', '[img size=48 ')} /></span>}
+    </div>
+  );
+}

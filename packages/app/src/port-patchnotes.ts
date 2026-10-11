@@ -3,6 +3,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
+• Fixed unexpected "room full or already started" error during reconnection by preserving started run player slots and backing up session tokens in local storage.
+• Aligned multiplayer lobby 1:1 with original character select screen (restored ReadyAndWaitingPanel nine-patch banner with thinky dots, red X UnreadyButton, and clean floating player nameplates).
 • Added quick room reload (SL) for hosts to restart the current room or combat seamlessly, with button text aligned with singleplayer.
 • Added independent remote teammate mouse cursors with smooth interpolation, drawing quills, eraser tools, and player tags.
 • Restored event split vote wheel animation with tick sounds, teammate bouncing, and golden confirmation flashes.
@@ -19,6 +21,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Controls[/b][/gold]
 • Aligned controller selection indicator with the original game's golden reticle corners and subtle highlights.`,
     zhs: `[gold][b]多人联机[/b][/gold]
+• 修复重连时错误提示“房间已满或已开始”的问题：开局后永久保留玩家席位避免超时剔除，并支持本地持久化会话凭证恢复。
+• 多人准备大厅 1:1 对齐原版角色选择界面：还原原版 ReadyAndWaitingPanel 毛边九宫格等待面板、UnreadyButton 取消就绪红叉按钮与纯净悬浮铭牌。
 • 新增多人对局房主快速重开 (SL) 功能，按钮文案完全对齐单人统一为“快速SL”。
 • 新增独立远程队友鼠标光标，支持平滑插值移动、地图羽毛笔/橡皮擦显示及队友标签。
 • 还原多人事件分票摇奖轮盘动画、音效、头像弹跳及获胜金光闪烁。
