@@ -3,13 +3,21 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Steam sign-in now completes smoothly in a popup window without reloading the page.
-• Restored original game layouts and fade transitions for multiplayer room creation and custom run lobbies.
-• Improved Steam profile resolution and account connection reliability.`,
+• Added quick room reload (SL) for hosts to restart the current room or combat seamlessly.
+• Fixed unexpected black screen fade when canceling or exiting multiplayer lobbies.
+• Resolved Steam avatar resolution, added proxy acceleration, and refined profile sync.
+• Restored co-op audio effects for map pings, split route votes, and combat pings.
+
+[gold][b]Controls[/b][/gold]
+• Aligned controller selection indicator with the original game's golden reticle corners and subtle highlights.`,
     zhs: `[gold][b]多人联机[/b][/gold]
-• Steam 登录支持独立弹窗授权，无需重新加载页面。
-• 多人房间创建与自定义模式大厅全面对齐原版场景布局与黑幕转场。
-• 优化 Steam 个人资料获取与账号连接稳定性。`,
+• 新增多人对局房主快速重开 (SL) 功能，支持原地重新开始当前战斗或房间。
+• 修复多人菜单与房间大厅点击取消/退出时黑屏的问题，恢复原版即时返回。
+• 修复 Steam 头像获取问题，提供边缘节点加速代理并支持自动更新补全。
+• 补齐多人地图催促、分路投票及局内快捷 Ping 提示音效。
+
+[gold][b]操作[/b][/gold]
+• 对齐原版手柄选中视觉效果，采用原作金箔折角瞄准框与金色光晕高亮。`,
   },
   {
     date: '2026_10_11',

@@ -14,7 +14,7 @@ import { BackButton } from './buttons';
 import { SettingsButton } from './settings';
 
 const s = (k: string) => loc('settings_ui', k);
-const SURVEY_URL = 'https://app.tianji.dev/open/workspace/cm3pzndpk0001thybosby3rhz/survey/cmutkbqi038y05xc7ohob3k75/submit';
+const SURVEY_URL = 'https://app.tianji.dev/open/workspace/cmv45lubl27755xc7mytpfzcm/survey/cmv45se5t2ash5xc74929ds2n/submit';
 
 let open = false;
 // what survives a close: Open clears it when the screen was closed for over a minute
@@ -37,6 +37,7 @@ async function send(text: string): Promise<boolean> {
   if (!text.trim()) return true; // SendFeedback: nothing to send, success anyway
   const payload = {
     content: text,
+    field_RnoN: text,
     build: __BUILD_ID__,
     version: `v${GAME_VERSION}`,
     gameLanguage: safe(() => G.LocManager.Instance.Language, ''),
