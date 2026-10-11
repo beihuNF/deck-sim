@@ -97,10 +97,11 @@ export class WebRoom extends DurableObject<Env> {
       }
       if (this.room.started) return json({ error: 'full' }, 409);
 
-      // 清理超时离线（超过 45 秒且无连接）的非房主槽位
+      // 清理超时离线（超过 45 秒且无连接）的非房主槽位（仅在大厅未开局阶段；开局后保留槽位以便随时断线重连）
       const now = Date.now();
       const active = this.room.players.filter(p => {
         if (p.id === 1) return true;
+        if (this.room?.started) return true;
         const sockets = this.ctx.getWebSockets(String(p.id));
         if (sockets.length > 0) return true;
         if (p.disconnectedAt && now - p.disconnectedAt > 45_000) return false;

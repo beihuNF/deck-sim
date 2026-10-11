@@ -77,15 +77,24 @@ export function multiplayerPlayerName(id: number) {
 const SESSION_KEY = (c: string) => `sts2_mp_${c.toUpperCase()}`;
 function getSession(code: string): { id: number; token: string } | null {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY(code));
-    return raw ? JSON.parse(raw) : null;
+    const raw = sessionStorage.getItem(SESSION_KEY(code)) || localStorage.getItem(SESSION_KEY(code));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed.token === 'string' ? parsed : null;
   } catch { return null; }
 }
 function setSession(code: string, id: number, token: string) {
-  try { sessionStorage.setItem(SESSION_KEY(code), JSON.stringify({ id, token })); } catch {}
+  try {
+    const val = JSON.stringify({ id, token, time: Date.now() });
+    sessionStorage.setItem(SESSION_KEY(code), val);
+    localStorage.setItem(SESSION_KEY(code), val);
+  } catch {}
 }
 function clearSession(code: string) {
-  try { sessionStorage.removeItem(SESSION_KEY(code)); } catch {}
+  try {
+    sessionStorage.removeItem(SESSION_KEY(code));
+    localStorage.removeItem(SESSION_KEY(code));
+  } catch {}
 }
 
 export function mpText(zhs: string, eng: string) { return G.LocManager.Instance.Language?.startsWith('zh') ? zhs : eng; }
