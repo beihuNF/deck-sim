@@ -117,6 +117,7 @@ function RestButton({ view, o, x }: { view: any; o: any; x: number }) {
   const [ready, setReady] = useState(false);
   const enabled = safe(() => !!o.IsEnabled, true);
   const id = safe(() => String(o.OptionId).toLowerCase(), '');
+  const iconName = id === 'rest' ? 'heal' : id;
   const text = () => fmt(o.Description);
   const scale = st === 'hover' ? 1.1 : st === 'press' ? 0.9 : 1;
   const t = st === 'hover' ? '.05s linear' : `1s ${EXPO_OUT}`;
@@ -131,7 +132,7 @@ function RestButton({ view, o, x }: { view: any; o: any; x: number }) {
       onPointerUp={(e) => { if (e.button === 0 && st === 'press' && active) { setSt('hover'); void view.select(o); } }}>
       <div class="rb-visuals" style={{ scale: String(scale), transition: `scale ${t}` }}>
         <img class="rb-outline" src={imageUrl('images/ui/rest_site/option_outline.png') ?? ''} style={{ scale: st === 'hover' ? '1' : '0.9', transition: `scale ${t}`, filter: tint(1, 0.702, 0, 0.753) }} />
-        <img class="rb-icon" src={imageUrl(`images/ui/rest_site/option_${id}.png`) ?? ''} style={{ filter: `${enabled ? '' : 'grayscale(1) '}brightness(${v})`, transition: st === 'hover' ? 'none' : `filter 1s ${EXPO_OUT}` }} />
+        <img class="rb-icon" src={imageUrl(`images/ui/rest_site/option_${iconName}.png`) ?? imageUrl('images/ui/rest_site/option_heal.png') ?? ''} style={{ filter: `${enabled ? '' : 'grayscale(1) '}brightness(${v})`, transition: st === 'hover' ? 'none' : `filter 1s ${EXPO_OUT}` }} />
       </div>
       <div class="rb-name" style={{ translate: `0 ${st === 'hover' ? 6 : 0}px`, transition: `translate ${t}` }}>{fmt(o.Title)}</div>
     </div>

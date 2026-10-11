@@ -16,6 +16,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Restored co-op audio effects for map pings, split route votes, and combat pings.
 
 [gold][b]Visuals & Audio[/b][/gold]
+• Restored missing status icons (HP, Gold, Floor) in the multiplayer save recovery panel using authentic atlas frames.
+• Expanded audio fallback dictionary (SYN) to support full native playback for pause menus, map open/close/selection/erasing, and merchant voice effects.
+• Fixed campfire sleep option icon mapping to accurately display original option_heal texture across all conditions.
 • Aligned boot screen 1:1 with original NLogoAnimation (timing, logo drop, background color transition, and removed non-original hint texts).
 • Integrated original hand-drawn cursor textures across the game and gamepad virtual cursor.
 • Restored deck view close sound and fallback audio for opening act chests.
@@ -37,6 +40,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 补齐多人地图催促、分路投票及局内快捷 Ping 提示音效。
 
 [gold][b]视听表现[/b][/gold]
+• 修复多人读档大厅信息面板中生命、金币与层数图标展示，使用原版 ui_atlas 精灵规范渲染。
+• 扩充音频同义词回退表（SYN），全面恢复原版暂停菜单开闭、地图开启/关闭/选点/擦除及反转商人等音效的精准播放。
+• 修复营火休息（Rest/Heal）选项图标映射，确保各种选项 ID 下均 1:1 展示原版 option_heal 图标。
 • 开屏启动动画 1:1 对齐原版 NLogoAnimation（还原落差时序、背景过渡与音效，移除多余非原版文字提示）。
 • 全局及手柄虚拟光标接入原版石刻尖角指针与按压倾斜贴图。
 • 补齐牌组浏览关闭音效与宝箱房间开启音效回退保障。

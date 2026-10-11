@@ -139,7 +139,10 @@ function sampleToks() {
   return (tokCache ??= files.map((f) => ({ f, t: new Set(toks(name(f)).map((x) => SAMPLE_FIX[x] ?? x)), j: name(f).toLowerCase().replace(/[^a-z0-9]/g, ''), d: new Set(toks(f.slice(0, f.lastIndexOf('/')))) })));
 }
 /** Event words that the sample names spell differently. */
-const SYN: Record<string, string> = { silk: 'web', workbug: 'workerbug', game: 'death', over: 'stinger' };
+const SYN: Record<string, string> = {
+  silk: 'web', workbug: 'workerbug', game: 'death', over: 'stinger',
+  laugh: 'hehe', erase: 'drawing', open: 'a',
+};
 /** Compound or stemmed spellings: fan_of_knives ~ fanofknives, slumbering ~ SlumberBeetle, wake_up ~ wakeup. */
 const inName = (x: string, j: string) => x.length >= 4 && (j.includes(x) || j.includes(x.slice(0, Math.max(5, x.length - 3))));
 

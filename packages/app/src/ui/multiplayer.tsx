@@ -850,16 +850,16 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               </div>
               <div class="mpl-stats-row">
                 <div class="mpl-stat-item">
-                  <img class="mpl-stat-icon" src={imageUrl('images/atlases/ui_atlas.sprites/top_bar/top_bar_heart.tres') || imageUrl('images/ui/top_panel/heart.png') || ''} />
+                  <div class="mpl-stat-icon" style={frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_heart'), 40, 40)} />
                   <span class="mpl-stat-val-hp">{mp.loadInfo?.hostHp ?? 80}/{mp.loadInfo?.hostMaxHp ?? 80}</span>
                 </div>
                 <div class="mpl-stat-item">
-                  <img class="mpl-stat-icon" src={imageUrl('images/atlases/ui_atlas.sprites/top_bar/top_bar_gold.tres') || imageUrl('images/ui/top_panel/gold.png') || ''} />
+                  <div class="mpl-stat-icon" style={frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_gold'), 40, 40)} />
                   <span class="mpl-stat-val-gold">{mp.loadInfo?.hostGold ?? 99}</span>
                 </div>
               </div>
               <div class="mpl-location-row">
-                <img class="mpl-loc-icon" src={imageUrl('images/atlases/ui_atlas.sprites/top_bar/top_bar_floor.tres') || imageUrl('images/ui/map/map_icon.png') || ''} />
+                <div class="mpl-loc-icon" style={frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_floor'), 40, 40)} />
                 <div class="mpl-loc-text">
                   <span>{loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.ACT') ? loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.ACT').replace('{act}', String(mp.loadInfo?.act ?? 1)) : `Act: ${mp.loadInfo?.act ?? 1}`}</span>
                   <span>{loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.FLOOR') ? loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.FLOOR').replace('{floor}', String(mp.loadInfo?.floor ?? 1)) : `Floor: ${mp.loadInfo?.floor ?? 1}`}</span>
