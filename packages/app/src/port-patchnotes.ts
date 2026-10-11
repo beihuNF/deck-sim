@@ -3,6 +3,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_11',
     eng: `[gold][b]Multiplayer[/b][/gold]
+• Added Steam sign-in with verified account identities, names and avatars; guest play remains available.
+• Running co-op sessions now reconnect after temporary network loss while the original page stays open, retaining player slots, combat and pending choices.
+• Unacknowledged game messages are redelivered without repeating actions; teammates wait for the connection to recover.
 • Invitation links now open the lobby and join automatically. Fixed the white join/disconnection panel and buttons appearing outside the panel.
 • Pasting a full invitation link into the join input now extracts its room code automatically.
 • Daily co-op now uses the original daily challenge layout, with the assigned character, ascension, countdown and three illustrated modifiers displayed directly. Ready indicators and the back button now follow the original ready/cancel flow.
@@ -25,6 +28,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Map navigation now snaps between reachable nodes with the stick or directional buttons, and restores the current floor after scrolling.
 • Fixed the first mouse click on a map node being ignored after controller navigation.`,
     zhs: `[gold][b]多人联机[/b][/gold]
+• 接入 Steam 登录，显示验证后的账号名称和头像，同时保留游客联机。
+• 保留原页面时，运行中的联机支持网络断线重连，恢复原槽位并保留战斗与待选操作。
+• 补发未确认的规则消息并避免重复执行操作；队友掉线后显示等待重连。
 • 邀请链接现在直接打开大厅并自动加入；修复加入和断线窗口的白色背景，以及按钮跑到面板外的问题。
 • 加入框支持粘贴完整邀请链接，自动提取房间代码。
 • 多人每日挑战恢复原版每日页面，直接展示指定角色、进阶、倒计时和三个带图标的词缀；准备标记和返回取消准备遵循原版流程。

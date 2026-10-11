@@ -1,9 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import { validCharacterSelection } from './selection';
+import { authFetch, steamIdentity, type AuthEnv, type SteamProfile } from './auth';
+export { SteamAuth } from './auth';
 
-interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<WebRoom> }
-interface Player { id: number; token: string; character: string; unlock: string; ready: boolean; maxAscension: number; disconnectedAt?: number }
-interface Room { code: string; version: string; mode: string; maxPlayers: number; created: number; started: boolean; seed: string; ascension: number; modifiers: string[]; dailyDate: string; players: Player[] }
+interface Env extends AuthEnv { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<WebRoom> }
+interface Player { id: number; token: string; character: string; unlock: string; ready: boolean; maxAscension: number; disconnectedAt?: number; profile?: SteamProfile; instance?: string }
+interface Room { code: string; version: string; mode: string; maxPlayers: number; created: number; started: boolean; seed: string; ascension: number; modifiers: string[]; dailyDate: string; players: Player[]; protocol?: number }
 const PREFIX = '/api/multiplayer/rooms';
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 function sameOrigin(req: Request) {
@@ -17,8 +19,13 @@ function sameOrigin(req: Request) {
 export default {
   async fetch(req: Request, env: Env) {
     const path = new URL(req.url).pathname;
+    if (path.startsWith('/api/auth/')) {
+      try { return await authFetch(req, env); } catch { return json({ error: 'steam_service' }, 503); }
+    }
     if (!path.startsWith('/api/multiplayer/')) return env.ASSETS.fetch(req);
     if (!sameOrigin(req)) return json({ error: 'origin' }, 403);
+    const identity = await steamIdentity(req, env);
+    const profileHeaders: Record<string, string> = identity ? { 'X-Steam-Profile': JSON.stringify(identity) } : {};
     if (path === PREFIX && req.method === 'POST') {
       // One small shared limiter for room creation. Game packets never pass through this object.
       const limit = await env.ROOMS.get(env.ROOMS.idFromName('creation-limit')).fetch(new Request('https://room/limit', {
@@ -29,11 +36,12 @@ export default {
       const url = new URL(req.url); url.pathname = `${PREFIX}/${code}`;
       const body = await req.text();
       if (body.length > 512) return json({ error: 'request' }, 413);
-      return env.ROOMS.get(env.ROOMS.idFromName(code)).fetch(new Request(url, { method: 'POST', body, headers: { 'X-Create-Room': '1' } }));
+      return env.ROOMS.get(env.ROOMS.idFromName(code)).fetch(new Request(url, { method: 'POST', body, headers: { 'X-Create-Room': '1', ...profileHeaders } }));
     }
     const m = new RegExp(`^${PREFIX}/([A-F0-9]{12})(/socket)?$`).exec(path);
     if (!m) return json({ error: 'room' }, 404);
-    const headers = new Headers(req.headers); headers.delete('X-Create-Room');
+    const headers = new Headers(req.headers); headers.delete('X-Create-Room'); headers.delete('X-Steam-Profile');
+    if (identity) headers.set('X-Steam-Profile', JSON.stringify(identity));
     return env.ROOMS.get(env.ROOMS.idFromName(m[1])).fetch(new Request(req, { headers }));
   },
 } satisfies ExportedHandler<Env>;
@@ -41,10 +49,12 @@ export default {
 /** Each room owns up to 4 authenticated sockets. Reuse original game packets; no original MOD code is copied. */
 export class WebRoom extends DurableObject<Env> {
   private room?: Room;
+  private delivery: Record<string, { received: number; sent: number; pending: { seq: number; sender: number; bytes: number[] }[] }> = {};
+  private channel(id: number) { return this.delivery[id] ??= { received: 0, sent: 0, pending: [] }; }
   private counts = new Map<string, { n: number; at: number }>();
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    ctx.blockConcurrencyWhile(async () => { this.room = await ctx.storage.get<Room>('room'); });
+    ctx.blockConcurrencyWhile(async () => { this.room = await ctx.storage.get<Room>('room'); this.delivery = await ctx.storage.get('delivery') ?? {}; });
   }
   async fetch(req: Request) {
     const url = new URL(req.url);
@@ -56,29 +66,31 @@ export class WebRoom extends DurableObject<Env> {
       return c.n > 5 ? json({ error: 'rate' }, 429) : json({ ok: true });
     }
     const code = url.pathname.split('/')[4];
+    const profile = req.headers.has('X-Steam-Profile') ? JSON.parse(req.headers.get('X-Steam-Profile')!) as SteamProfile : undefined;
     if (this.room && Date.now() - this.room.created > 24 * 60 * 60_000) return json({ error: 'expired' }, 410);
     if (req.method === 'POST' && !url.pathname.endsWith('/socket')) {
       let body: any;
       try { body = await req.json(); } catch { return json({ error: 'request' }, 400); }
+      if (body.protocol === 4 && (typeof body.instance !== 'string' || body.instance.length > 100)) return json({ error: 'request' }, 400);
       if (typeof body.version !== 'string' || body.version.length > 100) return json({ error: 'version' }, 400);
       const mode = typeof body.mode === 'string' && ['standard', 'daily', 'custom'].includes(body.mode) ? body.mode : 'standard';
       const maxPlayers = Number.isInteger(body.maxPlayers) && body.maxPlayers >= 2 && body.maxPlayers <= 4 ? body.maxPlayers : 4;
       if (!this.room) {
         if (req.headers.get('X-Create-Room') !== '1') return json({ error: 'room' }, 404);
-        this.room = { code, version: body.version, mode, maxPlayers, created: Date.now(), started: false, seed: '', ascension: 0, modifiers: [], dailyDate: new Date().toISOString().slice(0, 10), players: [] };
+        this.room = { code, version: body.version, mode, maxPlayers, created: Date.now(), started: false, seed: '', ascension: 0, modifiers: [], dailyDate: new Date().toISOString().slice(0, 10), players: [], protocol: body.protocol === 4 ? 4 : 3 };
       }
       if (this.room.version !== body.version) return json({ error: 'version' }, 409);
-      if (this.room.started) return json({ error: 'full' }, 409);
-
-      // 携带原有 token 时支持刷新重连恢复槽位
-      if (typeof body.token === 'string') {
-        const existing = this.room.players.find(p => p.token === body.token);
-        if (existing) {
-          existing.disconnectedAt = undefined;
-          await this.ctx.storage.put('room', this.room);
-          return json({ code, id: existing.id, token: existing.token, mode: this.room.mode, maxPlayers: this.room.maxPlayers });
-        }
+      const existing = this.room.players.find(p => (typeof body.token === 'string' && p.token === body.token)
+        || (profile && p.profile?.steamId === profile.steamId));
+      if (existing) {
+        if (existing.profile && existing.profile.steamId !== profile?.steamId) return json({ error: 'account' }, 403);
+        // A live engine owns this lease. A fresh page cannot resume action/choice closures from an old engine.
+        if (this.room.started && existing.instance !== body.instance) return json({ error: 'reload' }, 409);
+        if (!this.room.started) { existing.instance = body.instance; if (profile) existing.profile = profile; }
+        await this.ctx.storage.put('room', this.room);
+        return json({ code, id: existing.id, token: existing.token, mode: this.room.mode, maxPlayers: this.room.maxPlayers, started: this.room.started });
       }
+      if (this.room.started) return json({ error: 'full' }, 409);
 
       // 清理超时离线（超过 45 秒且无连接）的非房主槽位
       const now = Date.now();
@@ -100,7 +112,7 @@ export class WebRoom extends DurableObject<Env> {
       while (usedIds.has(id) && id <= this.room.maxPlayers) id++;
       if (id > this.room.maxPlayers) return json({ error: 'full' }, 409);
       const token = crypto.randomUUID();
-      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false, maxAscension: 0 });
+      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false, maxAscension: 0, profile, instance: body.instance });
       if (this.room.mode === 'daily') for (const p of this.room.players) p.ready = false;
       await this.ctx.storage.put('room', this.room);
       await this.ctx.storage.setAlarm(this.room.created + 24 * 60 * 60_000);
@@ -110,7 +122,7 @@ export class WebRoom extends DurableObject<Env> {
     if (!this.room || !url.pathname.endsWith('/socket')) return json({ error: 'room' }, 404);
     if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'socket' }, 400);
     const player = this.room.players.find(p => p.token === url.searchParams.get('token'));
-    if (!player || this.room.started) return json({ error: 'closed' }, 403);
+    if (!player || (player.profile && player.profile.steamId !== profile?.steamId) || (this.room.started && (this.room.protocol !== 4 || player.instance !== url.searchParams.get('instance')))) return json({ error: 'closed' }, 403);
     const existingSockets = this.ctx.getWebSockets(String(player.id));
     if (existingSockets.length) {
       for (const old of existingSockets) old.close(1000, 'Replaced');
@@ -119,6 +131,9 @@ export class WebRoom extends DurableObject<Env> {
     const pair = new WebSocketPair();
     pair[1].serializeAttachment({ id: player.id });
     this.ctx.acceptWebSocket(pair[1], [String(player.id)]);
+    if (this.room.started) {
+      for (const packet of this.channel(player.id).pending) pair[1].send(JSON.stringify({ type: 'packet', ...packet }));
+    }
     this.broadcast();
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
@@ -132,9 +147,9 @@ export class WebRoom extends DurableObject<Env> {
       started: this.room.started,
       settings: { ascension: this.room.ascension ?? 0, modifiers: this.room.modifiers ?? [], seed: this.room.seed, dailyDate: this.room.dailyDate ?? new Date(this.room.created).toISOString().slice(0, 10) },
       maxAscension: Math.min(...this.room.players.map(p => p.maxAscension ?? 0)),
-      players: this.room.players.map(({ token: _, unlock: __, ...p }) => ({
+      players: this.room.players.map(({ token: _, unlock: __, instance: ___, ...p }) => ({
         ...p,
-        connected: this.ctx.getWebSockets(String(p.id)).length > 0,
+        connected: p.disconnectedAt == null && this.ctx.getWebSockets(String(p.id)).length > 0,
       })),
     });
     for (const ws of this.ctx.getWebSockets()) {
@@ -145,7 +160,7 @@ export class WebRoom extends DurableObject<Env> {
     const id: number = ws.deserializeAttachment().id;
     if (!this.room) return ws.close(1008, 'Missing room');
     if (typeof data !== 'string') {
-      if (!this.room.started || data.byteLength < 10 || data.byteLength > 128 * 1024) return ws.close(1008, 'Invalid packet');
+      if (this.room.protocol === 4 || !this.room.started || data.byteLength < 10 || data.byteLength > 128 * 1024) return ws.close(1008, 'Invalid packet');
       // Original bus header: one-byte message type followed by little-endian uint64 sender.
       const envelope = new Uint8Array(data), to = envelope[0], bytes = envelope.subarray(1);
       if (to !== 0 && !this.room.players.some(p => p.id === to)) return ws.close(1008, 'Invalid recipient');
@@ -154,12 +169,49 @@ export class WebRoom extends DurableObject<Env> {
       for (const other of this.ctx.getWebSockets()) if (other !== ws && (to === 0 || other.deserializeAttachment().id === to)) other.send(out.buffer);
       return;
     }
-    if (data.length > 64 * 1024) return ws.close(1009, 'Too large');
+    if (data.length > 1024 * 1024) return ws.close(1009, 'Too large');
     let msg: any;
     try { msg = JSON.parse(data); } catch { return ws.close(1008, 'Invalid JSON'); }
     const me = this.room.players.find(p => p.id === id);
     if (!me) return ws.close(1008, 'Invalid player');
     if (msg.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); return; }
+    if (msg.type === 'ack' && this.room.protocol === 4) {
+      const channel = this.channel(id);
+      if (Number.isSafeInteger(msg.seq) && msg.seq >= 0 && msg.seq <= channel.sent) {
+        channel.pending = channel.pending.filter(p => p.seq > msg.seq);
+        await this.ctx.storage.put('delivery', this.delivery);
+      }
+      return;
+    }
+    if ((msg.type === 'packet' || msg.type === 'volatile') && this.room.protocol === 4 && this.room.started) {
+      const channel = this.channel(id);
+      if ((msg.type === 'packet' && (!Number.isSafeInteger(msg.seq) || msg.seq < 1)) || !Array.isArray(msg.bytes) || msg.bytes.length < 9
+        || msg.bytes.length > 32 * 1024 || msg.bytes.some((b: unknown) => !Number.isInteger(b) || Number(b) < 0 || Number(b) > 255)
+        || msg.bytes[1] !== id || msg.bytes.slice(2, 9).some((b: number) => b !== 0)
+        || !Number.isInteger(msg.to) || (msg.to !== 0 && !this.room.players.some(p => p.id === msg.to))) return ws.close(1008, 'Invalid packet');
+      if (msg.type === 'volatile') {
+        for (const other of this.ctx.getWebSockets()) if (other !== ws && (msg.to === 0 || other.deserializeAttachment().id === msg.to)) other.send(JSON.stringify({ type: 'volatile', bytes: msg.bytes, sender: id }));
+        return;
+      }
+      if (msg.seq <= channel.received) { ws.send(JSON.stringify({ type: 'sent', seq: channel.received })); return; }
+      if (msg.seq !== channel.received + 1) return ws.close(1008, 'Packet gap');
+      channel.received = msg.seq;
+      const outgoing: { id: number; packet: { seq: number; sender: number; bytes: number[] } }[] = [];
+      for (const p of this.room.players) if (p.id !== id && (msg.to === 0 || msg.to === p.id)) {
+        const target = this.channel(p.id);
+        if (target.pending.length >= 2048 || Object.values(this.delivery).reduce((sum, c) => sum + c.pending.reduce((n, packet) => n + packet.bytes.length * 4 + 64, 0), 0) + msg.bytes.length * 4 + 64 > 1024 * 1024) {
+          for (const other of this.ctx.getWebSockets()) other.send(JSON.stringify({ type: 'ended', error: 'backlog' }));
+          return;
+        }
+        const packet = { seq: ++target.sent, sender: id, bytes: msg.bytes };
+        target.pending.push(packet); outgoing.push({ id: p.id, packet });
+      }
+      // Persist before acknowledging the sender or delivering: retries cannot duplicate actions after hibernation.
+      await this.ctx.storage.put('delivery', this.delivery);
+      ws.send(JSON.stringify({ type: 'sent', seq: channel.received }));
+      for (const { id: recipient, packet } of outgoing) for (const other of this.ctx.getWebSockets(String(recipient))) other.send(JSON.stringify({ type: 'packet', ...packet }));
+      return;
+    }
     if (msg.type === 'leave' && !this.room.started) {
       if (id === 1) {
         for (const other of this.ctx.getWebSockets()) if (other !== ws) other.close(1000, 'Host left');
@@ -230,18 +282,15 @@ export class WebRoom extends DurableObject<Env> {
   async webSocketClose(ws: WebSocket, code: number, reason: string) {
     ws.close(code, reason);
     if (!this.room) return;
-    if (this.room.started) {
-      // Never silently continue alone: all simulations stop on a missing peer.
-      for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(JSON.stringify({ type: 'ended' }));
-    } else {
-      const id = ws.deserializeAttachment().id;
-      const player = this.room.players.find(p => p.id === id);
-      if (player && !this.ctx.getWebSockets(String(id)).some(other => other !== ws)) {
-        player.ready = false;
-        player.disconnectedAt = Date.now();
-        await this.ctx.storage.put('room', this.room);
-        this.broadcast();
-      }
+    const id = ws.deserializeAttachment().id;
+    const player = this.room.players.find(p => p.id === id);
+    if (player && !this.ctx.getWebSockets(String(id)).some(other => other !== ws)) {
+      if (!this.room.started) player.ready = false;
+      player.disconnectedAt = Date.now();
+      await this.ctx.storage.put('room', this.room);
+      if (this.room.started && this.room.protocol !== 4) {
+        for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(JSON.stringify({ type: 'ended' }));
+      } else this.broadcast();
     }
   }
   async webSocketError(ws: WebSocket) { await this.webSocketClose(ws, 1011, 'Connection error'); }

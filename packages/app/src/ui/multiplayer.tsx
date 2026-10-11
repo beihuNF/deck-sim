@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { G, $, list } from '../game';
 import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
-  readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode, parseRoomInvitation,
+  readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode, parseRoomInvitation, multiplayerPlayerName, retryMultiplayer,
 } from '../multiplayer';
 import { BackButton, ConfirmButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
@@ -19,6 +19,7 @@ import { playOneShot } from '../audio';
 import { tint } from '../filters';
 import { charSelectBg } from '../render/scene';
 import './multiplayer.css';
+import { steam, loadSteamProfile, loginSteam, logoutSteam } from '../steam';
 
 const m = (k: string) => loc('main_menu_ui', k);
 function RoomDialogBackground() {
@@ -41,6 +42,7 @@ const shake = () => {
 };
 
 export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
+  useEffect(() => { void loadSteamProfile(); }, []);
   const [view, setView] = useState<'menu' | 'host' | 'join'>('menu');
   const [joinCode, setJoinCode] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
@@ -147,7 +149,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               <div class="rlp-avatar-wrap">
                 <img
                   class="rlp-avatar"
-                  src={imageUrl(`images/ui/top_panel/character_icon_${pChar}.png`) ?? ''}
+                  src={player.profile?.avatar || imageUrl(`images/ui/top_panel/character_icon_${pChar}.png`) || ''}
                   alt={player.character}
                 />
                 {/* 准备状态打勾：遵循原版，只有准备好的玩家才打勾 */}
@@ -172,7 +174,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               {/* 铭牌与角色名 */}
               <div class="rlp-nameplate">
                 <div class="rlp-player-name">
-                  {isSlotHost ? tr('[房主] ', '[Host] ') : `${tr('玩家', 'Player')} ${slotId} `}
+                  {isSlotHost ? tr('[房主] ', '[Host] ') : ''}{multiplayerPlayerName(slotId)} 
                   {isSlotMe && tr('(你)', '(You)')}
                 </div>
                 <div class="rlp-char-title">
@@ -214,6 +216,13 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
   return (
     <div class="mp-screen-container">
+      {mp.phase === 'idle' && <div class="mp-steam-account">
+        {steam.profile?.avatar && <img src={steam.profile.avatar} alt="" referrerPolicy="no-referrer" />}
+        <span>{steam.profile?.name || tr('游客', 'Guest')}</span>
+        {steam.profile ? <button data-ctl onClick={() => void logoutSteam()}>{tr('退出 Steam', 'Sign out of Steam')}</button>
+          : <button data-ctl disabled={steam.loading} onClick={loginSteam}>{tr('使用 Steam 登录', 'Sign in through Steam')}</button>}
+        {steam.error && <span role="alert">{tr('账号服务暂不可用', 'Account service unavailable')}</span>}
+      </div>}
       {mp.error && <div class="mp-toast-error" role="alert">{multiplayerError()}</div>}
 
       {/* 1. 多人主菜单（SubmenuButtons 原版卡片） */}
@@ -364,7 +373,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
       {/* 5. 原版多人房间大厅（挂接在 CharacterSelectScreen 体验上） */}
       {mp.phase === 'lobby' && mp.mode === 'daily' && dailySetup && me && <DailyRun lobby={{
         date: mp.settings.dailyDate, setup: dailySetup, index: mp.players.indexOf(me), playerCount: mp.players.length,
-        playerName: tr('玩家', 'Player') + ` ${mp.id}`, ready: me.ready, players: remotePlayers,
+        playerName: multiplayerPlayerName(mp.id), ready: me.ready, players: remotePlayers,
         onReady: () => readyMultiplayer(!me.ready), onBack: exit,
       }} />}
       {mp.phase === 'lobby' && mp.mode !== 'daily' && (
@@ -443,19 +452,22 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 }
 
 export function MultiplayerStatus() {
-  if (mp.phase !== 'playing' && mp.phase !== 'starting' && mp.phase !== 'ended') return null;
+  if (mp.phase !== 'playing' && mp.phase !== 'starting' && mp.phase !== 'ended' && mp.phase !== 'reconnecting') return null;
   return (
     <>
-      {mp.phase === 'ended' && (
+      {(mp.phase === 'ended' || mp.phase === 'reconnecting' || mp.waiting) && (
         <div class="mp-join-modal-backstop">
           <div class="mp-join-dialog">
             <RoomDialogBackground />
-            <h2 class="mp-dialog-title">{tr('联机已中断', 'Co-op Session Ended')}</h2>
-            <p class="mp-dialog-desc">{multiplayerError()}</p>
+            <h2 class="mp-dialog-title">{mp.phase === 'ended' ? tr('联机已中断', 'Co-op Session Ended') : tr('等待重新连接', 'Waiting for Reconnection')}</h2>
+            <p class="mp-dialog-desc">{mp.phase === 'ended' ? multiplayerError() : mp.phase === 'reconnecting'
+              ? tr('正在重新连接房间。请保留此页面，战斗和待选操作已保留。', 'Reconnecting to the room. Keep this page open; combat and pending choices are preserved.')
+              : tr('队友已掉线，正在等待其重连。请保留此页面。', 'A teammate disconnected. Waiting for them to reconnect; keep this page open.')}</p>
             <p class="coop-note">
               {tr('现有单人存档未受任何影响，仍安全保存在本地。', 'Your singleplayer profile and saves remain completely intact.')}
             </p>
             <div class="mp-dialog-buttons" style={{ justifyContent: 'center' }}>
+              {mp.phase === 'reconnecting' && <PopupButton yes text={tr('重试连接', 'Retry Connection')} onClick={retryMultiplayer} />}
               <PopupButton
                 yes={true}
                 text={tr('返回主菜单', 'Return to Menu')}

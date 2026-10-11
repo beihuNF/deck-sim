@@ -2,7 +2,7 @@
 // NMultiplayerPlayerExpandedState and scenes/ui/multiplayer_player_expanded_state.tscn.
 import { atlasFrame, frameByName, frameStyle } from '../assets';
 import { loc, locv } from '../i18n';
-import { mpText } from '../multiplayer';
+import { multiplayerPlayerName, mpText } from '../multiplayer';
 import { edge, view } from '../view';
 import { BackButton } from './buttons';
 import { closeCardsView } from './pause';
@@ -29,7 +29,7 @@ export function MultiplayerExpandedState({ state }: { state: State }) {
   const header = (key: string) => <RichText text={loc('gameplay_ui', `MULTIPLAYER_EXPANDED_STATE.${key}Header`)} />;
   return <div class="capstone mp-expanded" data-player-id={p.NetId}>
     <div class="mp-expanded-content" style={{ left: `${edge.l + 250}px`, top: `${edge.t + 128}px`, width: `${view.w - 500}px`, maxHeight: `${view.h - 240}px` }}>
-      <div class="mp-expanded-title"><RichText text={locv('gameplay_ui', 'MULTIPLAYER_EXPANDED_STATE.title', { PlayerName: `${mpText('玩家', 'Player')} ${p.NetId}`, Character: p.Character.Title.GetFormattedText() })} /></div>
+      <div class="mp-expanded-title"><RichText text={locv('gameplay_ui', 'MULTIPLAYER_EXPANDED_STATE.title', { PlayerName: multiplayerPlayerName(p.NetId), Character: p.Character.Title.GetFormattedText() })} /></div>
       <div class="mp-expanded-spacer" />
       <section><div class="mp-expanded-header">{header('relic')}</div><div class="mp-expanded-icons">
         {state.relics.map(r => <div class="mp-expanded-relic" data-ctl

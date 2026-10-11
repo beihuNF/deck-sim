@@ -4,13 +4,14 @@ import { startCoopRun } from './flow';
 import { loc } from './i18n';
 
 export const multiplayer = {
-  phase: 'idle' as 'idle' | 'connecting' | 'lobby' | 'starting' | 'playing' | 'ended',
+  phase: 'idle' as 'idle' | 'connecting' | 'lobby' | 'starting' | 'playing' | 'reconnecting' | 'ended',
   code: '', id: 0, mode: 'standard' as 'standard' | 'daily' | 'custom', maxPlayers: 4, maxAscension: 0,
   settings: { ascension: 0, seed: '', modifiers: [] as string[], dailyDate: '' },
-  players: [] as { id: number; character: string; ready: boolean; connected: boolean }[], error: '',
+  waiting: false,
+  players: [] as { id: number; character: string; ready: boolean; connected: boolean; profile?: { steamId: string; name: string; avatar: string } }[], error: '',
 };
 const API = '/api/multiplayer/rooms';
-const version = `${GAME_VERSION}/${__BUILD_ID__}/web-coop-3`;
+const version = `${GAME_VERSION}/${__BUILD_ID__}/web-coop-4`;
 export function invitedRoomCode() {
   const code = new URLSearchParams(location.search).get('room')?.toUpperCase();
   return code && /^[A-F0-9]{12}$/.test(code) ? code : null;
@@ -30,6 +31,48 @@ let socket: WebSocket | null = null;
 let net: any = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let lastSeen = 0;
+const instance = crypto.randomUUID();
+let received = 0, sent = 0;
+let outgoing: { type: 'packet'; seq: number; bytes: number[]; to: number }[] = [];
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let retryStarted = 0, retryCount = 0, attemptId = 0;
+let paused: { executor: any; executorPaused: boolean; combatPaused: boolean } | null = null;
+function pauseForReconnect() {
+  const executor = G.RunManager.Instance.ActionExecutor;
+  if (!paused) paused = { executor, executorPaused: executor?.IsPaused ?? true, combatPaused: G.CombatManager.Instance.IsPaused };
+  executor?.Pause(); G.CombatManager.Instance.Pause();
+}
+function resumeAfterReconnect() {
+  if (!paused) return;
+  if (!paused.executorPaused) paused.executor?.Unpause();
+  if (!paused.combatPaused) G.CombatManager.Instance.Unpause();
+  paused = null;
+}
+function transportSend(message: unknown) {
+  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+}
+function disconnected() {
+  if (multiplayer.phase !== 'playing' && multiplayer.phase !== 'reconnecting') { failed('disconnected'); return; }
+  if (timer) clearInterval(timer); timer = null;
+  const old = socket; socket = null; old?.close();
+  multiplayer.phase = 'reconnecting'; multiplayer.waiting = true;
+  pauseForReconnect();
+  retryStarted ||= Date.now();
+  if (!retryTimer && Date.now() - retryStarted < 120_000) retryTimer = setTimeout(() => {
+    retryTimer = null; void connectMultiplayer(multiplayer.code);
+  }, Math.min(1000 * 2 ** retryCount++, 10_000));
+  changed();
+}
+export function retryMultiplayer() {
+  if (multiplayer.phase !== 'reconnecting') return;
+  if (retryTimer) clearTimeout(retryTimer); retryTimer = null;
+  retryStarted = Date.now(); retryCount = 0;
+  void connectMultiplayer(multiplayer.code);
+}
+export function multiplayerPlayerName(id: number) {
+  return multiplayer.players.find(p => p.id === id)?.profile?.name || `${mpText('玩家', 'Player')} ${id}`;
+}
+
 
 const SESSION_KEY = (c: string) => `sts2_mp_${c.toUpperCase()}`;
 function getSession(code: string): { id: number; token: string } | null {
@@ -48,8 +91,10 @@ function clearSession(code: string) {
 export function mpText(zhs: string, eng: string) { return G.LocManager.Instance.Language?.startsWith('zh') ? zhs : eng; }
 function changed() { invalidate(); }
 function failed(error: string) {
+  attemptId++;
+  if (retryTimer) clearTimeout(retryTimer); retryTimer = null;
   multiplayer.error = error;
-  if (multiplayer.phase === 'playing' || multiplayer.phase === 'starting') {
+  if (multiplayer.phase === 'playing' || multiplayer.phase === 'starting' || multiplayer.phase === 'reconnecting') {
     multiplayer.phase = 'ended';
     net?.Disconnect();
     G.RunManager.Instance.ActionExecutor?.Pause();
@@ -60,6 +105,8 @@ function failed(error: string) {
   changed();
 }
 export function leaveMultiplayer() {
+  attemptId++;
+  if (retryTimer) clearTimeout(retryTimer); retryTimer = null;
   const code = multiplayer.code;
   // Explicitly leaving an invitation must not rejoin it on the reload used to exit an ephemeral run.
   if (new URLSearchParams(location.search).has('room')) {
@@ -71,7 +118,7 @@ export function leaveMultiplayer() {
   if ($.vfs.ephemeral) { socket?.close(); location.reload(); return; }
   if (timer) clearInterval(timer); timer = null;
   socket?.close(); socket = null;
-  Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, maxAscension: 0, settings: { ascension: 0, seed: '', modifiers: [], dailyDate: '' }, players: [], error: '' });
+  Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, maxAscension: 0, settings: { ascension: 0, seed: '', modifiers: [], dailyDate: '' }, players: [], waiting: false, error: '' });
   changed();
 }
 function send(msg: unknown) {
@@ -102,42 +149,56 @@ export function kickMultiplayerPlayer(targetId: number) {
   try { send({ type: 'kick', targetId }); } catch {}
 }
 export async function connectMultiplayer(code?: string, mode: 'standard' | 'daily' | 'custom' = 'standard') {
-  if (multiplayer.phase !== 'idle') return;
-  multiplayer.phase = 'connecting'; multiplayer.error = ''; multiplayer.mode = mode; changed();
+  const reconnecting = multiplayer.phase === 'reconnecting';
+  if (multiplayer.phase !== 'idle' && !reconnecting) return;
+  const attempt = ++attemptId;
+  if (!reconnecting) { multiplayer.phase = 'connecting'; multiplayer.mode = mode; }
+  multiplayer.error = ''; changed();
   try {
     const saved = code ? getSession(code) : null;
     const body = code
-      ? { version, token: saved?.token }
-      : { version, mode, maxPlayers: 4 };
+      ? { version, token: saved?.token, instance, protocol: 4 }
+      : { version, mode, maxPlayers: 4, instance, protocol: 4 };
     const res = await fetch(code ? `${API}/${code.toUpperCase()}` : API, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15_000),
     });
     const result = await res.json();
+    if (attempt !== attemptId) return;
     if (!res.ok) {
-      if (code) clearSession(code);
+      if (code && ['room', 'expired', 'account'].includes(result.error)) clearSession(code);
+      if (reconnecting && res.status >= 500) throw new Error('network');
+      if (reconnecting) { failed(result.error ?? 'network'); return; }
       throw new Error(result.error ?? 'network');
     }
     setSession(result.code, result.id, result.token);
     Object.assign(multiplayer, { code: result.code, id: result.id, mode: result.mode ?? mode, maxPlayers: result.maxPlayers ?? 4 });
     const url = new URL(`${API}/${result.code}/socket`, location.href);
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    url.searchParams.set('token', result.token);
+    url.searchParams.set('token', result.token); url.searchParams.set('instance', instance);
+    const roomUrl = new URL(location.href); roomUrl.searchParams.set('room', result.code);
+    history.replaceState(history.state, '', roomUrl);
     const ws = socket = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
-    net = new G.WebNetService(result.id, (bytes: number[], to = 0) => {
-      if (ws.readyState !== WebSocket.OPEN) throw new Error('disconnected');
-      ws.send(new Uint8Array([to, ...bytes]));
-    }, result.code);
-    net.SetBufferMessages(true);
+    if (!reconnecting) {
+      received = 0; sent = 0; outgoing = [];
+      net = new G.WebNetService(result.id, (bytes: number[], to = 0, transient = false) => {
+        if (transient) { transportSend({ type: 'volatile', bytes, to }); return; }
+        if (outgoing.length >= 2048) { failed('backlog'); return; }
+        const packet = { type: 'packet' as const, seq: ++sent, bytes, to };
+        outgoing.push(packet); transportSend(packet);
+      }, result.code);
+      net.SetBufferMessages(true);
+    }
     lastSeen = Date.now();
     timer = setInterval(() => {
-      if (Date.now() - lastSeen > 20_000) failed('disconnected');
+      if (Date.now() - lastSeen > 20_000) disconnected();
       else if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
     }, 5_000);
     let initializedSelection = false;
     ws.onopen = () => {
       if (socket !== ws) return;
-      multiplayer.phase = 'lobby';
+      if (!reconnecting) multiplayer.phase = 'lobby';
+      for (const packet of outgoing) transportSend(packet);
       changed();
     };
     ws.onmessage = e => {
@@ -148,8 +209,25 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           const bytes = new Uint8Array(e.data); net.receive(Array.from(bytes.slice(1)), bytes[0]); changed(); return;
         }
         const msg = JSON.parse(e.data);
+        if (msg.type === 'volatile') { net.receive(msg.bytes, msg.sender); changed(); return; }
+        if (msg.type === 'packet') {
+          if (!Number.isSafeInteger(msg.seq) || msg.seq < 1) throw new Error('Invalid delivery');
+          if (msg.seq > received) {
+            if (msg.seq !== received + 1) throw new Error('Delivery gap');
+            net.receive(msg.bytes, msg.sender); received = msg.seq;
+          }
+          transportSend({ type: 'ack', seq: received }); changed(); return;
+        }
+        if (msg.type === 'sent') {
+          if (!Number.isSafeInteger(msg.seq) || msg.seq < 0 || msg.seq > sent) throw new Error('Invalid acknowledgment');
+          outgoing = outgoing.filter(p => p.seq > msg.seq); return; }
         if (msg.type === 'room') {
           multiplayer.players = msg.players;
+          if (msg.started && (multiplayer.phase === 'playing' || multiplayer.phase === 'reconnecting')) {
+            multiplayer.phase = 'playing'; multiplayer.waiting = msg.players.some((p: any) => !p.connected);
+            retryStarted = 0; retryCount = 0;
+            if (multiplayer.waiting) pauseForReconnect(); else resumeAfterReconnect();
+          }
           multiplayer.settings = msg.settings;
           multiplayer.maxAscension = msg.maxAscension;
           if (msg.mode) multiplayer.mode = msg.mode;
@@ -172,15 +250,15 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           }).then(() => {
             if (multiplayer.phase === 'starting') multiplayer.phase = 'playing'; changed();
           }).catch(e => { console.error('Multiplayer start failed', e); failed('start'); });
-        } else if (msg.type === 'ended') failed('disconnected');
+        } else if (msg.type === 'ended') failed(msg.error ?? 'disconnected');
         changed();
       } catch (e) { console.error('Multiplayer packet failed', e); failed('sync'); }
     };
-    ws.onerror = () => { if (socket === ws) failed('network'); };
+    ws.onerror = () => { if (socket === ws) disconnected(); };
     ws.onclose = () => {
-      if (socket === ws && multiplayer.error !== 'kicked') failed('disconnected');
+      if (socket === ws && multiplayer.error !== 'kicked') disconnected();
     };
-  } catch (e) { failed(e instanceof Error ? e.message : 'network'); }
+  } catch (e) { if (attempt !== attemptId) return; if (reconnecting) disconnected(); else failed(e instanceof Error ? e.message : 'network'); }
 }
 
 export function multiplayerError() {
@@ -188,6 +266,8 @@ export function multiplayerError() {
   if (e === 'kicked') return loc('main_menu_ui', 'NETWORK_ERROR.KICKED.body');
   if (e === 'divergence') return mpText('与队友的游戏状态不同步，联机已停止。请双方刷新页面后重新建房。', 'Game state diverged from your teammate. The session has stopped. Refresh both pages and create a new room.');
   if (e === 'version') return mpText('双方网页版本不同，请刷新后重新建房。', 'Different game builds. Refresh both browsers and create a new room.');
+  if (e === 'account') return mpText('请使用原来的 Steam 账号登录后重连。', 'Sign in with the original Steam account to reconnect.');
+  if (e === 'reload') return mpText('运行中的重连需要保留原游戏页面。刷新已释放战斗状态，暂不能从新页面恢复。', 'Keep the original game page open to reconnect. A refreshed page cannot restore this running session yet.');
   if (e === 'full') return mpText('房间已满或已开始。', 'The room is full or has already started.');
   if (e === 'room' || e === 'expired') return mpText('房间不存在或已过期。', 'Room not found or expired.');
   if (e === 'rate') return mpText('建房太频繁，请稍后再试。', 'Too many rooms created. Please try again later.');

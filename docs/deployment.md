@@ -53,3 +53,19 @@ npx wrangler deploy
 联机客户端通过自己地址下的 `/api/multiplayer/rooms` 建房和加入。两个访问地址可以联机，前提是它们提供同一份构建，并连接同一个 Worker 的 `ROOMS` 命名空间；分别部署的独立房间服务不会共享房间号。入房会校验游戏版本、构建编号和联机协议，不同构建会被拒绝。构建编号在每次 Vite 启动或构建时产生，因此分别构建同一提交也不能混用。
 
 排查不同地址的不同步问题时，先比对页面引用的 `js/index-*.js` 和各自房间服务的部署，再核查原版战斗 checksum。不同域名本身不是状态分叉的证据。刷新原有地址即可更新页面，保留该地址的浏览器存档；不要用删除网站数据来排查缓存。
+
+### Steam 登录与运行中重连
+
+Steam 网页登录使用 [Steam OpenID](https://partner.steamgames.com/doc/features/auth)，无需让玩家向本项目提交 Steam 密码。登录状态保存在独立 `AUTH` Durable Object 和 HttpOnly Cookie 中；昵称与头像由服务端调用 [GetPlayerSummaries](https://partner.steamgames.com/doc/webapi/ISteamUser)。部署前将自己的 Web API 密钥写入 Worker Secret：
+
+```bash
+pnpm exec wrangler secret put STEAM_WEB_API_KEY
+```
+
+不要将密钥写入 Git、Vite 环境变量或浏览器代码。更新部署会创建 `steam-auth-v1` 的 Durable Object 迁移，既有 `ROOMS` 绑定保持不变。缺少密钥或头像服务暂不可用时，Steam 身份验证仍有效，名字退回 Steam ID。账号用于房间身份与展示；原有浏览器单人存档继续按原地址读取，不跨账号迁移，也不接入 Steam Cloud。
+
+多人游戏开始后只允许原玩家恢复连接，不增加新玩家。网络断线时保留原网页，自动重试两分钟，之后可手动重试；队伍显示等待面板，补收未确认的原版规则消息后继续。服务器保存消息序号与未确认消息，双方去重，避免断线瞬间漏掉击杀、选牌或回合操作。鼠标位置等临时输入不积累重连消息。
+
+当前重连范围是**原页面仍运行时的网络恢复**。关闭、刷新页面会释放规则层与待选操作的执行状态，暂不能从新页面恢复运行中的战斗；入房会明确拒绝这种状态，避免按初始种子生成一份不同进度。大厅刷新仍能恢复原槽位；登录同一 Steam 账号也能恢复大厅身份。24 小时房间有效期、版本校验与原玩家身份验证继续生效。
+
+本地验证：先启动房间服务，再启动 `pnpm dev`；`CHROME=<路径> MODE=daily node tools/e2e/reconnect.mjs /tmp/reconnect` 检查每日挑战，`MODE=standard` 检查标准模式。浏览器测试使用独立配置，不触碰玩家现有存档。Steam 登录回调单元测试模拟提供方响应，真实账号授权需要玩家在 Steam 页面操作。

@@ -16,19 +16,19 @@ export class WebNetService {
   ClientDisconnected: any = null;
   private bus = new G.NetMessageBus().$ctor_NetMessageBus(
     new G.PacketReader().$ctor_PacketReader(), new G.PacketWriter().$ctor_PacketWriter());
-  constructor(readonly NetId: number, private send: (bytes: number[], to?: number) => void, private room: string) {}
+  constructor(readonly NetId: number, private send: (bytes: number[], to?: number, transient?: boolean) => void, private room: string) {}
   get Type() { return this.NetId === 1 ? G.NetGameType.Host : G.NetGameType.Client; }
   SendMessage$2(T: any, message: any) {
     if (!this.IsConnected) throw new Error('Multiplayer disconnected');
     const length = { v: 0 };
     const bytes = this.bus.SerializeMessage(T, this.NetId, message, length);
-    this.send(Array.from(bytes.slice(0, length.v)));
+    this.send(Array.from(bytes.slice(0, length.v)), 0, message instanceof G.PeerInputMessage);
   }
   SendMessage$3(T: any, message: any, to: number) {
     if (!this.IsConnected) throw new Error('Multiplayer disconnected');
     const length = { v: 0 };
     const bytes = this.bus.SerializeMessage(T, this.NetId, message, length);
-    this.send(Array.from(bytes.slice(0, length.v)), to);
+    this.send(Array.from(bytes.slice(0, length.v)), to, message instanceof G.PeerInputMessage);
   }
   receive(bytes: number[], sender: number) {
     const message = { v: null as any }, encodedSender = { v: null as any };

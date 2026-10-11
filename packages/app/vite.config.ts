@@ -27,7 +27,7 @@ export default defineConfig(({ command }) => ({
   esbuild: { jsx: 'automatic', jsxImportSource: 'preact', keepNames: false },
   resolve: { alias: { '@sts2/core': path.resolve(__dirname, '../core/src/index.ts') } },
   server: { port: 47173, strictPort: true, host: '127.0.0.1', fs: { allow: [path.resolve(__dirname, '../..')] },
-    proxy: { '/api/multiplayer': { target: 'http://127.0.0.1:8787', ws: true } } },
+    proxy: { '/api/auth': { target: 'http://127.0.0.1:8787' }, '/api/multiplayer': { target: 'http://127.0.0.1:8787', ws: true } } },
   // Bundle goes to js/ so it never mixes with the game's assets/ tree (copied from public/).
   build: {
     target: 'es2022', chunkSizeWarningLimit: 20000, sourcemap: false, assetsDir: 'js',

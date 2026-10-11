@@ -5,7 +5,7 @@ import { G, $, N, list, localPlayer } from '../game';
 import { ui, invalidate } from '../store';
 import { imageUrl, atlasFrame, frameByName, frameStyle } from '../assets';
 import { view, anchored } from '../view';
-import { mpText } from '../multiplayer';
+import { multiplayerPlayerName, mpText } from '../multiplayer';
 import { loc } from '../i18n';
 import { tint } from '../filters';
 import { HealthBar, Reticle } from './creature-ui';
@@ -84,7 +84,7 @@ export function MultiplayerPlayerStates({ rs }: { rs: any }) {
         onClick={() => { if (!targetManager.IsInSelection && !targetManager.BlockPlayerStateClick) openPlayerState(p); }}>
         <img class="mp-state-icon" src={imageUrl(p.Character.IconTexturePath) ?? ''} alt={loc('characters', `${p.Character.Id.Entry}.title`)} />
         {ready && <div class="mp-state-ready" style={{ ...frameStyle(frameByName('compressed', 'confirm_button_tick'), 48, 48), filter: tint(.498, 1, 0) }} title={mpText('已准备', 'Ready')} />}
-        <div class="mp-state-info"><span class="mp-state-name">{mpText('玩家', 'Player')} {p.NetId}{p === me ? mpText('（你）', ' (You)') : ''}</span>
+        <div class="mp-state-info"><span class="mp-state-name">{multiplayerPlayerName(p.NetId)}{p === me ? mpText('（你）', ' (You)') : ''}</span>
           {cm.IsInProgress && pcs && p !== me && <>
             <div class={'mp-state-count' + (pcs.Energy === 0 ? ' empty' : '')} title={mpText('能量', 'Energy')}><div style={frameStyle(atlasFrame(pool.EnergyIconPath), 28, 28)} /><b>{pcs.Energy}</b></div>
             {(pcs.Stars > 0 || p.Character instanceof G.Regent) && <div class="mp-state-count" title={mpText('星星', 'Stars')}><img src={imageUrl('images/ui/combat/energy_star.png') ?? ''} /><b>{pcs.Stars}</b></div>}

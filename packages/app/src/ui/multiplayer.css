@@ -506,3 +506,9 @@
 .daily-coop .invite-code-btn { order: 2; width: 280px; height: 50px; }
 .daily-coop .icb-label { font-size: 20px; }
 .daily-coop .remote-solo-label { order: -1; color: var(--cream); font-size: 28px; }
+
+.mp-steam-account { position: absolute; left: 40px; top: 24px; max-width: 680px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; color: var(--cream); font-size: 24px; }
+.mp-steam-account img { width: 48px; height: 48px; object-fit: cover; }
+.mp-steam-account span { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-steam-account button { padding: 10px 20px; color: var(--cream); background: #203d48; border: 2px solid #718a88; font: inherit; cursor: pointer; }
+.mp-steam-account button:disabled { opacity: .5; cursor: default; }
