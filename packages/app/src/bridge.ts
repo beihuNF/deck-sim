@@ -612,15 +612,118 @@ export class EventRoomView extends NEventRoom {
     this.description = safeGet(() => d.GetFormattedText(), '');
     this.descGen++;
   }
+  splitVoteAnimation: {
+    active: boolean;
+    highlightedPlayerId: any;
+    chosenOptionIndex: number | null;
+    grayedOutIndices: number[];
+    flashConfirmationIndex: number | null;
+    bouncingPlayerId: any;
+  } | null = null;
   private setOptions() {
     const ev = this.event;
     let opts = list(ev.CurrentOptions);
     if (ev.IsFinished) opts = [new G.EventOption().$ctor_EventOption$EventModel_FuncTask_String_Boolean_Boolean_IHoverTipArr(ev, NEventRoom.Proceed, 'PROCEED', false, true, [])];
-    for (const o of opts) o.BeforeChosen = $.dcombine(o.BeforeChosen, (opt: any) => { if (!opt.IsProceed) { this.disabled = true; invalidate(); } return $.Task.CompletedTask; });
+    for (let i = 0; i < opts.length; i++) {
+      const o = opts[i];
+      o.BeforeChosen = $.dcombine(o.BeforeChosen, async (opt: any) => {
+        if (!opt.IsProceed) { this.disabled = true; invalidate(); }
+        if (this.event.Owner.RunState.Players.length > 1 && G.RunManager.Instance.EventSynchronizer.IsShared && !opt.IsProceed) {
+          await this.playSharedOptionChosenAnimation(opt, i);
+        }
+        return $.Task.CompletedTask;
+      });
+    }
     this.options = opts;
     this.optionsGen++;
     this.disabled = false;
     this.choosing = false;
+    invalidate();
+  }
+  private async playSharedOptionChosenAnimation(chosenOption: any, chosenIndex: number) {
+    const sync = G.RunManager.Instance.EventSynchronizer;
+    const players = list(this.event.Owner.RunState.Players);
+    const voteMap = new Map<number, any[]>();
+    for (const p of players) {
+      const v = sync.GetPlayerVote(p);
+      if (v != null && v >= 0) {
+        const arr = voteMap.get(v) ?? [];
+        arr.push(p);
+        voteMap.set(v, arr);
+      }
+    }
+    const isSplit = voteMap.size > 1;
+
+    if (isSplit) {
+      const sortedPlayers: any[] = [];
+      for (const [, plist] of voteMap.entries()) sortedPlayers.push(...plist);
+      const winnerPool = voteMap.get(chosenIndex) ?? sortedPlayers;
+      const winner = winnerPool[Math.floor(Math.random() * winnerPool.length)];
+      const ticks = 12 + Math.floor(Math.random() * 7); // 12~18 ticks
+      const durationMs = 1200;
+      const t0 = performance.now();
+
+      await new Promise<void>((resolve) => {
+        let lastHighlighted: any = null;
+        const stop = $.onFrame(() => {
+          const elapsed = performance.now() - t0;
+          const progress = Math.min(1, Math.max(0, elapsed / durationMs));
+          const eased = Math.sin((progress * Math.PI) / 2);
+          const currentTick = Math.round(eased * ticks);
+          const winnerIdx = sortedPlayers.indexOf(winner);
+          const offset = winnerIdx - (ticks - currentTick);
+          const pIndex = ((offset % sortedPlayers.length) + sortedPlayers.length) % sortedPlayers.length;
+          const currPlayer = sortedPlayers[pIndex];
+
+          if (currPlayer && currPlayer !== lastHighlighted) {
+            lastHighlighted = currPlayer;
+            this.splitVoteAnimation = {
+              active: true,
+              highlightedPlayerId: currPlayer.NetId,
+              chosenOptionIndex: null,
+              grayedOutIndices: [],
+              flashConfirmationIndex: null,
+              bouncingPlayerId: null,
+            };
+            safeGet(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('map_split_tick.mp3', 0.15), null);
+            invalidate();
+          }
+
+          if (progress >= 1) {
+            resolve();
+            return false;
+          }
+          return true;
+        });
+      });
+
+      if (winner) {
+        this.splitVoteAnimation = {
+          active: true,
+          highlightedPlayerId: winner.NetId,
+          chosenOptionIndex: chosenIndex,
+          grayedOutIndices: [],
+          flashConfirmationIndex: null,
+          bouncingPlayerId: winner.NetId,
+        };
+        invalidate();
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
+
+    const grayedOut = this.options.map((_, idx) => idx).filter((idx) => idx !== chosenIndex);
+    this.splitVoteAnimation = {
+      active: true,
+      highlightedPlayerId: null,
+      chosenOptionIndex: chosenIndex,
+      grayedOutIndices: grayedOut,
+      flashConfirmationIndex: chosenIndex,
+      bouncingPlayerId: null,
+    };
+    invalidate();
+    await new Promise((r) => setTimeout(r, 700));
+
+    this.splitVoteAnimation = null;
     invalidate();
   }
   /** NEventRoom.OptionButtonClicked. */
@@ -1086,7 +1189,13 @@ export class TreasureView extends NTreasureRoom {
     this.banner = 'in';
     chestSkin(false);
     openChest();
-    G.SfxCmd.Play$2(this.runState.Act.ChestOpenSfx);
+    const actSfx = this.runState?.Act?.ChestOpenSfx;
+    if (actSfx) G.SfxCmd.Play$2(actSfx);
+    else {
+      const actNum = this.runState?.Act?.ActNumber ?? 1;
+      const fallbackSfx = actNum === 2 ? 'event:/sfx/ui/treasure/treasure_act2' : actNum === 3 ? 'event:/sfx/ui/treasure/treasure_act3' : 'event:/sfx/ui/treasure/treasure_act1';
+      G.SfxCmd.Play$2(fallbackSfx);
+    }
     invalidate();
     const gold = await this.room.DoNormalRewards();
     if (gold > 0) void chestGold(gold);
@@ -1776,16 +1885,69 @@ NCrystalSphereScreen.ShowScreen = (game: any) => {
 };
 
 // RollingBoulderPower deals its damage from NRollingBoulderVfx's HitCreature signal (one per creature the boulder rolls
-// over) and then awaits the node leaving the tree. No boulder animation here: every target is hit right away.
+// over) and then awaits the node leaving the tree / Finished signal.
 const NRollingBoulderVfx = N('Vfx.NRollingBoulderVfx');
 NRollingBoulderVfx.Create = (creatures: any, _damage: number, _debugFinalPosition?: any) => {
   const v = $.dummy(NRollingBoulderVfx);
   const targets = list(creatures);
+  const hitCallbacks: any[] = [];
+  const finishedCallbacks: any[] = [];
+  let finishedTask: any = null;
+
   v.Connect = (signal: any, callable: any) => {
-    if (String(signal) === 'HitCreature') for (const c of targets) callable.Call(NCombatRoom.Instance?.GetCreatureNode?.(c) ?? { Entity: c });
+    const s = String(signal);
+    if (s.includes('HitCreature')) hitCallbacks.push(callable);
+    else if (s.includes('Finished')) finishedCallbacks.push(callable);
     return 0;
   };
+  v.ToSignal = (_src: any, sig: any) => {
+    const s = String(sig?.s ?? sig ?? '').toLowerCase();
+    if (s.includes('finished')) {
+      const Task = $.ext('System.Threading.Tasks.Task');
+      finishedTask = new Task();
+      if (G.TestMode?.IsOn) finishedTask.$done(1);
+      return finishedTask;
+    }
+    return $.nextFrame();
+  };
   v.IsInsideTree = () => true;
+
+  if (G.TestMode?.IsOn) {
+    v.Connect = (signal: any, callable: any) => {
+      if (String(signal).includes('HitCreature')) for (const c of targets) callable.Call(NCombatRoom.Instance?.GetCreatureNode?.(c) ?? { Entity: c });
+      return 0;
+    };
+    return v;
+  }
+
+  // 浏览器运行时：按时序模拟巨石砸地与滚动碾过
+  setTimeout(async () => {
+    // 1. 巨石下落砸地（0.2s）
+    await new Promise((r) => setTimeout(r, 200));
+    safeGet(() => NGame.Instance?.ScreenShake($.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeStrength').Strong, $.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeDuration').Short, 90), null);
+    safeGet(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('blunt_heavy.mp3'), null);
+
+    // 2. 依次按生物位置（从左到右）碾压命中
+    const sortedTargets = [...targets].sort((a: any, b: any) => {
+      const na = NCombatRoom.Instance?.GetCreatureNode?.(a);
+      const nb = NCombatRoom.Instance?.GetCreatureNode?.(b);
+      const xa = na?.Visuals?.GlobalPosition?.X ?? na?.slot?.x ?? 0;
+      const xb = nb?.Visuals?.GlobalPosition?.X ?? nb?.slot?.x ?? 0;
+      return xa - xb;
+    });
+
+    for (const c of sortedTargets) {
+      await new Promise((r) => setTimeout(r, 120));
+      const node = NCombatRoom.Instance?.GetCreatureNode?.(c) ?? { Entity: c };
+      for (const cb of hitCallbacks) safeGet(() => cb.Call(node), null);
+    }
+
+    // 3. 巨石滚出屏幕，触发 Finished
+    await new Promise((r) => setTimeout(r, 200));
+    for (const cb of finishedCallbacks) safeGet(() => cb.Call(), null);
+    finishedTask?.$done(1);
+  }, 10);
+
   return v;
 };
 

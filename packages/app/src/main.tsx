@@ -3,7 +3,7 @@ import './style.css';
 import { G, $ } from './game';
 import { ui, setRenderer, startLoop, invalidate, type Screen } from './store';
 import { DevConsole } from './ui/devconsole'; // before the modules below: its key listener must be the first one registered
-import { loadAssetIndex } from './assets';
+import { loadAssetIndex, imageUrl } from './assets';
 import { preloadLocalization, addListedFiles, appText } from './i18n';
 import { sceneIndex } from './render/scene';
 import { installFilters } from './filters';
@@ -39,6 +39,7 @@ import { topBarMapPressed } from './ui/map';
 import { fit, turned } from './view';
 import { getKeyboardBindings } from './input/hints';
 import { initGamepadLoop, VirtualCursor, GamepadToast, ControllerFocusHint, ControllerSelectionReticle } from './input/gamepad';
+import { RemoteMouseCursors } from './ui/multiplayer-cursors';
 import './anchors.css'; // last: it adjusts what the other stylesheets place
 
 initGamepadLoop();
@@ -153,6 +154,7 @@ function App() {
           {ui.screen === 'run' && <RunScreen />}
           <ScreenView s={ui.screen} />
           <VirtualCursor />
+          <RemoteMouseCursors />
         </div>
       </div>
       <TransitionLayer />
@@ -212,6 +214,14 @@ async function boot() {
 
   $.setGodotLogSink((level: string, msg: string) => (level === 'error' ? console.error(msg) : level === 'warn' ? console.warn(msg) : undefined));
   installBridge();
+
+  // 注入原版鼠标指针
+  const defCursor = imageUrl('images/packed/common_ui/cursor_default.webp');
+  const tiltCursor = imageUrl('images/packed/common_ui/cursor_tilted.webp');
+  if (defCursor && tiltCursor) {
+    document.documentElement.style.setProperty('--game-cursor-default', `url("${defCursor}") 0 0, auto`);
+    document.documentElement.style.setProperty('--game-cursor-tilted', `url("${tiltCursor}") 0 0, auto`);
+  }
 
   // 着色器缓存预热 (Prewarm Shader Cache)
   updateBootProgress({

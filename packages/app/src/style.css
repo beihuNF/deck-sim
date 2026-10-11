@@ -144,7 +144,14 @@ html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); 
   50% { opacity: 1; filter: drop-shadow(0 0 14px rgba(127, 255, 0, 0.7)); }
 }
 .fatal { color: #f88; padding: 20px; white-space: pre-wrap; }
-button { font-family: var(--font); cursor: pointer; }
+button { font-family: var(--font); cursor: var(--game-cursor-default, pointer); }
+
+.stage-root, .stage-root button, .stage-root [role="button"], .stage-root a {
+  cursor: var(--game-cursor-default, auto);
+}
+.stage-root:active, .stage-root button:active, .stage-root [role="button"]:active {
+  cursor: var(--game-cursor-tilted, auto);
+}
 
 /* ---- menu ---- */
 .screen { position: absolute; inset: 0; }
@@ -1370,3 +1377,9 @@ button { font-family: var(--font); cursor: pointer; }
 .fb-status.failed { color: #FF5555; }
 .fb-send { position: absolute; left: 166px; top: 672px; }
 .fb-send.busy { filter: brightness(.6); pointer-events: none; }
+
+@keyframes eo-flash-pulse {
+  0% { opacity: 0; transform: scale(0.98); }
+  50% { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 0; transform: scale(1); }
+}

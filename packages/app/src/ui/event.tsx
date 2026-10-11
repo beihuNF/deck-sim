@@ -144,9 +144,18 @@ function OptionButton({ view, o, i, ancient }: { view: any; o: any; i: number; a
   const scale = st === 'press' ? 0.99 : st === 'hover' ? 1.01 : 1;
   const bright = locked ? 0.65 : v;
   const color = safe(() => ev.ButtonColor, null);
+  const splitAnim = view.splitVoteAnimation;
+  const isGrayed = splitAnim?.grayedOutIndices?.includes(i);
+  const isFlash = splitAnim?.flashConfirmationIndex === i;
+
   return (
-    <div class={'event-option' + (!active ? ' disabled' : '') + (ancient ? ' ancient' : '') + (locked ? ' locked' : '') + (st === 'hover' ? ' hover' : '')} ref={el}
-      style={{ scale: String(scale), transition: st === 'hover' ? 'scale .05s linear' : `scale .5s ${EXPO_OUT}` }}
+    <div class={'event-option' + (!active ? ' disabled' : '') + (ancient ? ' ancient' : '') + (locked ? ' locked' : '') + (st === 'hover' ? ' hover' : '') + (isGrayed ? ' grayed' : '')} ref={el}
+      style={{
+        scale: String(scale),
+        transition: st === 'hover' ? 'scale .05s linear' : `scale .5s ${EXPO_OUT}`,
+        opacity: isGrayed ? 0.45 : undefined,
+        filter: isGrayed ? 'grayscale(0.8) brightness(0.6)' : undefined,
+      }}
       onPointerEnter={() => {
         if (locked || !on) return;
         setSt('hover'); setV(1.2);
@@ -183,9 +192,35 @@ function OptionButton({ view, o, i, ancient }: { view: any; o: any; i: number; a
       {ancient && o.Relic && <RelicIcon relic={o.Relic} />}
       <div class="eo-text" style={{ opacity: locked ? 0.7 : 1, left: ancient ? (o.Relic ? '92px' : '32px') : '42px' }}><RichText text={text} /></div>
       {!o.IsProceed && ev.IsShared && <div class="event-votes">
-        {list(ev.Owner.RunState.Players).filter(p => G.RunManager.Instance.EventSynchronizer.GetPlayerVote(p) === i).map(p =>
-          <img key={p.NetId} data-player-id={p.NetId} src={imageUrl(p.Character.IconTexturePath) ?? ''} />)}
+        {list(ev.Owner.RunState.Players).filter(p => G.RunManager.Instance.EventSynchronizer.GetPlayerVote(p) === i).map(p => {
+          const isHl = splitAnim?.highlightedPlayerId === p.NetId;
+          const isBounce = splitAnim?.bouncingPlayerId === p.NetId;
+          return (
+            <img
+              key={p.NetId}
+              data-player-id={p.NetId}
+              src={imageUrl(p.Character.IconTexturePath) ?? ''}
+              style={{
+                transform: isBounce ? 'translateY(-10px) scale(1.2)' : isHl ? 'scale(1.3)' : 'none',
+                filter: isHl ? 'drop-shadow(0 0 8px #ffdf60)' : undefined,
+                transition: 'all 0.1s ease-out',
+                zIndex: isHl || isBounce ? 2 : 1,
+              }}
+            />
+          );
+        })}
       </div>}
+      {isFlash && (
+        <div class="eo-confirm-flash" style={{
+          position: 'absolute',
+          inset: '-4px',
+          border: '2px solid #ffdf60',
+          borderRadius: '8px',
+          boxShadow: '0 0 16px #ffc820, inset 0 0 12px rgba(255, 200, 32, 0.6)',
+          pointerEvents: 'none',
+          animation: 'eo-flash-pulse 0.6s ease-out forwards',
+        }} />
+      )}
       {deathHint && <SpeechBubble key={deathHint.id} b={deathHint} s={undefined} />}
     </div>
   );

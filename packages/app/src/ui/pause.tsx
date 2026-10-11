@@ -77,6 +77,7 @@ export function closeCardsView() {
   if (!ui.cardsView) return;
   ui.cardsView = null;
   capstoneClose();
+  safe(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('map_close.mp3'), null);
   invalidate();
 }
 /** NMultiplayerPlayerExpandedState takes a read-only snapshot when opened, like the original node. */

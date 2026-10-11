@@ -696,6 +696,8 @@ function simulateEscape() {
  */
 export function VirtualCursor() {
   if (!cursorActive || getInputDevice() !== 'gamepad' || document.querySelector('.input-focus') || combatInputActive() || (ui.mapOpen && mapControllerNavigationAllowed() && !ui.pauseOpen && !ui.cardsView && !ui.overlays.length && !modalOpen() && !ftueActive())) return null;
+  const isDown = !!(lastButtons[0]);
+  const icon = imageUrl(isDown ? 'images/packed/common_ui/cursor_tilted.webp' : 'images/packed/common_ui/cursor_default.webp') ?? '';
   return (
     <div
       class="gamepad-cursor"
@@ -703,26 +705,17 @@ export function VirtualCursor() {
         position: 'absolute',
         left: `${cursorX}px`,
         top: `${cursorY}px`,
-        width: '32px',
-        height: '32px',
+        width: '36px',
+        height: '36px',
         pointerEvents: 'none',
         zIndex: 9999,
-        transform: 'translate(-4px, -4px)',
-        filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.8)) drop-shadow(0 0 6px rgba(239,200,81,0.6))',
-        transition: 'transform 0.05s ease-out',
+        transform: 'translate(-2px, -2px)',
+        filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.7)) drop-shadow(0 0 4px rgba(239,200,81,0.5))',
+        backgroundImage: `url(${icon})`,
+        backgroundSize: 'contain',
+        backgroundRepeat: 'no-repeat',
       }}
-    >
-      <svg width="32" height="32" viewBox="0 0 32 32">
-        <path
-          d="M 2 2 L 26 12 L 14 16 L 10 28 Z"
-          fill="#efc851"
-          stroke="#1a140a"
-          stroke-width="2.5"
-          stroke-linejoin="round"
-        />
-        <circle cx="14" cy="14" r="2.5" fill="#fff" />
-      </svg>
-    </div>
+    />
   );
 }
 
