@@ -27,6 +27,7 @@ import { transitionView } from './transition';
 import { showEarlyAccessDisclaimer, showAboutDialog, showQQGroupDialog } from './disclaimer';
 import { openFeedback } from './feedback';
 import { MultiplayerLobby } from './multiplayer';
+import { invitedRoomCode } from '../multiplayer';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const m = (k: string) => loc('main_menu_ui', k);
@@ -62,7 +63,12 @@ let menuGen = 0;
 /** NGame.ReloadMainMenu: a fresh main menu (empty stack, backstop and logo reset, fade-in, buttons refreshed). */
 export function reloadMainMenu() { ui.menuStack = []; menuGen++; invalidate(); }
 export function MainMenu() {
+  const inviteChecked = useRef(false);
   useEffect(() => {
+    if (!inviteChecked.current) {
+      inviteChecked.current = true;
+      if (invitedRoomCode() && !ui.menuStack.length) pushMenu('multiplayer');
+    }
     playMusic('event:/music/menu_update');
     // a menu entered with submenus open (back from a menu-side screen) has its backstop up already
     bs.K = ui.menuStack.length ? 1 : 0; bs.LogoA = ui.menuStack.length ? 0 : 1;

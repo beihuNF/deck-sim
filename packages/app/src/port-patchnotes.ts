@@ -3,6 +3,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_11',
     eng: `[gold][b]Multiplayer[/b][/gold]
+• Invitation links now open the lobby and join automatically. Fixed the white join/disconnection panel and buttons appearing outside the panel.
 • Daily co-op now uses the original daily challenge layout, with the assigned character, ascension, countdown and three illustrated modifiers displayed directly. Ready indicators and the back button now follow the original ready/cancel flow.
 • Fixed unreadable modifier descriptions on the custom co-op settings popup.
 • Fixed co-op continuing silently after the original game detected a state mismatch; the session now stops with a synchronization error.
@@ -20,6 +21,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Map navigation now snaps between reachable nodes with the stick or directional buttons, and restores the current floor after scrolling.
 • Fixed the first mouse click on a map node being ignored after controller navigation.`,
     zhs: `[gold][b]多人联机[/b][/gold]
+• 邀请链接现在直接打开大厅并自动加入；修复加入和断线窗口的白色背景，以及按钮跑到面板外的问题。
 • 多人每日挑战恢复原版每日页面，直接展示指定角色、进阶、倒计时和三个带图标的词缀；准备标记和返回取消准备遵循原版流程。
 • 修复多人自定义词缀设置弹窗的背景和文字对比度。
 • 修复原版校验已发现状态分叉后，网页仍静默继续联机的问题；现在会停止会话并显示同步错误。

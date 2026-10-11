@@ -1,6 +1,6 @@
 // Two or four isolated browser profiles: locked-character preview, shared drawings, map votes and room entry.
 // Requires the local room server (wrangler dev --port 8787) and app server.
-// CHROME=<path> [PLAYERS=2|4] [MODE=standard|daily] [PARITY=1] [FORMATION=1] [DIFFERENT_SPEED=1|guest] [DIVERGENCE=1] [KEYBOARD_PING=1] [VIEW=...] [ASPECT=Auto] node tools/e2e/multiplayer.mjs <outDir>
+// CHROME=<path> [URL=<host app>] [GUEST_URL=<guest app sharing the room service>] [INVITE=1] [PLAYERS=2|4] [MODE=standard|daily] [PARITY=1] [FORMATION=1] [DIFFERENT_SPEED=1|guest] [DIVERGENCE=1] [KEYBOARD_PING=1] [VIEW=...] [ASPECT=Auto] node tools/e2e/multiplayer.mjs <outDir>
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -29,12 +29,15 @@ try {
     const page = await browser.newPage({ viewport }); pages.push(page);
     await page.addInitScript(() => performance.setResourceTimingBufferSize(10000));
     page.on('pageerror', e => errors.push(`${i}: ${e.message}`));
-    await page.goto(base + '?lang=eng&tutorials=off');
+    const url = new URL(i ? process.env.GUEST_URL ?? base : base);
+    url.searchParams.set('lang', 'eng');
+    url.searchParams.set('tutorials', 'off');
+    await page.goto(url.href);
     await page.waitForFunction(() => window.ui?.screen === 'menu', null, { timeout: 60000 });
     await setAspect(page);
     if (await page.locator('.ea-proceed').count()) await page.click('.ea-proceed');
     await page.evaluate(mode => { window.G.SaveManager.Instance.PrefsSave.FastMode = window.G.FastModeType.Instant; if (mode === 'daily') { window.G.SaveManager.Instance.ObtainEpochOverride('DAILY_RUN_EPOCH', window.G.EpochState.Revealed); window.G.SaveManager.Instance.ObtainEpochOverride('NEOW_EPOCH', window.G.EpochState.Revealed); } window.invalidate(); }, mode);
-    await page.click('.mm-multiplayer');
+    if (!i || !process.env.INVITE) await page.click('.mm-multiplayer');
   }
   const host = pages[0], guest = pages[1];
   console.log(`Loaded ${count} isolated ${mode} profiles`);
@@ -42,13 +45,35 @@ try {
   await host.locator('.submenu-btn').nth(mode === 'daily' ? 1 : 0).click(); // Original standard/daily lobby
   await host.waitForSelector('.invite-code-btn');
   const code = (await host.locator('.invite-code-btn').innerText()).match(/[A-F0-9]{12}/)[0];
+  // Different origins may share a deployment; different builds must be rejected before allocating a player slot.
+  const wrongBuild = await guest.evaluate(async code => {
+    const res = await fetch(`/api/multiplayer/rooms/${code}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: 'e2e-incompatible-build' }),
+    });
+    return { status: res.status, body: await res.json() };
+  }, code);
+  assert.equal(wrongBuild.status, 409);
+  assert.equal(wrongBuild.body.error, 'version');
   for (const p of pages.slice(1)) {
-    await p.locator('.submenu-btn').nth(1).click();
-    await p.fill('.mp-dialog-input', code);
-    await p.press('.mp-dialog-input', 'Enter');
+    if (process.env.INVITE) {
+      const invite = new URL(p.url()); invite.searchParams.set('room', code);
+      await p.goto(invite.href);
+    } else {
+      await p.locator('.submenu-btn').nth(1).click();
+      if (p === guest) await p.screenshot({ path: `${out}/join-dialog.png` });
+      await p.fill('.mp-dialog-input', code);
+      await p.press('.mp-dialog-input', 'Enter');
+    }
     await p.waitForSelector('.invite-code-btn');
+    if (process.env.INVITE) {
+      await p.reload();
+      await p.waitForSelector('.invite-code-btn');
+      const id = await p.evaluate(code => JSON.parse(sessionStorage.getItem(`sts2_mp_${code}`)).id, code);
+      assert.equal(id, pages.indexOf(p) + 1, 'Refreshing an invitation preserves the authenticated lobby slot');
+    }
   }
   await host.waitForFunction(n => document.querySelectorAll('.remote-lobby-player').length === n, mode === 'daily' ? count - 1 : count);
+  console.log('Build mismatch rejected; compatible peers joined from', await Promise.all(pages.map(p => p.evaluate(() => location.origin))));
   if (mode !== 'daily') {
   // Original behavior: a locked character can be previewed, but cannot replace the lobby choice or ready up.
   await guest.locator('.chs-buttons > :nth-child(2)').click();

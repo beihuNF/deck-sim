@@ -1,6 +1,6 @@
 # 部署文档
 
-本项目是纯静态页面，可以通过 Docker 或 Cloudflare Workers 部署。`pnpm build` 的产物包含游戏和 `/wiki/` 资料站（约 3000 个页面），两者一起发布，不需要额外配置。以下命令均在仓库根目录执行；本地运行和开发环境准备见[开发文档](development.md)。
+单人游戏和资料站可以静态部署；多人联机还需要房间服务。`pnpm build` 的产物包含游戏和 `/wiki/` 资料站（约 3000 个页面），两者一起发布。以下命令均在仓库根目录执行；本地运行和开发环境准备见[开发文档](development.md)。
 
 ## Docker
 
@@ -34,7 +34,7 @@ docker run --rm -p 8080:80 <镜像名>:sha-<40位提交SHA>
 
 ## Cloudflare
 
-纯静态部署到 Cloudflare Workers（只有静态资源，没有 Worker 脚本，配置见 `wrangler.jsonc`）：
+Cloudflare Workers 同时提供静态资源和多人房间服务（`packages/server/src/index.ts`），每个房间使用 `ROOMS` Durable Object。配置见 `wrangler.jsonc`：
 
 ```bash
 pnpm build
@@ -49,3 +49,7 @@ npx wrangler deploy
 | Variable | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 账户 ID |
 
 响应头在 `packages/app/public/_headers`。`wrangler.jsonc` 里的 `routes` 是本仓库站点的域名，自行部署时换成自己的或删掉。存档按访问地址隔离：给玩家用的地址要一直用同一个自定义域名，`*.workers.dev` 只用来预览。
+
+联机客户端通过自己地址下的 `/api/multiplayer/rooms` 建房和加入。两个访问地址可以联机，前提是它们提供同一份构建，并连接同一个 Worker 的 `ROOMS` 命名空间；分别部署的独立房间服务不会共享房间号。入房会校验游戏版本、构建编号和联机协议，不同构建会被拒绝。构建编号在每次 Vite 启动或构建时产生，因此分别构建同一提交也不能混用。
+
+排查不同地址的不同步问题时，先比对页面引用的 `js/index-*.js` 和各自房间服务的部署，再核查原版战斗 checksum。不同域名本身不是状态分叉的证据。刷新原有地址即可更新页面，保留该地址的浏览器存档；不要用删除网站数据来排查缓存。

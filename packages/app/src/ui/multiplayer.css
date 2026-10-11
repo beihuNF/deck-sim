@@ -42,14 +42,21 @@
   width: 620px;
   box-sizing: border-box;
   padding: 48px 56px 40px;
-  border: 42px solid transparent;
-  border-image-slice: 21 fill;
-  border-image-width: 42px;
+  isolation: isolate;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+}
+
+.mp-dialog-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 12px solid transparent;
+  border-image-slice: 6 fill;
+  pointer-events: none;
 }
 
 .mp-dialog-title {
@@ -111,6 +118,15 @@
   gap: 24px;
   justify-content: center;
   width: 100%;
+}
+
+.mp-dialog-buttons .vp-btn {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  flex: 0 0 196px;
 }
 
 /* -------------------------------------------------- 连线中与启程过渡动画 */

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { G, $, list } from '../game';
 import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
-  readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError,
+  readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode,
 } from '../multiplayer';
 import { BackButton, ConfirmButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
@@ -21,6 +21,13 @@ import { charSelectBg } from '../render/scene';
 import './multiplayer.css';
 
 const m = (k: string) => loc('main_menu_ui', k);
+function RoomDialogBackground() {
+  // JoinFriendSubmenu.Panel self_modulate; keep it on the texture, not the labels and buttons.
+  return <div class="mp-dialog-bg" style={{
+    borderImageSource: `url(${imageUrl('images/ui/tiny_nine_patch.png')})`,
+    filter: tint(0.11309999, 0.25167164, 0.29, 0.7529412),
+  }} />;
+}
 const shake = () => {
   try {
     $.ext('MegaCrit.Sts2.Core.Nodes.NGame').Instance?.ScreenShake(
@@ -53,9 +60,9 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
   // 从 URL 参数自动加入房间
   useEffect(() => {
-    const p = new URLSearchParams(location.search).get('room');
-    if (p && p.length === 12 && mp.phase === 'idle') {
-      void connectMultiplayer(p.toUpperCase());
+    const code = invitedRoomCode();
+    if (code && mp.phase === 'idle') {
+      void connectMultiplayer(code);
     }
   }, []);
 
@@ -294,13 +301,11 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* 3. 加入游戏原版九宫格弹窗 */}
+      {/* Web room-code entry, using the original JoinFriendSubmenu panel material. */}
       {mp.phase === 'idle' && view === 'join' && (
         <div class="mp-join-modal-backstop">
-          <div
-            class="mp-join-dialog"
-            style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }}
-          >
+          <div class="mp-join-dialog">
+            <RoomDialogBackground />
             <h2 class="mp-dialog-title">{m('JOIN.title')}</h2>
             <p class="mp-dialog-desc">{m('JOIN.description')}</p>
 
@@ -439,10 +444,8 @@ export function MultiplayerStatus() {
     <>
       {mp.phase === 'ended' && (
         <div class="mp-join-modal-backstop">
-          <div
-            class="mp-join-dialog"
-            style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }}
-          >
+          <div class="mp-join-dialog">
+            <RoomDialogBackground />
             <h2 class="mp-dialog-title">{tr('联机已中断', 'Co-op Session Ended')}</h2>
             <p class="mp-dialog-desc">{multiplayerError()}</p>
             <p class="coop-note">

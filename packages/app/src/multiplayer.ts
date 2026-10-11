@@ -11,6 +11,10 @@ export const multiplayer = {
 };
 const API = '/api/multiplayer/rooms';
 const version = `${GAME_VERSION}/${__BUILD_ID__}/web-coop-3`;
+export function invitedRoomCode() {
+  const code = new URLSearchParams(location.search).get('room')?.toUpperCase();
+  return code && /^[A-F0-9]{12}$/.test(code) ? code : null;
+}
 let socket: WebSocket | null = null;
 let net: any = null;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -46,6 +50,11 @@ function failed(error: string) {
 }
 export function leaveMultiplayer() {
   const code = multiplayer.code;
+  // Explicitly leaving an invitation must not rejoin it on the reload used to exit an ephemeral run.
+  if (new URLSearchParams(location.search).has('room')) {
+    const url = new URL(location.href); url.searchParams.delete('room');
+    history.replaceState(history.state, '', url.href);
+  }
   if (code) clearSession(code);
   try { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'leave' })); } catch {}
   if ($.vfs.ephemeral) { socket?.close(); location.reload(); return; }
