@@ -38,7 +38,34 @@ export default defineConfig(({ command }) => ({
   preview: { port: 47174, strictPort: true, host: '127.0.0.1' },
   // Asset URLs ask for the …@0.5x images as %40 (sw.js, the wiki), as Cloudflare serves them; the preview's static server
   // decodes paths with decodeURI, which leaves %40 encoded, and would answer with the page instead
-  plugins: [{ name: 'preview-at-sign', configurePreviewServer: (s) => { s.middlewares.use((req, _res, next) => { req.url = req.url?.replaceAll('%40', '@'); next(); }); } }],
+  plugins: [
+    { name: 'preview-at-sign', configurePreviewServer: (s) => { s.middlewares.use((req, _res, next) => { req.url = req.url?.replaceAll('%40', '@'); next(); }); } },
+    {
+      name: 'invite-link-redirect',
+      configureServer: (server) => {
+        server.middlewares.use((req, res, next) => {
+          const m = req.url ? /^\/(?:r|room)\/([A-F0-9]{12})\/?([?#].*)?$/i.exec(req.url) : null;
+          if (m) {
+            res.writeHead(302, { Location: `/?room=${m[1].toUpperCase()}${m[2] ? (m[2].startsWith('?') ? '&' + m[2].slice(1) : m[2]) : ''}` });
+            res.end();
+            return;
+          }
+          next();
+        });
+      },
+      configurePreviewServer: (server) => {
+        server.middlewares.use((req, res, next) => {
+          const m = req.url ? /^\/(?:r|room)\/([A-F0-9]{12})\/?([?#].*)?$/i.exec(req.url) : null;
+          if (m) {
+            res.writeHead(302, { Location: `/?room=${m[1].toUpperCase()}${m[2] ? (m[2].startsWith('?') ? '&' + m[2].slice(1) : m[2]) : ''}` });
+            res.end();
+            return;
+          }
+          next();
+        });
+      },
+    },
+  ],
   define: { __BUILD_ID__: JSON.stringify(Date.now().toString(36)), __ASSETS_ID__: JSON.stringify(command === 'build' ? assetsId(path.resolve(__dirname, 'public/assets')) : 'dev') },
   optimizeDeps: { exclude: ['@sts2/core'] },
 }));

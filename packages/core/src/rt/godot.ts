@@ -289,7 +289,34 @@ function drainWrites() {
 }
 function writeFiles(changes: PendingWrite['changes']): Promise<void> {
   if (restored) throw new Error('Saves restored; reload before writing');
-  if (sessionFiles) { apply(sessionFiles, changes(sessionFiles)); return Promise.resolve(); }
+  if (sessionFiles) {
+    const edits = changes(sessionFiles);
+    apply(sessionFiles, edits);
+    // 多人游戏存盘持久化：将 multiplayer_run.save 及其备份文件同步落盘到 IndexedDB/localStorage，确保重载后可断点续玩
+    const mpChanges = edits.filter(([p]) => p.includes('multiplayer_run.save'));
+    if (mpChanges.length) {
+      if (db) {
+        let ok!: () => void, fail!: (e: unknown) => void;
+        const done = new Promise<void>((resolve, reject) => { ok = resolve; fail = reject; });
+        void done.catch(() => {});
+        pending.push({ changes: () => mpChanges, done, ok, fail });
+        apply(mem, mpChanges);
+        for (const [p, s] of mpChanges) journal(p, s);
+        if (pending.length === 1) drainWrites();
+        return done;
+      } else if (storage) {
+        for (const [p, s] of mpChanges) {
+          try {
+            if (s === null) storage.removeItem(LS_PREFIX + p);
+            else storage.setItem(LS_PREFIX + p, s);
+          } catch {}
+        }
+      } else {
+        apply(mem, mpChanges);
+      }
+    }
+    return Promise.resolve();
+  }
   if (!db) {
     const files = storage ? new Map(lsKeys().map(k => [k.slice(LS_PREFIX.length), storage.getItem(k)!])) : mem;
     // Backup first, primary second: a failed localStorage write never removes the old primary.

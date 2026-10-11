@@ -69,3 +69,40 @@ export async function logoutSteam() {
   }
 }
 
+const GUEST_NAME_KEY = 'sts2_guest_name';
+
+/** 获取当前设定的游客昵称（无自定义时返回默认 Byrdlett） */
+export function getGuestName(): string {
+  try {
+    const saved = localStorage.getItem(GUEST_NAME_KEY);
+    if (saved && saved.trim()) return saved.trim();
+  } catch {}
+  return 'Byrdlett';
+}
+
+/** 是否曾经主动设定过游客昵称 */
+export function hasSetGuestName(): boolean {
+  try {
+    const saved = localStorage.getItem(GUEST_NAME_KEY);
+    return !!(saved && saved.trim());
+  } catch {
+    return false;
+  }
+}
+
+/** 保存自定义游客昵称并触发重渲染 */
+export function setGuestName(name: string): string {
+  const clean = name.trim().slice(0, 24) || 'Byrdlett';
+  try {
+    localStorage.setItem(GUEST_NAME_KEY, clean);
+  } catch {}
+  invalidate();
+  return clean;
+}
+
+/** 当前玩家的有效显示名称（登录 Steam 优先使用 Steam 昵称，否则使用游客昵称） */
+export function effectivePlayerName(): string {
+  return steam.profile?.name || getGuestName();
+}
+
+

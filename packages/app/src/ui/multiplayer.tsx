@@ -2,9 +2,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'preact/hooks';
 import { G, $, list } from '../game';
+import { safe } from './comp-shared';
 import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
   readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode, parseRoomInvitation, multiplayerPlayerName, retryMultiplayer,
+  buildRoomInviteUrl, renameMultiplayer,
 } from '../multiplayer';
 import { BackButton, ConfirmButton, UnreadyButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
@@ -18,7 +20,7 @@ import { tint } from '../filters';
 import { charSelectBg } from '../render/scene';
 import { transitionView } from './transition';
 import './multiplayer.css';
-import { steam, loadSteamProfile, loginSteam, logoutSteam } from '../steam';
+import { steam, loadSteamProfile, loginSteam, logoutSteam, getGuestName, setGuestName, hasSetGuestName, effectivePlayerName } from '../steam';
 
 const m = (k: string) => loc('main_menu_ui', k);
 function RoomDialogBackground() {
@@ -42,8 +44,13 @@ const shake = () => {
 
 export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   useEffect(() => { void loadSteamProfile(); }, []);
-  const [view, setView] = useState<'menu' | 'host' | 'join'>('menu');
+  const [view, setView] = useState<'menu' | 'host' | 'join' | 'guest_join'>('menu');
   const [joinCode, setJoinCode] = useState('');
+  const [guestNameInput, setGuestNameInput] = useState(() => getGuestName());
+  const [editingMyName, setEditingMyName] = useState(false);
+  const [nameInputVal, setNameInputVal] = useState('');
+  const [mpAbandonConfirm, setMpAbandonConfirm] = useState(false);
+  const [mpSaveTick, setMpSaveTick] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
   const [, setKickGen] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
@@ -57,32 +64,56 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const dailySetup = mp.phase === 'lobby' && mp.mode === 'daily' && mp.settings.dailyDate ? G.webDailySetup(mp.settings.dailyDate, mp.players) : null;
   useEffect(() => { if (mp.phase !== 'lobby') setPreview(null); }, [mp.phase]);
 
-  const startConnect = async (code?: string, mode: 'standard' | 'daily' | 'custom' = 'standard') => {
+  const startConnect = async (code?: string, mode: 'standard' | 'daily' | 'custom' | 'load' = 'standard', extra?: { saveJson?: string; loadInfo?: any }) => {
     await transitionView.FadeOut(0.35);
     try {
-      await connectMultiplayer(code, mode);
+      await connectMultiplayer(code, mode, extra);
     } finally {
       await transitionView.FadeIn(0.35);
     }
   };
 
-  // 从 URL 参数自动加入房间
+  // 从 URL 参数自动加入房间（若为全新游客未设定昵称，走方案 B 迎宾弹窗）
   useEffect(() => {
     const code = invitedRoomCode();
     if (code && mp.phase === 'idle') {
-      void startConnect(code);
+      if (!hasSetGuestName() && !steam.profile) {
+        setView('guest_join');
+      } else {
+        void startConnect(code);
+      }
     }
   }, []);
 
-  // 房间大厅角色背景同步
+  // 打开输入房间码窗口时，若剪贴板内有房间码/链接则自动填入
   useEffect(() => {
-    if (mp.phase === 'lobby' && mp.mode !== 'daily' && selectedCharObj) {
-      void charSelectBg(selectedCharObj.locked ? null : String(selectedCharObj.c.Id.Entry).toLowerCase());
+    if (view === 'join' && !joinCode) {
+      void (async () => {
+        try {
+          const text = await navigator.clipboard?.readText();
+          const code = parseRoomInvitation(text ?? '');
+          if (code) setJoinCode(code);
+        } catch {}
+      })();
+    }
+  }, [view]);
+
+  // 房间大厅角色背景同步（load 模式自动展示存盘房主立绘）
+  useEffect(() => {
+    if (mp.phase === 'lobby') {
+      if (mp.mode === 'load') {
+        const char = (mp.loadInfo?.hostCharacter || 'ironclad').toLowerCase();
+        void charSelectBg(char);
+      } else if (mp.mode !== 'daily' && selectedCharObj) {
+        void charSelectBg(selectedCharObj.locked ? null : String(selectedCharObj.c.Id.Entry).toLowerCase());
+      } else {
+        void charSelectBg(null);
+      }
     } else {
       void charSelectBg(null);
     }
     return () => { void charSelectBg(null); };
-  }, [mp.phase, mp.mode, selectedCharObj?.c?.Id?.Entry]);
+  }, [mp.phase, mp.mode, mp.loadInfo?.hostCharacter, selectedCharObj?.c?.Id?.Entry]);
 
   const copyText = (text: string, tag: string) => {
     playOneShot('event:/sfx/ui/clicks/ui_click');
@@ -104,7 +135,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   };
 
   const handleSelectChar = (c: any, locked: boolean) => {
-    if (me?.ready) return; // 已就绪状态禁止切人
+    if (me?.ready || mp.mode === 'load') return; // 已就绪或读档模式禁止切人
     const entry = c.Id.Entry;
     if (entry === currentHeroId) return;
     setPreview(entry);
@@ -116,7 +147,52 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
   const daily = epochRevealed(G.DailyRunEpoch);
   const custom = epochRevealed(G.CustomAndSeedsEpoch);
-  const hasMpSave = false; // 当前暂无断线续玩联机存档
+  const hasMpSave = safe(() => G.SaveManager.Instance.HasMultiplayerRunSave, false);
+
+  const handleAbandonMultiplayer = async () => {
+    try {
+      G.SaveManager.Instance.DeleteCurrentMultiplayerRun();
+      await $.vfs.flush();
+    } catch (e) {
+      console.warn('Failed to delete multiplayer run', e);
+    }
+    setMpAbandonConfirm(false);
+    setMpSaveTick(t => t + 1);
+  };
+
+  const handleLoadMultiplayer = async () => {
+    try {
+      const res = G.SaveManager.Instance.LoadAndCanonicalizeMultiplayerRunSave(0);
+      if (!res.Success || !res.SaveData) {
+        console.error('Failed to load multiplayer save', res);
+        return;
+      }
+      const save = res.SaveData;
+      const saveJson = G.serializeWebRunSave(save);
+      const playersList = Array.from(save.Players) as any[];
+      const hostPlayer = playersList[0];
+      const loadInfo = {
+        hostCharacter: hostPlayer?.CharacterId?.Entry || 'ironclad',
+        hostHp: hostPlayer?.CurrentHp ?? 80,
+        hostMaxHp: hostPlayer?.MaxHp ?? 80,
+        hostGold: hostPlayer?.Gold ?? 99,
+        act: (save.CurrentActIndex ?? 0) + 1,
+        floor: (save.VisitedMapCoords?.Count ?? 0) || 1,
+        ascension: save.Ascension ?? 0,
+        totalPlayers: playersList.length,
+        players: playersList.map((p, idx) => ({
+          slot: idx + 1,
+          character: p.CharacterId?.Entry || 'ironclad',
+          hp: p.CurrentHp,
+          maxHp: p.MaxHp,
+          gold: p.Gold,
+        })),
+      };
+      await startConnect(undefined, 'load', { saveJson, loadInfo });
+    } catch (e) {
+      console.error('Error starting load multiplayer', e);
+    }
+  };
 
   // 房主与全员就绪判定：至少 2 人，所有玩家（包括房主自身）全部就绪且在线
   const isHost = mp.id === 1;
@@ -131,10 +207,10 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* 邀请代码与复制按钮（原版 InviteButton 布局） */}
+      {/* 邀请代码与复制按钮（保证域名后紧随斜杠 /，彻底防止手机聊天软件截断） */}
       <div
         class="invite-code-btn"
-        onClick={() => copyText(`${location.origin}?room=${mp.code}`, 'link')}
+        onClick={() => copyText(buildRoomInviteUrl(mp.code), 'link')}
         onPointerEnter={() => playOneShot('event:/sfx/ui/clicks/ui_hover')}
         title={tr('点击复制邀请链接与房间号', 'Click to copy invite link and room code')}
       >
@@ -188,6 +264,19 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               <div class="rlp-nameplate">
                 <div class="rlp-player-name">
                   {isSlotHost ? tr('[房主] ', '[Host] ') : ''}{multiplayerPlayerName(slotId)} 
+                  {isSlotMe && (
+                    <span
+                      class="rlp-edit-name-btn"
+                      title={tr('修改昵称', 'Change Name')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNameInputVal(effectivePlayerName());
+                        setEditingMyName(true);
+                      }}
+                    >
+                      ✏️
+                    </span>
+                  )}
                   {isSlotMe && tr('(你)', '(You)')}
                 </div>
                 <div class="rlp-char-title">
@@ -272,8 +361,24 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             <p class="mp-dialog-desc">
               {steam.profile
                 ? tr('当前已连接 Steam。在多人联机房间与游戏中，其他玩家将看到你的 Steam 昵称与头像。你的单人游戏存档不受任何影响，仍安全保存在本地。', 'Connected with Steam. Other players will see your verified Steam name and avatar in multiplayer sessions. Your singleplayer saves remain completely intact.')
-                : tr('当前以游客身份联机。使用 Steam 网页登录后，即可向队友展示你的 Steam 昵称与头像。单人游戏存档不受任何影响，仍安全保存在本地。', 'Currently playing as a guest. Sign in with Steam to show your verified Steam name and avatar in multiplayer sessions. Your singleplayer saves remain completely intact.')}
+                : tr('当前以游客身份联机。你可以直接修改下方游客昵称，或使用 Steam 网页登录展示真实 Steam 昵称与头像。单人游戏存档不受任何影响，仍安全保存在本地。', 'Currently playing as a guest. You can customize your guest nickname below, or sign in with Steam to show your verified profile.')}
             </p>
+
+            {!steam.profile && (
+              <div class="mp-dialog-input-wrap" style={{ margin: '12px 0 20px 0' }}>
+                <div style={{ color: '#fff6e2', fontSize: '18px', marginBottom: '6px', textAlign: 'left', fontWeight: 'bold' }}>
+                  {tr('自定义游客昵称：', 'Custom Guest Nickname:')}
+                </div>
+                <input
+                  type="text"
+                  class="mp-dialog-input"
+                  maxLength={20}
+                  value={guestNameInput}
+                  placeholder={getGuestName()}
+                  onInput={e => setGuestNameInput(e.currentTarget.value)}
+                />
+              </div>
+            )}
 
             {steam.error && (
               <p class="mp-account-error" role="alert">
@@ -299,12 +404,17 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 <>
                   <PopupButton
                     yes={false}
-                    text={tr('取消', 'Cancel')}
-                    onClick={() => setShowAccountDialog(false)}
+                    text={tr('保存昵称', 'Save Name')}
+                    onClick={() => {
+                      if (guestNameInput.trim()) {
+                        renameMultiplayer(guestNameInput.trim());
+                      }
+                      setShowAccountDialog(false);
+                    }}
                   />
                   <PopupButton
                     yes={true}
-                    text={tr('登录', 'Sign In')}
+                    text={tr('登录 Steam', 'Sign In Steam')}
                     onClick={() => loginSteam(() => setShowAccountDialog(false))}
                   />
                 </>
@@ -314,6 +424,131 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           <BackButton enabled onClick={() => setShowAccountDialog(false)} />
         </div>
       )}
+
+      {/* 方案 B：全新游客直接通过邀请链接进入时的迎宾昵称设定弹窗 */}
+      {mp.phase === 'idle' && view === 'guest_join' && (
+        <div class="mp-join-modal-backstop">
+          <div class="mp-join-dialog">
+            <RoomDialogBackground />
+            <h2 class="mp-dialog-title">{tr('加入联机房间', 'Join Multiplayer Room')}</h2>
+            <p class="mp-dialog-desc">
+              {tr('收到房间邀请码：', 'Invited to room: ')}<span style={{ color: '#efc851', fontWeight: 'bold' }}>{invitedRoomCode()}</span>
+            </p>
+
+            <div class="mp-dialog-input-wrap">
+              <div style={{ color: '#fff6e2', fontSize: '20px', marginBottom: '8px', textAlign: 'left', fontWeight: 'bold' }}>
+                {tr('请设定你的玩家昵称：', 'Set Your Player Name:')}
+              </div>
+              <input
+                type="text"
+                class="mp-dialog-input"
+                maxLength={20}
+                autoFocus
+                placeholder={getGuestName()}
+                value={guestNameInput}
+                onInput={e => setGuestNameInput(e.currentTarget.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    setGuestName(guestNameInput.trim() || 'Byrdlett');
+                    void startConnect(invitedRoomCode()!);
+                  }
+                }}
+              />
+            </div>
+
+            <div class="mp-dialog-buttons">
+              <PopupButton
+                yes={false}
+                text={tr('取消', 'Cancel')}
+                onClick={() => {
+                  const url = new URL(location.href); url.searchParams.delete('room');
+                  history.replaceState(history.state, '', url.href);
+                  setView('menu');
+                }}
+              />
+              <PopupButton
+                yes={true}
+                text={tr('进入房间', 'Join Room')}
+                onClick={() => {
+                  setGuestName(guestNameInput.trim() || 'Byrdlett');
+                  void startConnect(invitedRoomCode()!);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 原版放弃多人对局确认弹窗 */}
+      {mpAbandonConfirm && (
+        <div class="mp-join-modal-backstop" onClick={() => setMpAbandonConfirm(false)}>
+          <div class="mp-join-dialog" onClick={e => e.stopPropagation()}>
+            <RoomDialogBackground />
+            <h2 class="mp-dialog-title">{loc('main_menu_ui', 'ABANDON_RUN_CONFIRMATION.header')}</h2>
+            <p class="mp-dialog-desc">{loc('main_menu_ui', 'ABANDON_RUN_CONFIRMATION.body')}</p>
+            <div class="mp-dialog-buttons">
+              <PopupButton
+                yes={false}
+                text={loc('main_menu_ui', 'GENERIC_POPUP.cancel')}
+                onClick={() => setMpAbandonConfirm(false)}
+              />
+              <PopupButton
+                yes={true}
+                text={loc('main_menu_ui', 'GENERIC_POPUP.confirm')}
+                onClick={() => void handleAbandonMultiplayer()}
+              />
+            </div>
+          </div>
+          <BackButton enabled onClick={() => setMpAbandonConfirm(false)} />
+        </div>
+      )}
+
+      {/* 悬浮铭牌快捷修改昵称弹窗 */}
+      {editingMyName && (
+        <div class="mp-join-modal-backstop" onClick={() => setEditingMyName(false)}>
+          <div class="mp-join-dialog" onClick={e => e.stopPropagation()}>
+            <RoomDialogBackground />
+            <h2 class="mp-dialog-title">{tr('修改你的玩家昵称', 'Change Player Name')}</h2>
+            <div class="mp-dialog-input-wrap">
+              <input
+                type="text"
+                class="mp-dialog-input"
+                maxLength={20}
+                autoFocus
+                value={nameInputVal}
+                onInput={e => setNameInputVal(e.currentTarget.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    if (nameInputVal.trim()) {
+                      renameMultiplayer(nameInputVal.trim());
+                    }
+                    setEditingMyName(false);
+                  }
+                }}
+              />
+            </div>
+            <div class="mp-dialog-buttons">
+              <PopupButton
+                yes={false}
+                text={tr('取消', 'Cancel')}
+                onClick={() => setEditingMyName(false)}
+              />
+              <PopupButton
+                yes={true}
+                text={tr('保存', 'Save')}
+                onClick={() => {
+                  if (nameInputVal.trim()) {
+                    renameMultiplayer(nameInputVal.trim());
+                  }
+                  setEditingMyName(false);
+                }}
+              />
+            </div>
+          </div>
+          <BackButton enabled onClick={() => setEditingMyName(false)} />
+        </div>
+      )}
+
       {mp.error && <div class="mp-toast-error" role="alert">{multiplayerError()}</div>}
 
       {/* 1. 多人主菜单（SubmenuButtons 原版卡片） */}
@@ -346,7 +581,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 icon="submenu_load"
                 hsv={[0.48, 0.8, 0.7]}
                 enabled
-                onClick={() => {}}
+                onClick={() => void handleLoadMultiplayer()}
               />
               <SubmenuButton
                 x={795}
@@ -354,7 +589,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 icon="submenu_abandon"
                 hsv={[0.93, 1.2, 0.65]}
                 enabled
-                onClick={() => {}}
+                onClick={() => setMpAbandonConfirm(true)}
               />
               <SubmenuButton
                 x={1195}
@@ -413,7 +648,6 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               <input
                 type="text"
                 class="mp-dialog-input"
-                maxLength={12}
                 autoFocus
                 placeholder="____________"
                 value={joinCode}
@@ -421,14 +655,42 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                   const code = parseRoomInvitation(e.clipboardData?.getData('text') ?? '');
                   if (code) { e.preventDefault(); setJoinCode(code); }
                 }}
-                onInput={e => setJoinCode(e.currentTarget.value.toUpperCase().replace(/[^A-F0-9]/g, ''))}
+                onInput={e => {
+                  const val = e.currentTarget.value;
+                  const parsed = parseRoomInvitation(val);
+                  if (parsed) {
+                    setJoinCode(parsed);
+                  } else {
+                    setJoinCode(val.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 12));
+                  }
+                }}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && joinCode.length === 12) {
                     void startConnect(joinCode);
                   }
                 }}
               />
-              <div class="mp-dialog-hint">{tr('输入房间代码或粘贴邀请链接', 'Enter a room code or paste an invitation link')}</div>
+              <div class="mp-paste-row">
+                <div class="mp-dialog-hint">{tr('输入房间代码或粘贴邀请链接', 'Enter a room code or paste an invitation link')}</div>
+                {typeof navigator !== 'undefined' && !!navigator.clipboard && (
+                  <button
+                    type="button"
+                    class="mp-quick-paste-btn"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        const code = parseRoomInvitation(text);
+                        if (code) {
+                          setJoinCode(code);
+                          playOneShot('event:/sfx/ui/clicks/ui_click');
+                        }
+                      } catch {}
+                    }}
+                  >
+                    {tr('📋 粘贴', '📋 Paste')}
+                  </button>
+                )}
+              </div>
             </div>
 
             <div class="mp-dialog-buttons">
@@ -548,6 +810,151 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           {!me?.ready ? (
             <ConfirmButton
               enabled={!!me && !selectedCharObj?.locked && me.character === currentHeroId}
+              onClick={() => readyMultiplayer(true)}
+            />
+          ) : (
+            <UnreadyButton
+              enabled={true}
+              onClick={() => readyMultiplayer(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* 6. 原版多人读档大厅：1:1 对齐 NMultiplayerLoadGameScreen / multiplayer_load_game_screen.tscn */}
+      {mp.phase === 'lobby' && mp.mode === 'load' && (
+        <div class="mp-load-screen">
+          {/* 顶部进阶展示面板 */}
+          <div style={{ position: 'absolute', left: '50%', top: '64px', transform: 'translateX(-50%)' }}>
+            <AscensionPanel
+              multiplayer
+              level={mp.loadInfo?.ascension ?? 0}
+              max={mp.loadInfo?.ascension ?? 0}
+              readOnly={true}
+              onChange={() => {}}
+            />
+          </div>
+
+          {/* 左侧房主角色信息卡片 (InfoPanel) */}
+          <div class="mpl-info-panel">
+            <div
+              class="mpl-panel-bg"
+              style={{
+                borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})`,
+                backgroundColor: 'rgba(0, 0, 0, 0.36)',
+              }}
+            />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div class="mpl-char-name">
+                {loc('characters', `${mp.loadInfo?.hostCharacter || 'ironclad'}.title`)}
+              </div>
+              <div class="mpl-stats-row">
+                <div class="mpl-stat-item">
+                  <img class="mpl-stat-icon" src={imageUrl('images/atlases/ui_atlas.sprites/top_bar/top_bar_heart.tres') || imageUrl('images/ui/top_panel/heart.png') || ''} />
+                  <span class="mpl-stat-val-hp">{mp.loadInfo?.hostHp ?? 80}/{mp.loadInfo?.hostMaxHp ?? 80}</span>
+                </div>
+                <div class="mpl-stat-item">
+                  <img class="mpl-stat-icon" src={imageUrl('images/atlases/ui_atlas.sprites/top_bar/top_bar_gold.tres') || imageUrl('images/ui/top_panel/gold.png') || ''} />
+                  <span class="mpl-stat-val-gold">{mp.loadInfo?.hostGold ?? 99}</span>
+                </div>
+              </div>
+              <div class="mpl-location-row">
+                <img class="mpl-loc-icon" src={imageUrl('images/atlases/ui_atlas.sprites/top_bar/top_bar_floor.tres') || imageUrl('images/ui/map/map_icon.png') || ''} />
+                <div class="mpl-loc-text">
+                  <span>{loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.ACT') ? loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.ACT').replace('{act}', String(mp.loadInfo?.act ?? 1)) : `Act: ${mp.loadInfo?.act ?? 1}`}</span>
+                  <span>{loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.FLOOR') ? loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.FLOOR').replace('{floor}', String(mp.loadInfo?.floor ?? 1)) : `Floor: ${mp.loadInfo?.floor ?? 1}`}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 右侧队友槽位容器 (RemotePlayerLoadContainer) */}
+          <div class="mpl-remote-container">
+            <div
+              class="mpl-panel-bg"
+              style={{
+                borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})`,
+                backgroundColor: 'rgba(0, 0, 0, 0.36)',
+              }}
+            />
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div class="mpl-others-title">
+                {loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.OTHERS')
+                  ? loc('main_menu_ui', 'MULTIPLAYER_LOAD_MENU.OTHERS').replace('{others}', String(Math.max(1, (mp.loadInfo?.totalPlayers ?? 2) - 1)))
+                  : tr(`另外 ${(mp.loadInfo?.totalPlayers ?? 2) - 1} 名队友:`, `And ${(mp.loadInfo?.totalPlayers ?? 2) - 1} others:`)}
+              </div>
+              <div class="mpl-slot-list">
+                {(mp.loadInfo?.players || []).filter((p: any) => p.slot !== 1).map((savedPlayer: any) => {
+                  const connectedPeer = mp.players.find(p => p.id === savedPlayer.slot);
+                  const pChar = String(savedPlayer.character || 'silent').toLowerCase();
+                  const tickFrame = frameByName('compressed', 'confirm_button_tick');
+                  return (
+                    <div key={savedPlayer.slot} class="mpl-slot-item">
+                      <div class="mpl-slot-avatar-wrap">
+                        <img
+                          class="mpl-slot-avatar"
+                          src={connectedPeer?.profile?.avatar || imageUrl(`images/ui/top_panel/character_icon_${pChar}.png`) || ''}
+                          alt=""
+                        />
+                        {connectedPeer?.ready && (
+                          <div
+                            class="rlp-ready-tick"
+                            style={{
+                              ...frameStyle(tickFrame, 40, 40),
+                              filter: 'drop-shadow(0 0 4px #7fff00) brightness(1.2)',
+                            }}
+                          />
+                        )}
+                        {connectedPeer && !connectedPeer.connected && (
+                          <img class="rlp-disconnect" src={imageUrl('images/ui/disconnected.png') ?? ''} />
+                        )}
+                      </div>
+                      <div class="mpl-slot-info">
+                        <div class="mpl-slot-player-name">
+                          {connectedPeer ? multiplayerPlayerName(savedPlayer.slot) : tr('等待连入…', 'Waiting to join…')}
+                          {savedPlayer.slot === mp.id && tr(' (你)', ' (You)')}
+                        </div>
+                        <div class="mpl-slot-char-desc">
+                          {loc('characters', `${savedPlayer.character}.title`)} · HP {savedPlayer.hp}/{savedPlayer.maxHp} · {savedPlayer.gold} G
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* 原版 RemotePlayerContainer（左上角悬浮铭牌与邀请码） */}
+          {remotePlayers}
+
+          {/* 原版 ReadyAndWaitingPanel：准备后且等待其他玩家时展示 */}
+          {me?.ready && (
+            <div class="ready-and-waiting-panel">
+              <div
+                class="raw-bg"
+                style={{
+                  borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})`,
+                }}
+              />
+              <div class="raw-text">
+                {allReady
+                  ? tr('全员已就绪，即将启程', 'All players ready, embarking')
+                  : tr('等待其他玩家...', 'Waiting for other players...')}
+                <span class="thinky-dots">
+                  <span>.</span><span>.</span><span>.</span>
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 左下角原版返回按钮 */}
+          <BackButton enabled onClick={exit} />
+
+          {/* 右下角原版启程/取消准备按钮 */}
+          {!me?.ready ? (
+            <ConfirmButton
+              enabled={!!me}
               onClick={() => readyMultiplayer(true)}
             />
           ) : (

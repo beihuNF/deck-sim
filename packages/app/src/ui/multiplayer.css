@@ -113,6 +113,37 @@
   color: #a09785;
 }
 
+.mp-paste-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.mp-paste-row .mp-dialog-hint {
+  margin-top: 0;
+}
+
+.mp-quick-paste-btn {
+  background: rgba(40, 48, 56, 0.85);
+  border: 1px solid #8e7443;
+  color: #fce8a6;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mp-quick-paste-btn:hover {
+  background: rgba(60, 72, 84, 0.95);
+  border-color: #fce8a6;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
 .mp-dialog-buttons {
   display: flex;
   gap: 24px;
@@ -621,3 +652,191 @@
   margin-bottom: 20px;
   text-align: center;
 }
+
+/* 铭牌改名小图标 */
+.rlp-edit-name-btn {
+  margin-left: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s, transform 0.2s;
+  user-select: none;
+}
+.rlp-edit-name-btn:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* 原版多人读档大厅：1:1 对齐 multiplayer_load_game_screen.tscn */
+.mp-load-screen {
+  position: absolute;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+  pointer-events: auto;
+}
+
+/* 左侧房主角色信息卡片 (InfoPanel) */
+.mpl-info-panel {
+  position: absolute;
+  left: 296px;
+  top: 345px;
+  width: 526px;
+  height: 434px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 30px 40px;
+  box-sizing: border-box;
+}
+
+.mpl-panel-bg {
+  position: absolute;
+  inset: 0;
+  border-style: solid;
+  border-width: 42px;
+  border-image-slice: 42 fill;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.8));
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.mpl-char-name {
+  font: 700 80px/1 'Spectral', 'Kreon', var(--font);
+  color: var(--gold, #efc851);
+  letter-spacing: 2px;
+  -webkit-text-stroke: 6px rgba(0, 0, 0, 0.35);
+  paint-order: stroke fill;
+  text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.8);
+  margin-bottom: 24px;
+}
+
+.mpl-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  margin-bottom: 24px;
+}
+
+.mpl-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mpl-stat-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.mpl-stat-val-hp {
+  font: 700 28px 'Kreon', var(--font);
+  color: #ff6464;
+  -webkit-text-stroke: 3px rgba(0, 0, 0, 0.35);
+  paint-order: stroke fill;
+  text-shadow: 3px 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.mpl-stat-val-gold {
+  font: 700 28px 'Kreon', var(--font);
+  color: var(--gold, #efc851);
+  -webkit-text-stroke: 3px rgba(0, 0, 0, 0.35);
+  paint-order: stroke fill;
+  text-shadow: 3px 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.mpl-location-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mpl-loc-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.mpl-loc-text {
+  font: 700 24px 'Kreon', var(--font);
+  color: var(--cream, #fff6e2);
+  letter-spacing: 1px;
+  text-shadow: 3px 2px 0 rgba(0, 0, 0, 0.35);
+  display: flex;
+  gap: 20px;
+}
+
+/* 右侧队友槽位容器 (RemotePlayerLoadContainer) */
+.mpl-remote-container {
+  position: absolute;
+  left: 906px;
+  top: 322px;
+  width: 427px;
+  height: 402px;
+  padding: 30px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.mpl-others-title {
+  font: 700 31px 'Kreon', var(--font);
+  color: var(--cream, #fff6e2);
+  letter-spacing: 1px;
+  text-shadow: 3px 2px 0 rgba(0, 0, 0, 0.35);
+  margin-bottom: 20px;
+}
+
+.mpl-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.mpl-slot-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  height: 72px;
+}
+
+.mpl-slot-avatar-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.mpl-slot-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid var(--gold, #efc851);
+  object-fit: cover;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
+}
+
+.mpl-slot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mpl-slot-player-name {
+  font: 700 22px 'Kreon', var(--font);
+  color: var(--gold, #efc851);
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+}
+
+.mpl-slot-char-desc {
+  font: 400 18px 'Kreon', var(--font);
+  color: var(--cream, #fff6e2);
+  opacity: 0.9;
+}
+

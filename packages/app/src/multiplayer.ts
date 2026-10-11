@@ -1,31 +1,53 @@
 import { G, $, GAME_VERSION, list } from './game';
 import { ui, invalidate } from './store';
-import { startCoopRun, quickReloadCoopRun } from './flow';
+import { startCoopRun, loadSavedCoopRun, quickReloadCoopRun } from './flow';
 import { loc } from './i18n';
+import { effectivePlayerName, setGuestName } from './steam';
 
 export const multiplayer = {
   phase: 'idle' as 'idle' | 'connecting' | 'lobby' | 'starting' | 'playing' | 'reconnecting' | 'ended',
-  code: '', id: 0, mode: 'standard' as 'standard' | 'daily' | 'custom', maxPlayers: 4, maxAscension: 0,
+  code: '', id: 0, mode: 'standard' as 'standard' | 'daily' | 'custom' | 'load', maxPlayers: 4, maxAscension: 0,
   settings: { ascension: 0, seed: '', modifiers: [] as string[], dailyDate: '' },
   waiting: false,
+  saveJson: undefined as string | undefined,
+  loadInfo: undefined as any,
   players: [] as { id: number; character: string; ready: boolean; connected: boolean; profile?: { steamId: string; name: string; avatar: string } }[], error: '',
 };
 const API = '/api/multiplayer/rooms';
 const version = `${GAME_VERSION}/${__BUILD_ID__}/web-coop-4`;
-export function invitedRoomCode() {
-  const code = new URLSearchParams(location.search).get('room')?.toUpperCase();
-  return code && /^[A-F0-9]{12}$/.test(code) ? code : null;
+export function extractRoomCode(str: string): string | null {
+  if (!str) return null;
+  const trimmed = str.trim();
+  // 1. 直接匹配纯 12 位十六进制房间号
+  if (/^[A-F0-9]{12}$/i.test(trimmed)) return trimmed.toUpperCase();
+  // 2. 匹配 Path 路径 /r/... 或 /room/...
+  const pm = trimmed.match(/\/(?:r|room)\/([A-F0-9]{12})/i);
+  if (pm) return pm[1].toUpperCase();
+  // 3. 匹配 URL Query 参数 ?room=... 或 ?r=...
+  const qm = trimmed.match(/[?&](?:room|r)=([A-F0-9]{12})/i);
+  if (qm) return qm[1].toUpperCase();
+  // 4. 匹配 URL Hash 路由 #room=... 或 #/r/... 或 #/room/... 或 #...
+  const hm = trimmed.match(/#(?:room=|(?:\/(?:room|r)\/)?)([A-F0-9]{12})/i);
+  if (hm) return hm[1].toUpperCase();
+  // 5. 兜底匹配任意文本中独立的 12 位房间码
+  const anyM = trimmed.match(/\b([A-F0-9]{12})\b/i);
+  if (anyM) return anyM[1].toUpperCase();
+  return null;
 }
-/** Invitations carry a public room code, never another player's authenticated session token. */
-export function parseRoomInvitation(text: string) {
-  const value = text.trim();
-  if (/^[A-F0-9]{12}$/i.test(value)) return value.toUpperCase();
-  try {
-    const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(value) ? value : `https://${value}`);
-    if (!['http:', 'https:'].includes(url.protocol)) return null;
-    const code = url.searchParams.get('room');
-    return code && /^[A-F0-9]{12}$/i.test(code) ? code.toUpperCase() : null;
-  } catch { return null; }
+
+export function invitedRoomCode(): string | null {
+  return extractRoomCode(location.search)
+    || extractRoomCode(location.hash)
+    || extractRoomCode(location.pathname);
+}
+
+export function parseRoomInvitation(text: string): string | null {
+  return extractRoomCode(text);
+}
+
+export function buildRoomInviteUrl(code: string): string {
+  const base = location.origin.replace(/\/?$/, '');
+  return `${base}/r/${code.toUpperCase()}`;
 }
 let socket: WebSocket | null = null;
 let net: any = null;
@@ -70,7 +92,17 @@ export function retryMultiplayer() {
   void connectMultiplayer(multiplayer.code);
 }
 export function multiplayerPlayerName(id: number) {
-  return multiplayer.players.find(p => p.id === id)?.profile?.name || `${mpText('玩家', 'Player')} ${id}`;
+  const p = multiplayer.players.find(p => p.id === id);
+  if (p?.profile?.name) return p.profile.name;
+  if (id === multiplayer.id) return effectivePlayerName();
+  return `${mpText('玩家', 'Player')} ${id}`;
+}
+
+export function renameMultiplayer(name: string) {
+  const clean = setGuestName(name);
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: 'rename', name: clean }));
+  }
 }
 
 
@@ -127,7 +159,7 @@ export function leaveMultiplayer() {
   if ($.vfs.ephemeral) { socket?.close(); location.reload(); return; }
   if (timer) clearInterval(timer); timer = null;
   socket?.close(); socket = null;
-  Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, maxAscension: 0, settings: { ascension: 0, seed: '', modifiers: [], dailyDate: '' }, players: [], waiting: false, error: '' });
+  Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, maxAscension: 0, settings: { ascension: 0, seed: '', modifiers: [], dailyDate: '' }, players: [], waiting: false, error: '', saveJson: undefined, loadInfo: undefined });
   changed();
 }
 function send(msg: unknown) {
@@ -185,17 +217,18 @@ export async function requestMultiplayerQuickReload() {
     console.error('Failed to request multiplayer quick reload', err);
   }
 }
-export async function connectMultiplayer(code?: string, mode: 'standard' | 'daily' | 'custom' = 'standard') {
+export async function connectMultiplayer(code?: string, mode: 'standard' | 'daily' | 'custom' | 'load' = 'standard', extra?: { saveJson?: string; loadInfo?: any }) {
   const reconnecting = multiplayer.phase === 'reconnecting';
   if (multiplayer.phase !== 'idle' && !reconnecting) return;
   const attempt = ++attemptId;
   if (!reconnecting) { multiplayer.phase = 'connecting'; multiplayer.mode = mode; }
   multiplayer.error = ''; changed();
   try {
+    const guestName = effectivePlayerName();
     const saved = code ? getSession(code) : null;
     const body = code
-      ? { version, token: saved?.token, instance, protocol: 4 }
-      : { version, mode, maxPlayers: 4, instance, protocol: 4 };
+      ? { version, token: saved?.token, instance, protocol: 4, guestName }
+      : { version, mode, maxPlayers: 4, instance, protocol: 4, guestName, saveJson: extra?.saveJson, loadInfo: extra?.loadInfo };
     const res = await fetch(code ? `${API}/${code.toUpperCase()}` : API, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15_000),
     });
@@ -208,7 +241,10 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
       throw new Error(result.error ?? 'network');
     }
     setSession(result.code, result.id, result.token);
-    Object.assign(multiplayer, { code: result.code, id: result.id, mode: result.mode ?? mode, maxPlayers: result.maxPlayers ?? 4 });
+    Object.assign(multiplayer, {
+      code: result.code, id: result.id, mode: result.mode ?? mode, maxPlayers: result.maxPlayers ?? 4,
+      saveJson: result.saveJson ?? extra?.saveJson, loadInfo: result.loadInfo ?? extra?.loadInfo,
+    });
     const url = new URL(`${API}/${result.code}/socket`, location.href);
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     url.searchParams.set('token', result.token); url.searchParams.set('instance', instance);
@@ -268,8 +304,10 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           multiplayer.settings = msg.settings;
           multiplayer.maxAscension = msg.maxAscension;
           if (msg.mode) multiplayer.mode = msg.mode;
+          if (msg.saveJson !== undefined) multiplayer.saveJson = msg.saveJson;
+          if (msg.loadInfo !== undefined) multiplayer.loadInfo = msg.loadInfo;
           const me = msg.players.find((p: any) => p.id === result.id);
-          if (multiplayer.phase === 'lobby' && me) {
+          if (multiplayer.phase === 'lobby' && me && msg.mode !== 'load') {
             const daily = msg.mode === 'daily' ? G.webDailySetup(msg.settings.dailyDate, msg.players) : null;
             const character = daily ? daily.characters[msg.players.indexOf(me)].Id.Entry : me.character;
             if (!initializedSelection || me.character !== character) { initializedSelection = true; selectMultiplayerCharacter(character); }
@@ -281,12 +319,21 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           return;
         } else if (msg.type === 'start') {
           multiplayer.phase = 'starting';
-          void startCoopRun(msg.players, msg.seed, net, msg.mode ?? multiplayer.mode, msg.settings, () => {
-            console.error('Original multiplayer checksum detected state divergence');
-            failed('divergence');
-          }).then(() => {
-            if (multiplayer.phase === 'starting') multiplayer.phase = 'playing'; changed();
-          }).catch(e => { console.error('Multiplayer start failed', e); failed('start'); });
+          if (msg.mode === 'load' || multiplayer.mode === 'load') {
+            void loadSavedCoopRun(msg.players, net, msg.saveJson || multiplayer.saveJson, () => {
+              console.error('Original multiplayer checksum detected state divergence');
+              failed('divergence');
+            }).then(() => {
+              if (multiplayer.phase === 'starting') multiplayer.phase = 'playing'; changed();
+            }).catch(e => { console.error('Multiplayer load failed', e); failed('start'); });
+          } else {
+            void startCoopRun(msg.players, msg.seed, net, msg.mode ?? multiplayer.mode, msg.settings, () => {
+              console.error('Original multiplayer checksum detected state divergence');
+              failed('divergence');
+            }).then(() => {
+              if (multiplayer.phase === 'starting') multiplayer.phase = 'playing'; changed();
+            }).catch(e => { console.error('Multiplayer start failed', e); failed('start'); });
+          }
         } else if (msg.type === 'quick_reload') {
           received = 0;
           sent = 0;

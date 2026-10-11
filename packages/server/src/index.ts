@@ -5,7 +5,11 @@ export { SteamAuth } from './auth';
 
 interface Env extends AuthEnv { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<WebRoom> }
 interface Player { id: number; token: string; character: string; unlock: string; ready: boolean; maxAscension: number; disconnectedAt?: number; profile?: SteamProfile; instance?: string }
-interface Room { code: string; version: string; mode: string; maxPlayers: number; created: number; started: boolean; seed: string; ascension: number; modifiers: string[]; dailyDate: string; players: Player[]; protocol?: number }
+interface Room {
+  code: string; version: string; mode: string; maxPlayers: number; created: number; started: boolean;
+  seed: string; ascension: number; modifiers: string[]; dailyDate: string; players: Player[]; protocol?: number;
+  saveJson?: string; loadInfo?: any;
+}
 const PREFIX = '/api/multiplayer/rooms';
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 function sameOrigin(req: Request) {
@@ -19,6 +23,13 @@ function sameOrigin(req: Request) {
 export default {
   async fetch(req: Request, env: Env) {
     const path = new URL(req.url).pathname;
+    const inviteMatch = /^\/(?:r|room)\/([A-F0-9]{12})\/?$/i.exec(path);
+    if (inviteMatch) {
+      const targetUrl = new URL(req.url);
+      targetUrl.pathname = '/';
+      targetUrl.searchParams.set('room', inviteMatch[1].toUpperCase());
+      return Response.redirect(targetUrl.toString(), 302);
+    }
     if (path.startsWith('/api/auth/')) {
       try {
         return await authFetch(req, env);
@@ -78,22 +89,34 @@ export class WebRoom extends DurableObject<Env> {
       try { body = await req.json(); } catch { return json({ error: 'request' }, 400); }
       if (body.protocol === 4 && (typeof body.instance !== 'string' || body.instance.length > 100)) return json({ error: 'request' }, 400);
       if (typeof body.version !== 'string' || body.version.length > 100) return json({ error: 'version' }, 400);
-      const mode = typeof body.mode === 'string' && ['standard', 'daily', 'custom'].includes(body.mode) ? body.mode : 'standard';
+      const guestName = typeof body.guestName === 'string' && body.guestName.trim() ? body.guestName.trim().slice(0, 24) : undefined;
+      const effectiveProfile: SteamProfile | undefined = profile || (guestName ? { steamId: '', name: guestName, avatar: '' } : undefined);
+      const mode = typeof body.mode === 'string' && ['standard', 'daily', 'custom', 'load'].includes(body.mode) ? body.mode : 'standard';
       const maxPlayers = Number.isInteger(body.maxPlayers) && body.maxPlayers >= 2 && body.maxPlayers <= 4 ? body.maxPlayers : 4;
       if (!this.room) {
         if (req.headers.get('X-Create-Room') !== '1') return json({ error: 'room' }, 404);
-        this.room = { code, version: body.version, mode, maxPlayers, created: Date.now(), started: false, seed: '', ascension: 0, modifiers: [], dailyDate: new Date().toISOString().slice(0, 10), players: [], protocol: body.protocol === 4 ? 4 : 3 };
+        this.room = {
+          code, version: body.version, mode, maxPlayers, created: Date.now(), started: false,
+          seed: '', ascension: 0, modifiers: [], dailyDate: new Date().toISOString().slice(0, 10),
+          players: [], protocol: body.protocol === 4 ? 4 : 3,
+          saveJson: typeof body.saveJson === 'string' ? body.saveJson : undefined,
+          loadInfo: body.loadInfo,
+        };
       }
       if (this.room.version !== body.version) return json({ error: 'version' }, 409);
       const existing = this.room.players.find(p => (typeof body.token === 'string' && p.token === body.token)
         || (profile && p.profile?.steamId === profile.steamId));
       if (existing) {
-        if (existing.profile && existing.profile.steamId !== profile?.steamId) return json({ error: 'account' }, 403);
+        if (existing.profile && existing.profile.steamId && existing.profile.steamId !== profile?.steamId) return json({ error: 'account' }, 403);
         // A live engine owns this lease. A fresh page cannot resume action/choice closures from an old engine.
         if (this.room.started && existing.instance !== body.instance) return json({ error: 'reload' }, 409);
-        if (!this.room.started) { existing.instance = body.instance; if (profile) existing.profile = profile; }
+        if (!this.room.started) {
+          existing.instance = body.instance;
+          if (profile) existing.profile = profile;
+          else if (guestName && (!existing.profile || !existing.profile.steamId)) existing.profile = { steamId: '', name: guestName, avatar: '' };
+        }
         await this.ctx.storage.put('room', this.room);
-        return json({ code, id: existing.id, token: existing.token, mode: this.room.mode, maxPlayers: this.room.maxPlayers, started: this.room.started });
+        return json({ code, id: existing.id, token: existing.token, mode: this.room.mode, maxPlayers: this.room.maxPlayers, started: this.room.started, saveJson: this.room.saveJson, loadInfo: this.room.loadInfo });
       }
       if (this.room.started) return json({ error: 'full' }, 409);
 
@@ -118,12 +141,12 @@ export class WebRoom extends DurableObject<Env> {
       while (usedIds.has(id) && id <= this.room.maxPlayers) id++;
       if (id > this.room.maxPlayers) return json({ error: 'full' }, 409);
       const token = crypto.randomUUID();
-      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false, maxAscension: 0, profile, instance: body.instance });
+      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false, maxAscension: 0, profile: effectiveProfile, instance: body.instance });
       if (this.room.mode === 'daily') for (const p of this.room.players) p.ready = false;
       await this.ctx.storage.put('room', this.room);
       await this.ctx.storage.setAlarm(this.room.created + 24 * 60 * 60_000);
       this.broadcast();
-      return json({ code, id, token, mode: this.room.mode, maxPlayers: this.room.maxPlayers });
+      return json({ code, id, token, mode: this.room.mode, maxPlayers: this.room.maxPlayers, saveJson: this.room.saveJson, loadInfo: this.room.loadInfo });
     }
     if (!this.room || !url.pathname.endsWith('/socket')) return json({ error: 'room' }, 404);
     if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'socket' }, 400);
@@ -151,6 +174,8 @@ export class WebRoom extends DurableObject<Env> {
       mode: this.room.mode,
       maxPlayers: this.room.maxPlayers,
       started: this.room.started,
+      saveJson: this.room.saveJson,
+      loadInfo: this.room.loadInfo,
       settings: { ascension: this.room.ascension ?? 0, modifiers: this.room.modifiers ?? [], seed: this.room.seed, dailyDate: this.room.dailyDate ?? new Date(this.room.created).toISOString().slice(0, 10) },
       maxAscension: Math.min(...this.room.players.map(p => p.maxAscension ?? 0)),
       players: this.room.players.map(({ token: _, unlock: __, instance: ___, ...p }) => ({
@@ -267,27 +292,35 @@ export class WebRoom extends DurableObject<Env> {
       }
       return;
     }
-    if (msg.type === 'settings' && id === 1 && !this.room.started && this.room.mode !== 'daily') {
+    if (msg.type === 'rename' && typeof msg.name === 'string' && msg.name.trim()) {
+      const newName = msg.name.trim().slice(0, 24);
+      me.profile = { steamId: me.profile?.steamId ?? '', name: newName, avatar: me.profile?.avatar ?? '' };
+      await this.ctx.storage.put('room', this.room);
+      this.broadcast();
+      return;
+    }
+    if (msg.type === 'settings' && id === 1 && !this.room.started && this.room.mode !== 'daily' && this.room.mode !== 'load') {
       if (!Number.isInteger(msg.ascension) || msg.ascension < 0 || msg.ascension > Math.min(...this.room.players.map(p => p.maxAscension ?? 0))
         || typeof msg.seed !== 'string' || !/^[A-Z0-9_]{0,40}$/.test(msg.seed)
         || !Array.isArray(msg.modifiers) || msg.modifiers.length > 40 || msg.modifiers.some((m: unknown) => typeof m !== 'string' || !/^[A-Z0-9_]+(:[A-Z0-9_]+)?$/.test(m))
         || (this.room.mode !== 'custom' && msg.modifiers.length)) return;
       this.room.ascension = msg.ascension; this.room.seed = msg.seed; this.room.modifiers = msg.modifiers;
       for (const p of this.room.players) p.ready = false;
-    } else if (msg.type === 'select' && !this.room.started) {
+    } else if (msg.type === 'select' && !this.room.started && this.room.mode !== 'load') {
       if (!validCharacterSelection(msg.character, msg.unlock, this.room.mode === 'daily')) return ws.close(1008, 'Invalid selection');
       me.character = msg.character; me.unlock = msg.unlock;
       me.maxAscension = Number.isInteger(msg.maxAscension) ? Math.max(0, Math.min(10, msg.maxAscension)) : 0;
       this.room.ascension = Math.min(this.room.ascension ?? 0, ...this.room.players.map(p => p.maxAscension ?? 0));
       // 遵循原版规则：切换角色必须重置准备状态
       me.ready = false;
-    } else if (msg.type === 'ready' && !this.room.started && validCharacterSelection(me.character, me.unlock, this.room.mode === 'daily')) {
+    } else if (msg.type === 'ready' && !this.room.started && (this.room.mode === 'load' || validCharacterSelection(me.character, me.unlock, this.room.mode === 'daily'))) {
       me.ready = msg.ready === true;
     } else if (msg.type !== 'start' || id !== 1 || this.room.started) return;
     // StartRunLobby begins as soon as every connected player has readied.
     if (!this.room.started && this.room.players.length >= 2 && this.room.players.every(p => p.ready)) {
       // 全员就绪判定：至少 2 人，所有玩家（包括房主自身）全部就绪且连接在线
-      if (this.room.players.length < 2 || this.room.players.some(p => !p.ready || !validCharacterSelection(p.character, p.unlock, this.room?.mode === 'daily') || !this.ctx.getWebSockets(String(p.id)).length)) return;
+      const isValidPlayer = (p: Player) => this.room?.mode === 'load' ? true : validCharacterSelection(p.character, p.unlock, this.room?.mode === 'daily');
+      if (this.room.players.length < 2 || this.room.players.some(p => !p.ready || !isValidPlayer(p) || !this.ctx.getWebSockets(String(p.id)).length)) return;
       this.room.started = true;
       this.room.seed ||= crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
       await this.ctx.storage.put('room', this.room);
@@ -295,8 +328,9 @@ export class WebRoom extends DurableObject<Env> {
         type: 'start',
         mode: this.room.mode,
         seed: this.room.seed,
+        saveJson: this.room.saveJson,
         settings: { ascension: this.room.ascension ?? 0, modifiers: this.room.modifiers ?? [], dailyDate: this.room.dailyDate ?? new Date(this.room.created).toISOString().slice(0, 10) },
-        players: this.room.players.map(({ id, character, unlock }) => ({ id, character, unlock })),
+        players: this.room.players.map(({ id, character, unlock, profile }) => ({ id, character, unlock, profile })),
       }));
       return;
     }

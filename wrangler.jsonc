@@ -7,7 +7,7 @@
   "migrations": [{ "tag": "web-rooms-v1", "new_sqlite_classes": ["WebRoom"] }, { "tag": "steam-auth-v1", "new_sqlite_classes": ["SteamAuth"] }],
   "assets": {
     "binding": "ASSETS",
-    "run_worker_first": ["/api/multiplayer/*", "/api/auth/*"],
+    "run_worker_first": ["/api/multiplayer/*", "/api/auth/*", "/r/*", "/room/*"],
     "directory": "./packages/app/dist",
     // a missing file is a 404, not the page: scene and shader loading tell "not there" by it, and the service worker
     // would otherwise cache the page as that asset

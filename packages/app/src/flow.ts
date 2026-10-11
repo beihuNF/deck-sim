@@ -40,6 +40,36 @@ export async function startCoopRun(players: any[], seed: string, net: any, mode 
   await transitionView.FadeIn(0.4);
 }
 
+/** 恢复载入多人游戏存盘（断点续玩） */
+export async function loadSavedCoopRun(players: any[], net: any, saveJson?: string, onStateDiverged: () => void = () => {}) {
+  await G.SaveManager.Instance.CurrentRunSaveTask;
+  await $.vfs.beginEphemeralSession();
+  stopAudio();
+  await transitionView.FadeOut(0.6);
+  resetUi();
+  ui.menuStack = [];
+  let save: any = null;
+  if (saveJson) {
+    save = G.deserializeWebRunSave(saveJson);
+  }
+  await G.continueWebMultiplayerRun(players, net, (rs: any) => {
+    const tracker = G.RunManager.Instance.ChecksumTracker;
+    tracker.StateDiverged = $.dcombine(tracker.StateDiverged, onStateDiverged);
+    run = rs;
+    attachRun(rs);
+  }, save);
+  currentCoopRunParams = {
+    players,
+    seed: save?.Seed ?? '',
+    net,
+    mode: 'load',
+    settings: { ascension: save?.Ascension ?? 0, modifiers: [], dailyDate: '' },
+    onStateDiverged,
+  };
+  invalidate();
+  await transitionView.FadeIn(0.4);
+}
+
 /** 多人快速SL：重开当前房间/战斗，全员基于房主广播的存档快照原地重新加载。 */
 export async function quickReloadCoopRun(saveJson?: string): Promise<boolean> {
   if (!currentCoopRunParams) return false;
@@ -188,7 +218,11 @@ export async function quickReloadRun(): Promise<boolean> {
 export function abandonRun() { G.abandonSavedRun(); invalidate(); }
 /** NGame.ReturnToMainMenu: fade to black, clean up the run, load the main menu (which fades itself in). */
 export async function toMenu() {
-  if ($.vfs.ephemeral) { location.reload(); return; }
+  if ($.vfs.ephemeral) {
+    try { await $.vfs.flush(); } catch (e) { console.warn('Failed to flush VFS on exit', e); }
+    location.reload();
+    return;
+  }
   await transitionView.FadeOut();
   try { G.RunManager.Instance.CleanUp(true); } catch (e) { console.warn(e); }
   run = null;
