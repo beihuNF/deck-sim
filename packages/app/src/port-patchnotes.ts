@@ -5,6 +5,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     eng: `[gold][b]Interface[/b][/gold]
 • Restored the authentic profile button design and layout for Steam identity in multiplayer, adhering to Sts2 typography, icons, and audio feedback.
 • Account management dialog now uses the authentic nine-patch parchment frame, natural button copy, and auto-scaling popup buttons.
+• Custom co-op lobby now cleanly aligns with the authentic NCustomRunScreen, natively supporting seeds, ascension, scrollable modifier lists, and original tickbox slices while removing custom dialog styles.
+• Replaced web-style spinning loader with authentic screen fade transitions (FadeOut / FadeIn) for room creation, navigation, and co-op embarkation.
 
 [gold][b]Multiplayer[/b][/gold]
 • Steam sign-in now opens in a dedicated popup window, seamlessly completing authentication without refreshing the page or restarting introductory animations.
@@ -13,6 +15,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     zhs: `[gold][b]界面[/b][/gold]
 • 多人联机身份入口完全遵循原版档案按钮设计与排版规范，复用 Kreon 字体、金色边框、悬停动效与原版音效。
 • 账号管理弹窗改用原版九宫格羊皮纸底框与精炼对称的弹窗操作按钮，支持文字长度自适应字号。
+• 多人自定义模式大厅完全对齐原版 NCustomRunScreen 场景架构，原生支持种子、进阶、原版词缀滚动列表与原版切片复选框，彻底移除手写弹窗与冗余样式。
+• 移除网页式旋转菊花，创建房间、大厅切换与多人启程全面接入原版黑幕过渡（FadeOut / FadeIn）。
 
 [gold][b]多人联机[/b][/gold]
 • Steam 登录改为独立弹出窗口完成授权，登录成功后自动无感同步，无需整页刷新或重播开场动画。

@@ -226,51 +226,167 @@ function toggle(row: ModRow, all: ModRow[]) {
   invalidate();
 }
 
-export function CustomRun() {
+function toggleModKeys(currentKeys: string[], row: ModRow, all: ModRow[]): string[] {
+  let keys = currentKeys.filter(k => k !== row.key);
+  if (!currentKeys.includes(row.key)) {
+    const set = list(G.ModelDb.MutuallyExclusiveModifiers).find((s: any) => s.Contains(row.canonical));
+    if (set) {
+      keys = keys.filter(k => {
+        const other = all.find(m => m.key === k);
+        return other?.canonical !== row.canonical && (!set || !safe(() => set.Contains(other?.canonical), false));
+      });
+    }
+    keys.push(row.key);
+  }
+  return keys;
+}
+
+export interface CustomLobby {
+  isHost: boolean;
+  seed: string;
+  ascension: number;
+  maxAscension: number;
+  modifiers: string[];
+  selectedCharacter: string;
+  ready: boolean;
+  players: ComponentChildren;
+  onSelectCharacter: (charEntry: string) => void;
+  onConfigure: (settings: { seed?: string; ascension?: number; modifiers?: string[] }) => void;
+  onReady: () => void;
+  onBack: () => void;
+}
+
+export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
   const chars = characters();
   const all = useMemo(allModifiers, []);
-  // OnSubmenuOpened: the first button (Ironclad) is selected
-  const [sel, setSel] = useState(chars[0].c);
+  // 单人本地状态
+  const [singleSel, setSingleSel] = useState(chars[0].c);
   const [busy, setBusy] = useState(false);
-  const max = maxAscension(sel);
-  const [level, setLevel] = useState(() => Math.min(safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(sel.Id).PreferredAscension, 0), max));
+  const singleMax = maxAscension(singleSel);
+  const [singleLevel, setSingleLevel] = useState(() => Math.min(safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(singleSel.Id).PreferredAscension, 0), singleMax));
+
+  // 单人或多人数据
+  const sel = lobby ? (chars.find(c => c.c.Id.Entry === lobby.selectedCharacter)?.c ?? chars[0].c) : singleSel;
+  const max = lobby ? lobby.maxAscension : singleMax;
+  const level = lobby ? lobby.ascension : singleLevel;
+  const seed = lobby ? lobby.seed : custom.seed;
+  const isHost = lobby ? lobby.isHost : true;
+  const isReady = lobby ? lobby.ready : false;
+
   const select = (c: any) => {
-    if (c === sel) return;
+    if (lobby) {
+      if (isReady) return;
+      playOneShot(c.CharacterSelectSfx);
+      lobby.onSelectCharacter(c.Id.Entry);
+      return;
+    }
+    if (c === singleSel) return;
     playOneShot(c.CharacterSelectSfx);
-    setSel(c);
+    setSingleSel(c);
     const mx = maxAscension(c);
-    setLevel(Math.min(safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(c.Id).PreferredAscension, 0), mx));
+    setSingleLevel(Math.min(safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(c.Id).PreferredAscension, 0), mx));
   };
+
   const changeLevel = (n: number) => {
-    setLevel(n);
+    if (lobby) {
+      if (!isHost || isReady) return;
+      lobby.onConfigure({ ascension: n });
+      return;
+    }
+    setSingleLevel(n);
     // StartRunLobby.UpdatePreferredAscension: only once the character has an ascension to remember
-    safe(() => { const s = G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(sel.Id); if (s.MaxAscension !== 0) s.PreferredAscension = n; }, undefined);
+    safe(() => { const s = G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(singleSel.Id); if (s.MaxAscension !== 0) s.PreferredAscension = n; }, undefined);
   };
+
+  const handleToggleMod = (r: ModRow) => {
+    if (lobby) {
+      if (!isHost || isReady) return;
+      const nextMods = toggleModKeys(lobby.modifiers, r, all);
+      lobby.onConfigure({ modifiers: nextMods });
+      return;
+    }
+    toggle(r, all);
+  };
+
   const go = async () => {
+    if (lobby) {
+      lobby.onReady();
+      return;
+    }
     if (busy) return;
     setBusy(true);
-    const seed = custom.seed ? G.SeedHelper.CanonicalizeSeed(custom.seed) : null;
-    await embark(sel, { ascension: max > 0 ? level : 0, seed, modifiers: all.filter((r) => custom.mods.has(r.key)).map((r) => r.make()) });
+    const seedVal = custom.seed ? G.SeedHelper.CanonicalizeSeed(custom.seed) : null;
+    await embark(sel, { ascension: max > 0 ? level : 0, seed: seedVal, modifiers: all.filter((r) => custom.mods.has(r.key)).map((r) => r.make()) });
   };
+
+  const isModOn = (r: ModRow) => lobby ? lobby.modifiers.includes(r.key) : custom.mods.has(r.key);
+
   return (
-    <div class="custom">
+    <div class={'custom' + (lobby ? ' custom-coop mp-lobby-screen' : '')}>
       <div class="cr-title">{m('CUSTOM_RUN_SCREEN.CUSTOM_MODE_TITLE')}</div>
       <div class="cr-seed">
         <div class="cr-seed-label">{m('CUSTOM_RUN_SCREEN.SEED_LABEL')}</div>
-        <input class="cr-seed-input" value={custom.seed} placeholder={m('CUSTOM_RUN_SCREEN.SEED_RANDOM_PLACEHOLDER')} spellcheck={false}
-          onInput={(e) => { custom.seed = (e.target as HTMLInputElement).value; }}
-          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }} />
+        <input
+          class="cr-seed-input"
+          value={seed}
+          placeholder={m('CUSTOM_RUN_SCREEN.SEED_RANDOM_PLACEHOLDER')}
+          spellcheck={false}
+          disabled={lobby ? (!isHost || isReady) : busy}
+          onInput={(e) => {
+            const val = (e.target as HTMLInputElement).value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
+            if (lobby) {
+              if (isHost && !isReady) lobby.onConfigure({ seed: val });
+            } else {
+              custom.seed = val;
+            }
+          }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }}
+        />
       </div>
-      {max > 0 && <div class="cr-asc"><AscensionPanel level={Math.min(level, max)} max={max} onChange={changeLevel} /></div>}
+      {max > 0 && (
+        <div class="cr-asc">
+          <AscensionPanel
+            multiplayer={!!lobby}
+            level={Math.min(level, max)}
+            max={max}
+            readOnly={lobby ? (!isHost || isReady) : false}
+            onChange={changeLevel}
+          />
+        </div>
+      )}
       <div class="cr-buttons">
-        {chars.map(({ c, locked }) => <CharacterSelectButton c={c} locked={locked} selected={c === sel} enabled={!busy} onSelect={() => select(c)} />)}
+        {chars.map(({ c, locked }) => (
+          <CharacterSelectButton
+            c={c}
+            locked={locked}
+            selected={c === sel}
+            enabled={lobby ? !isReady && !locked : !busy}
+            onSelect={() => select(c)}
+          />
+        ))}
       </div>
       <div class="cr-mods-title">{m('CUSTOM_RUN_SCREEN.MODIFIERS_TITLE')}</div>
       <ScrollArea rect={[992, 168 - view.oy, 686 + view.ox, 750 + 2 * view.oy]} bar={[1680 + view.ox, 168 - view.oy, 48, 750 + 2 * view.oy]}>
-        <div class="cr-mod-list">{all.map((r) => <ModifierTickbox row={r} on={custom.mods.has(r.key)} onToggle={() => toggle(r, all)} />)}</div>
+        <div class="cr-mod-list">
+          {all.map((r) => (
+            <ModifierTickbox
+              row={r}
+              on={isModOn(r)}
+              disabled={lobby ? (!isHost || isReady) : busy}
+              onToggle={() => handleToggleMod(r)}
+            />
+          ))}
+        </div>
       </ScrollArea>
-      <BackButton enabled={!busy} onClick={popMenu} />
-      <ConfirmButton enabled={!busy} onClick={() => void go()} />
+      {lobby && lobby.players}
+      {lobby && isReady && (
+        <div class="dr-ready-waiting">
+          <div class="dr-waiting-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }} />
+          <RichText text={m('CHARACTER_SELECT.waitingForPlayers')} />
+        </div>
+      )}
+      <BackButton enabled={lobby ? true : !busy} onClick={lobby ? (isReady ? lobby.onReady : lobby.onBack) : popMenu} />
+      <ConfirmButton enabled={lobby ? !isReady : !busy} onClick={() => void go()} />
     </div>
   );
 }
@@ -279,20 +395,26 @@ export function CustomRun() {
  * NRunModifierTickbox: the whole row is the button; the 38.4 px checkbox (pivot (32, 32)) grows 1.05 and v 1.2 on hover,
  * 0.95 and v 0.8 on press; release toggles with ui_checkbox_on / off. No hover or click sound.
  */
-function ModifierTickbox({ row, on, onToggle }: { row: ModRow; on: boolean; onToggle: () => void }) {
+function ModifierTickbox({ row, on, disabled = false, onToggle }: { row: ModRow; on: boolean; disabled?: boolean; onToggle: () => void }) {
   const [st, setSt] = useState<'' | 'hover' | 'press'>('');
-  const k = st === 'hover' ? 1.05 : st === 'press' ? 0.95 : 1, v = st === 'hover' ? 1.2 : st === 'press' ? 0.8 : 1;
+  const k = st === 'hover' && !disabled ? 1.05 : st === 'press' && !disabled ? 0.95 : 1;
+  const v = st === 'hover' && !disabled ? 1.2 : st === 'press' && !disabled ? 0.8 : 1;
   const t = st === 'hover' ? '.05s linear' : `.5s ${EXPO_OUT}`;
   return (
-    <div class="cr-mod" data-ctl
-      onPointerEnter={() => setSt('hover')} onPointerLeave={() => setSt('')}
-      onPointerDown={(e) => { if (e.button === 0) setSt('press'); }}
+    <div
+      class={'cr-mod' + (disabled ? ' disabled' : '')}
+      data-ctl
+      style={{ cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.85 : 1 }}
+      onPointerEnter={() => { if (!disabled) setSt('hover'); }}
+      onPointerLeave={() => setSt('')}
+      onPointerDown={(e) => { if (!disabled && e.button === 0) setSt('press'); }}
       onPointerUp={(e) => {
-        if (e.button !== 0 || st !== 'press') return;
+        if (disabled || e.button !== 0 || st !== 'press') return;
         setSt('hover');
         playOneShot(on ? 'event:/sfx/ui/clicks/ui_checkbox_off' : 'event:/sfx/ui/clicks/ui_checkbox_on');
         onToggle();
-      }}>
+      }}
+    >
       <div class="cr-tick" style={{ scale: String(k), filter: `brightness(${v})`, transition: `scale ${t}, filter ${t}` }}>
         <div style={frameStyle(frameByName('ui_atlas', on ? 'checkbox_ticked' : 'checkbox_unticked'), 38.4, 38.4)} />
       </div>

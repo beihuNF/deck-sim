@@ -129,39 +129,25 @@
   flex: 0 0 196px;
 }
 
-/* -------------------------------------------------- 连线中与启程过渡动画 */
+/* -------------------------------------------------- 连线中与启程过渡状态（原版纯净质感） */
 .mp-loading-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(5, 8, 12, 0.85);
+  background: rgba(5, 8, 12, 0.75);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 100;
-}
-
-.mp-loading-spinner {
-  width: 56px;
-  height: 56px;
-  border: 4px solid rgba(239, 200, 81, 0.2);
-  border-top-color: var(--gold, #efc851);
-  border-radius: 50%;
-  animation: mp-spin 1s linear infinite;
-  margin-bottom: 24px;
-  box-shadow: 0 0 20px rgba(239, 200, 81, 0.3);
+  pointer-events: none;
 }
 
 .mp-loading-label {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--gold, #efc851);
   letter-spacing: 2px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-}
-
-@keyframes mp-spin {
-  to { transform: rotate(360deg); }
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 
 /* -------------------------------------------------- 原版 RemotePlayerContainer (x: 36, y: 45) */
@@ -488,15 +474,7 @@
 .treasure-votes img { width: 40px; height: 40px; }
 .treasure-skip { position: absolute; top: 430px; left: 330px; width: 240px; padding: 10px; color: #fff6e2; border: 1px solid #897357; background: #332820; font: inherit; font-size: 24px; pointer-events: auto; cursor: pointer; }
 .treasure-skip:disabled { opacity: .4; cursor: default; }
-.mp-run-settings { position: absolute; top: 28px; left: 710px; width: 600px; display: flex; justify-content: center; gap: 24px; align-items: center; color: #fff6e2; font-size: 24px; }
-.mp-seed-input { width: 220px; border: 1px solid #897357; padding: 8px; background: #332820; color: #fff6e2; font: inherit; }
-.mp-settings-button { border: 1px solid #897357; padding: 8px 20px; background: #332820; color: #fff6e2; font: inherit; cursor: pointer; }
-.mp-settings-dialog { position: relative; width: 900px; height: 740px; isolation: isolate; color: #fff6e2; font-size: 24px; }
-.mp-settings-bg { position: absolute; inset: 0; z-index: -1; border: 12px solid transparent; border-image-slice: 6 fill; filter: brightness(.12); pointer-events: none; }
-.mp-settings-dialog h2 { margin: 20px 30px; }
-.mp-mod-row { display: flex; align-items: flex-start; gap: 15px; padding: 15px; }
-.mp-mod-row input { width: 24px; height: 24px; flex-shrink: 0; }
-.mp-settings-close { position: absolute; bottom: 30px; right: 30px; }
+
 /* NDailyRunScreen keeps remote players beside the local character rather than in a character-select corner. */
 .daily-coop .remote-player-container { left: 363px; top: 313.5px; width: 518px; gap: 0; }
 .daily-coop .remote-player-list { gap: 0; }

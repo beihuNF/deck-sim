@@ -15,6 +15,8 @@ export let run: any = null;
 export async function startCoopRun(players: any[], seed: string, net: any, mode = 'standard', settings = { ascension: 0, modifiers: [] as string[], dailyDate: '' }, onStateDiverged: () => void = () => {}) {
   await G.SaveManager.Instance.CurrentRunSaveTask;
   await $.vfs.beginEphemeralSession();
+  stopAudio();
+  await transitionView.FadeOut(0.6);
   resetUi();
   ui.menuStack = [];
   await G.startWebMultiplayerRun(players, seed, net, (rs: any) => {
@@ -25,6 +27,7 @@ export async function startCoopRun(players: any[], seed: string, net: any, mode 
   }, mode,
     settings.ascension, G.webRunModifiers(settings.modifiers), mode === 'daily' ? settings.dailyDate : null);
   invalidate();
+  await transitionView.FadeIn(0.4);
 }
 function resetUi() {
   ui.screen = 'run';

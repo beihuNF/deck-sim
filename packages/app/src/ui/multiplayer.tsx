@@ -1,6 +1,6 @@
 // Multiplayer menus and lobby using original game assets and layouts.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { G, $, list } from '../game';
 import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
@@ -9,15 +9,14 @@ import {
 import { BackButton, ConfirmButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
 import { CharacterSelectButton, InfoPanel, AscensionPanel } from './charselect';
-import { allModifiers, DailyRun } from './modes';
-import { ScrollArea } from './scrollable';
+import { DailyRun, CustomRun } from './modes';
 import { PopupButton } from './modal';
-import { RichText } from './richtext';
 import { loc } from '../i18n';
 import { imageUrl, frameByName, frameStyle } from '../assets';
 import { playOneShot } from '../audio';
 import { tint } from '../filters';
 import { charSelectBg } from '../render/scene';
+import { transitionView } from './transition';
 import './multiplayer.css';
 import { steam, loadSteamProfile, loginSteam, logoutSteam } from '../steam';
 
@@ -48,12 +47,8 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const [copied, setCopied] = useState<string | null>(null);
   const [, setKickGen] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [accountHover, setAccountHover] = useState(false);
-  const [seed, setSeed] = useState('');
-  const modifiers = useMemo(allModifiers, []);
-  useEffect(() => { setSeed(mp.settings.seed); }, [mp.settings.seed]);
 
   const charList = characters();
   const me = mp.players.find(p => p.id === mp.id);
@@ -62,11 +57,20 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const dailySetup = mp.phase === 'lobby' && mp.mode === 'daily' && mp.settings.dailyDate ? G.webDailySetup(mp.settings.dailyDate, mp.players) : null;
   useEffect(() => { if (mp.phase !== 'lobby') setPreview(null); }, [mp.phase]);
 
+  const startConnect = async (code?: string, mode: 'standard' | 'daily' | 'custom' = 'standard') => {
+    await transitionView.FadeOut(0.35);
+    try {
+      await connectMultiplayer(code, mode);
+    } finally {
+      await transitionView.FadeIn(0.35);
+    }
+  };
+
   // 从 URL 参数自动加入房间
   useEffect(() => {
     const code = invitedRoomCode();
     if (code && mp.phase === 'idle') {
-      void connectMultiplayer(code);
+      void startConnect(code);
     }
   }, []);
 
@@ -88,15 +92,22 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   };
 
   const exit = () => {
-    if (mp.phase === 'lobby' || mp.phase === 'connecting') {
-      leaveMultiplayer();
-      setView('menu');
-    } else if (view !== 'menu') {
-      setView('menu');
-    } else {
-      leaveMultiplayer();
-      onBack();
-    }
+    void (async () => {
+      await transitionView.FadeOut(0.3);
+      try {
+        if (mp.phase === 'lobby' || mp.phase === 'connecting') {
+          leaveMultiplayer();
+          setView('menu');
+        } else if (view !== 'menu') {
+          setView('menu');
+        } else {
+          leaveMultiplayer();
+          onBack();
+        }
+      } finally {
+        await transitionView.FadeIn(0.3);
+      }
+    })();
   };
 
   const handleSelectChar = (c: any, locked: boolean) => {
@@ -375,7 +386,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             icon="submenu_standard"
             hsv={[0, 0.8, 0.8]}
             enabled
-            onClick={() => void connectMultiplayer(undefined, 'standard')}
+            onClick={() => void startConnect(undefined, 'standard')}
           />
           <SubmenuButton
             x={795}
@@ -383,7 +394,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             icon="submenu_daily"
             hsv={[0.48, 0.8, 0.7]}
             enabled={daily}
-            onClick={() => void connectMultiplayer(undefined, 'daily')}
+            onClick={() => void startConnect(undefined, 'daily')}
           />
           <SubmenuButton
             x={1195}
@@ -391,7 +402,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             icon="submenu_custom"
             hsv={[0.93, 1.2, 0.65]}
             enabled={custom}
-            onClick={() => void connectMultiplayer(undefined, 'custom')}
+            onClick={() => void startConnect(undefined, 'custom')}
           />
           <BackButton enabled onClick={() => setView('menu')} />
         </div>
@@ -420,7 +431,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 onInput={e => setJoinCode(e.currentTarget.value.toUpperCase().replace(/[^A-F0-9]/g, ''))}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && joinCode.length === 12) {
-                    void connectMultiplayer(joinCode);
+                    void startConnect(joinCode);
                   }
                 }}
               />
@@ -437,7 +448,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 yes={true}
                 text={m('JOIN.title')}
                 disabled={joinCode.length !== 12}
-                onClick={() => void connectMultiplayer(joinCode)}
+                onClick={() => void startConnect(joinCode)}
               />
             </div>
           </div>
@@ -445,10 +456,9 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* 4. 连接/同步过渡加载状态（原版 LoadingOverlay 质感） */}
+      {/* 4. 连接/同步过渡加载状态（遵循原版 LoadingOverlay 质感，无网页旋转圈） */}
       {(mp.phase === 'connecting' || mp.phase === 'starting') && (
         <div class="mp-loading-overlay">
-          <div class="mp-loading-spinner" />
           <div class="mp-loading-label">
             {mp.phase === 'starting'
               ? tr('正在同步对局数据，即将启程…', 'Synchronizing co-op state, starting run…')
@@ -457,13 +467,36 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* 5. 原版多人房间大厅（挂接在 CharacterSelectScreen 体验上） */}
-      {mp.phase === 'lobby' && mp.mode === 'daily' && dailySetup && me && <DailyRun lobby={{
-        date: mp.settings.dailyDate, setup: dailySetup, index: mp.players.indexOf(me), playerCount: mp.players.length,
-        playerName: multiplayerPlayerName(mp.id), ready: me.ready, players: remotePlayers,
-        onReady: () => readyMultiplayer(!me.ready), onBack: exit,
-      }} />}
-      {mp.phase === 'lobby' && mp.mode !== 'daily' && (
+      {/* 5. 原版三大多人房间大厅：完全遵循原版场景设定与界面系统 */}
+      {/* 每日挑战模式大厅：复用原版 NDailyRunScreen */}
+      {mp.phase === 'lobby' && mp.mode === 'daily' && dailySetup && me && (
+        <DailyRun lobby={{
+          date: mp.settings.dailyDate, setup: dailySetup, index: mp.players.indexOf(me), playerCount: mp.players.length,
+          playerName: multiplayerPlayerName(mp.id), ready: me.ready, players: remotePlayers,
+          onReady: () => readyMultiplayer(!me.ready), onBack: exit,
+        }} />
+      )}
+
+      {/* 自定义模式大厅：复用原版 NCustomRunScreen（种子、进阶、完整词缀列表与原版复选框切片） */}
+      {mp.phase === 'lobby' && mp.mode === 'custom' && me && (
+        <CustomRun lobby={{
+          isHost,
+          seed: mp.settings.seed,
+          ascension: mp.settings.ascension,
+          maxAscension: mp.maxAscension,
+          modifiers: mp.settings.modifiers,
+          selectedCharacter: currentHeroId,
+          ready: me.ready,
+          players: remotePlayers,
+          onSelectCharacter: (entry) => handleSelectChar({ Id: { Entry: entry }, CharacterSelectSfx: 'event:/sfx/ui/clicks/ui_click' }, false),
+          onConfigure: (settings) => configureMultiplayer(settings),
+          onReady: () => readyMultiplayer(!me.ready),
+          onBack: exit,
+        }} />
+      )}
+
+      {/* 标准模式大厅：复用原版 NCharacterSelectScreen */}
+      {mp.phase === 'lobby' && mp.mode === 'standard' && (
         <div class="charselect mp-lobby-screen">
           {/* 左侧角色属性信息面板 */}
           {selectedCharObj && (
@@ -484,11 +517,13 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             ))}
           </div>
 
-          <AscensionPanel multiplayer level={mp.settings.ascension} max={mp.maxAscension} readOnly={mp.id !== 1 || !!me?.ready} onChange={ascension => configureMultiplayer({ ascension })} />
-          <div class="mp-run-settings">
-            {custom && <label>{tr('种子', 'Seed')} <input class="mp-seed-input" maxLength={40} value={seed} disabled={mp.id !== 1 || !!me?.ready} onInput={e => setSeed(e.currentTarget.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))} onBlur={() => { if (seed !== mp.settings.seed) configureMultiplayer({ seed }); }} /></label>}
-            {mp.mode === 'custom' && <button class="mp-settings-button" onClick={() => setShowSettings(true)}>{tr('词缀', 'Modifiers')} ({mp.settings.modifiers.length})</button>}
-          </div>
+          <AscensionPanel
+            multiplayer
+            level={mp.settings.ascension}
+            max={mp.maxAscension}
+            readOnly={mp.id !== 1 || !!me?.ready}
+            onChange={ascension => configureMultiplayer({ ascension })}
+          />
 
           {/* 原版 RemotePlayerContainer（左上角玩家状态与邀请码） */}
           {remotePlayers}
@@ -498,9 +533,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             {mp.players.length === 1
               ? loc('main_menu_ui', 'MULTIPLAYER_CHAR_SELECT.SOLO')
               : allReady
-                ? isHost
-                  ? tr('全员已就绪 · 即将启程！', 'All players ready · Embarking!')
-                  : tr('全员已就绪 · 即将启程！', 'All players ready · Embarking!')
+                ? tr('全员已就绪 · 即将启程！', 'All players ready · Embarking!')
                 : me?.ready
                   ? tr('已就绪 · 等待其他玩家就绪...', 'Ready · Waiting for other players...')
                   : tr('点击右下角按钮准备就绪', 'Click bottom right button to ready up')}
@@ -511,27 +544,9 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
           {/* 右下角原版确认/启程按钮 */}
           <ConfirmButton
-            enabled={!!me && !selectedCharObj?.locked && me.character === currentHeroId && !showSettings}
+            enabled={!!me && !selectedCharObj?.locked && me.character === currentHeroId}
             onClick={() => readyMultiplayer(!me?.ready)}
           />
-          {showSettings && <div class="mp-join-modal-backstop"><div class="mp-settings-dialog">
-            <div class="mp-settings-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/tiny_nine_patch.png')})` }} />
-            <h2>{tr('词缀', 'Modifiers')}</h2>
-            <ScrollArea rect={[25, 90, 850, 540]} bar={[860, 90, 25, 540]}>
-              {modifiers.map(row => <label class="mp-mod-row" data-ctl>
-                <input type="checkbox" checked={mp.settings.modifiers.includes(row.key)} disabled={mp.id !== 1 || !!me?.ready} onChange={() => {
-                  let keys = mp.settings.modifiers.filter(key => key !== row.key);
-                  if (!mp.settings.modifiers.includes(row.key)) {
-                    const group = list(G.ModelDb.MutuallyExclusiveModifiers).find(s => s.Contains(row.canonical));
-                    keys = keys.filter(key => { const other = modifiers.find(m => m.key === key); return other?.canonical !== row.canonical && (!group || !group.Contains(other?.canonical)); });
-                    keys.push(row.key);
-                  }
-                  configureMultiplayer({ modifiers: keys });
-                }} /><RichText text={row.text} />
-              </label>)}
-            </ScrollArea>
-            <button class="mp-settings-button mp-settings-close" onClick={() => setShowSettings(false)}>{tr('完成', 'Done')}</button>
-          </div></div>}
         </div>
       )}
     </div>
