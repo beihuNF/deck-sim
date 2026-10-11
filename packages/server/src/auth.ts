@@ -37,7 +37,7 @@ export function validSteamAssertion(params: URLSearchParams, callback: string) {
     && ['op_endpoint', 'claimed_id', 'identity', 'return_to', 'response_nonce', 'assoc_handle'].every(k => signed.has(k));
 }
 
-/** Check Steam assertion via GET (standard/recommended) and fallback to POST with browser UA. */
+/** Check Steam assertion via POST (OpenID 2.0 spec) and fallback to GET. */
 export async function verifySteamSignature(params: URLSearchParams): Promise<boolean> {
   const verification = new URLSearchParams();
   for (const [key, value] of params) {
@@ -50,25 +50,7 @@ export async function verifySteamSignature(params: URLSearchParams): Promise<boo
     'Accept': 'text/plain, */*',
   };
 
-  // 1. 优先尝试 GET 请求
-  try {
-    const getUrl = new URL(endpoint);
-    for (const [k, v] of verification) getUrl.searchParams.set(k, v);
-    const res = await fetch(getUrl.toString(), {
-      method: 'GET',
-      headers,
-      redirect: 'follow',
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (res.ok) {
-      const text = await res.text();
-      if (/is_valid\s*:\s*true/i.test(text)) return true;
-    }
-  } catch (err) {
-    console.warn('[steam] GET verification failed:', err);
-  }
-
-  // 2. 回退尝试 POST 请求
+  // 1. 优先尝试 POST 请求（符合 OpenID 2.0 规范及单元测试期望）
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -85,7 +67,25 @@ export async function verifySteamSignature(params: URLSearchParams): Promise<boo
       if (/is_valid\s*:\s*true/i.test(text)) return true;
     }
   } catch (err) {
-    console.error('[steam] POST verification failed:', err);
+    console.warn('[steam] POST verification failed:', err);
+  }
+
+  // 2. 回退尝试 GET 请求
+  try {
+    const getUrl = new URL(endpoint);
+    for (const [k, v] of verification) getUrl.searchParams.set(k, v);
+    const res = await fetch(getUrl.toString(), {
+      method: 'GET',
+      headers,
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (/is_valid\s*:\s*true/i.test(text)) return true;
+    }
+  } catch (err) {
+    console.error('[steam] GET verification failed:', err);
   }
 
   return false;
@@ -110,7 +110,7 @@ async function fetchSteamProfile(steamId: string, apiKey?: string): Promise<{ na
         const player = summary?.response?.players?.find(p => p.steamid === steamId);
         if (player) {
           if (player.personaname) name = String(player.personaname).slice(0, 80);
-          if (player.avatarfull && /^https:\/\/[a-z0-9.-]*steamstatic\.com\/[a-f0-9_]+\.(jpg|png|jpeg)$/i.test(player.avatarfull)) {
+          if (player.avatarfull && /^https:\/\/[a-z0-9.-]*steamstatic\.com\/[a-z0-9_]+\.(jpg|png|jpeg)$/i.test(player.avatarfull)) {
             avatar = player.avatarfull;
           }
           if (avatar) return { name, avatar };
@@ -133,7 +133,7 @@ async function fetchSteamProfile(steamId: string, apiKey?: string): Promise<{ na
       }
       const avatarMatch = /<avatarFull>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/avatarFull>/.exec(text);
       const matchedAvatar = avatarMatch?.[1]?.trim();
-      if (matchedAvatar && /^https:\/\/[a-z0-9.-]*steamstatic\.com\/[a-f0-9_]+\.(jpg|png|jpeg)$/i.test(matchedAvatar)) {
+      if (matchedAvatar && /^https:\/\/[a-z0-9.-]*steamstatic\.com\/[a-z0-9_]+\.(jpg|png|jpeg)$/i.test(matchedAvatar)) {
         avatar = matchedAvatar;
       }
     }
@@ -146,11 +146,30 @@ async function fetchSteamProfile(steamId: string, apiKey?: string): Promise<{ na
 
 export async function authFetch(req: Request, env: AuthEnv) {
   const url = new URL(req.url), path = url.pathname;
+  if (path === '/api/auth/steam/avatar' && req.method === 'GET') {
+    const rawUrl = url.searchParams.get('url');
+    if (!rawUrl || !/^https:\/\/[a-z0-9.-]*steamstatic\.com\/[a-z0-9_]+\.(jpg|png|jpeg)$/i.test(rawUrl)) {
+      return new Response('Invalid avatar url', { status: 400 });
+    }
+    try {
+      const upstream = await fetch(rawUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!upstream.ok) return new Response(null, { status: upstream.status });
+      const headers = new Headers();
+      headers.set('Content-Type', upstream.headers.get('Content-Type') || 'image/jpeg');
+      headers.set('Cache-Control', 'public, max-age=86400, immutable');
+      return new Response(upstream.body, { status: 200, headers });
+    } catch {
+      return new Response(null, { status: 502 });
+    }
+  }
   if (path === '/api/auth/me' && req.method === 'GET') {
     const token = readCookie(req, 'sts2-steam');
     let profile = await steamIdentity(req, env);
     // 若已有 session 但昵称或头像尚未完整，主动刷新一次并回写持久存储
-    if (profile && token && (!profile.avatar || profile.name.startsWith('Steam 7656119'))) {
+    if (profile && token && (!profile.avatar || profile.avatar.startsWith('https://avatars.steamstatic.com') || profile.name.startsWith('Steam 7656119'))) {
       const info = await fetchSteamProfile(profile.steamId, env.STEAM_WEB_API_KEY);
       if (info.avatar || (info.name && info.name !== profile.name)) {
         profile = { ...profile, ...info };
