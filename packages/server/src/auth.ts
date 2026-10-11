@@ -91,20 +91,130 @@ export async function verifySteamSignature(params: URLSearchParams): Promise<boo
   return false;
 }
 
+/** Fetch Steam profile via Web API if key is present, fallback to public profile XML. */
+async function fetchSteamProfile(steamId: string, apiKey?: string): Promise<{ name: string; avatar: string }> {
+  let name = `Steam ${steamId}`, avatar = '';
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  };
+
+  // 1. 若配置了 Web API Key，优先请求官方 API
+  if (apiKey) {
+    try {
+      const api = new URL('https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/');
+      api.search = new URLSearchParams({ key: apiKey, steamids: steamId }).toString();
+      const response = await fetch(api.toString(), { headers, redirect: 'follow', signal: AbortSignal.timeout(8_000) });
+      if (response.ok) {
+        const summary = await response.json<{ response?: { players?: { steamid: string; personaname: string; avatarfull: string }[] } }>();
+        const player = summary?.response?.players?.find(p => p.steamid === steamId);
+        if (player) {
+          if (player.personaname) name = String(player.personaname).slice(0, 80);
+          if (player.avatarfull && /^https:\/\/[a-z0-9.-]*steamstatic\.com\/[a-f0-9_]+\.(jpg|png|jpeg)$/i.test(player.avatarfull)) {
+            avatar = player.avatarfull;
+          }
+          if (avatar) return { name, avatar };
+        }
+      }
+    } catch (err) {
+      console.warn('[steam] Web API profile fetch failed:', err);
+    }
+  }
+
+  // 2. 免 API Key 兜底：直接拉取 Steam 官方公开个人资料 XML
+  try {
+    const xmlUrl = `https://steamcommunity.com/profiles/${steamId}/?xml=1`;
+    const response = await fetch(xmlUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(8_000) });
+    if (response.ok) {
+      const text = await response.text();
+      const nameMatch = /<steamID>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/steamID>/.exec(text);
+      if (nameMatch?.[1]?.trim()) {
+        name = nameMatch[1].trim().slice(0, 80);
+      }
+      const avatarMatch = /<avatarFull>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/avatarFull>/.exec(text);
+      const matchedAvatar = avatarMatch?.[1]?.trim();
+      if (matchedAvatar && /^https:\/\/[a-z0-9.-]*steamstatic\.com\/[a-f0-9_]+\.(jpg|png|jpeg)$/i.test(matchedAvatar)) {
+        avatar = matchedAvatar;
+      }
+    }
+  } catch (err) {
+    console.warn('[steam] public XML profile fetch failed:', err);
+  }
+
+  return { name, avatar };
+}
+
 export async function authFetch(req: Request, env: AuthEnv) {
   const url = new URL(req.url), path = url.pathname;
-  if (path === '/api/auth/me' && req.method === 'GET') return authJson({ profile: await steamIdentity(req, env) });
+  if (path === '/api/auth/me' && req.method === 'GET') {
+    const token = readCookie(req, 'sts2-steam');
+    let profile = await steamIdentity(req, env);
+    // 若已有 session 但昵称或头像尚未完整，主动刷新一次并回写持久存储
+    if (profile && token && (!profile.avatar || profile.name.startsWith('Steam 7656119'))) {
+      const info = await fetchSteamProfile(profile.steamId, env.STEAM_WEB_API_KEY);
+      if (info.avatar || (info.name && info.name !== profile.name)) {
+        profile = { ...profile, ...info };
+        await store(env, 'update', { token, profile });
+      }
+    }
+    return authJson({ profile });
+  }
   if (path === '/api/auth/logout' && req.method === 'POST') {
     if (req.headers.get('Origin') !== url.origin) return authJson({ error: 'origin' }, 403);
     await store(env, 'logout', { token: readCookie(req, 'sts2-steam') });
     return new Response('{}', { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Set-Cookie': cookie(req, 'sts2-steam', '', 0) } });
   }
+  if (path === '/api/auth/steam/popup-done' && req.method === 'GET') {
+    const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Steam 登录完成</title>
+  <style>
+    body { background: #171d25; color: #c7d5e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: grid; place-items: center; height: 100vh; margin: 0; }
+    .box { text-align: center; padding: 20px; }
+    h2 { color: #66c0f4; margin-bottom: 8px; font-size: 22px; }
+    p { font-size: 14px; opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Steam 登录成功</h2>
+    <p>正在自动返回游戏窗口，请稍候...</p>
+  </div>
+  <script>
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'sts2_steam_login_done' }, '*');
+        setTimeout(() => window.close(), 200);
+      } else {
+        location.replace('/?menu=multiplayer');
+      }
+    } catch (e) {
+      location.replace('/?menu=multiplayer');
+    }
+  </script>
+</body>
+</html>`;
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
+    });
+  }
   if (path === '/api/auth/steam/login' && req.method === 'GET') {
+    const isPopup = url.searchParams.get('popup') === '1';
     const state = random(), callback = `${url.origin}/api/auth/steam/callback?state=${state}`;
-    // Only a local path is accepted; login cannot be used as an external redirector.
-    const destination = url.searchParams.get('return') ?? '/';
-    const target = new URL(destination, url.origin);
-    const returnTo = target.origin === url.origin && !target.pathname.startsWith('/api/') ? target.pathname + target.search : '/';
+    let returnTo = '/';
+    if (isPopup) {
+      returnTo = '/api/auth/steam/popup-done';
+    } else {
+      const destination = url.searchParams.get('return') ?? '/';
+      const target = new URL(destination, url.origin);
+      returnTo = target.origin === url.origin && !target.pathname.startsWith('/api/') ? target.pathname + target.search : '/';
+    }
     await store(env, 'begin', { state, callback, returnTo });
     const login = new URL(endpoint);
     login.search = new URLSearchParams({ 'openid.ns': namespace, 'openid.mode': 'checkid_setup',
@@ -123,20 +233,8 @@ export async function authFetch(req: Request, env: AuthEnv) {
     const verified = await verifySteamSignature(url.searchParams);
     if (!verified) return authJson({ error: 'steam_verification' }, 403);
     const steamId = url.searchParams.get('openid.claimed_id')!.split('/').at(-1)!;
-    const profile: SteamProfile = { steamId, name: `Steam ${steamId}`, avatar: '' };
-    if (env.STEAM_WEB_API_KEY) {
-      const api = new URL('https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/');
-      api.search = new URLSearchParams({ key: env.STEAM_WEB_API_KEY, steamids: steamId }).toString();
-      try {
-        const response = await fetch(api, { redirect: 'error', signal: AbortSignal.timeout(10_000) });
-        const summary = response.ok ? await response.json<{ response: { players: { steamid: string; personaname: string; avatarfull: string }[] } }>() : null;
-        const player = summary?.response?.players?.find(p => p.steamid === steamId);
-        if (player) {
-          profile.name = String(player.personaname).slice(0, 80);
-          if (/^https:\/\/(avatars\.steamstatic\.com|avatars\.(akamai|fastly)\.steamstatic\.com)\/[a-f0-9]+(?:_full|_medium)?\.jpg$/.test(player.avatarfull)) profile.avatar = player.avatarfull;
-        }
-      } catch { /* Authentication remains valid if the profile API is temporarily unavailable. */ }
-    }
+    const info = await fetchSteamProfile(steamId, env.STEAM_WEB_API_KEY);
+    const profile: SteamProfile = { steamId, name: info.name, avatar: info.avatar };
     const token = random();
     await store(env, 'create', { token, profile });
     const headers = new Headers({ Location: login.returnTo, 'Cache-Control': 'no-store' });
@@ -158,6 +256,13 @@ export class SteamAuth extends DurableObject<AuthEnv> {
       const ttl = action === '/begin' ? 600_000 : 7 * 86400_000;
       await this.ctx.storage.put(key, { expires: Date.now() + ttl, ...action === '/begin' ? { callback: body.callback, returnTo: body.returnTo } : { profile: body.profile } });
       await this.ctx.storage.setAlarm(Date.now() + 86400_000);
+      return authJson({ ok: true });
+    }
+    if (action === '/update') {
+      const existing = await this.ctx.storage.get<any>(key);
+      if (existing) {
+        await this.ctx.storage.put(key, { ...existing, profile: body.profile });
+      }
       return authJson({ ok: true });
     }
     const value = await this.ctx.storage.get<any>(key);

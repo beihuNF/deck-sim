@@ -7,12 +7,16 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Account management dialog now uses the authentic nine-patch parchment frame, natural button copy, and auto-scaling popup buttons.
 
 [gold][b]Multiplayer[/b][/gold]
+• Steam sign-in now opens in a dedicated popup window, seamlessly completing authentication without refreshing the page or restarting introductory animations.
+• Automatically fetches authentic Steam usernames and avatars via public profile fallbacks, preserving full profile display even without dedicated server API keys.
 • Hardened Steam OpenID callback verification with standard GET query verification and POST fallback, preventing edge network 503 service failures.`,
     zhs: `[gold][b]界面[/b][/gold]
 • 多人联机身份入口完全遵循原版档案按钮设计与排版规范，复用 Kreon 字体、金色边框、悬停动效与原版音效。
 • 账号管理弹窗改用原版九宫格羊皮纸底框与精炼对称的弹窗操作按钮，支持文字长度自适应字号。
 
 [gold][b]多人联机[/b][/gold]
+• Steam 登录改为独立弹出窗口完成授权，登录成功后自动无感同步，无需整页刷新或重播开场动画。
+• 增加 Steam 公开个人资料解析兜底，无需服务器配置 API 密钥即可直接展示真实 Steam 昵称与高清头像。
 • 加固 Steam OpenID 登录回调验证逻辑，采用规范 GET 验证并保留 POST 回退，修复部分边缘网络下登录返回 503 错误的问题。`,
   },
   {

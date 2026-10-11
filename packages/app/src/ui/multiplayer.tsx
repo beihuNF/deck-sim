@@ -301,7 +301,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                   <PopupButton
                     yes={true}
                     text={tr('登录', 'Sign In')}
-                    onClick={loginSteam}
+                    onClick={() => loginSteam(() => setShowAccountDialog(false))}
                   />
                 </>
               )}
