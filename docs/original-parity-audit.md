@@ -19,20 +19,20 @@
 | 网页邀请粘贴入口 | 输入框先按 12 字符截断完整链接 | 粘贴时先解析 URL 的公开 `room` 参数，再填入大写房间号；同时支持直接粘贴房间号，不读取其他玩家的会话 token。 |
 | `NCardGrid.UpdateGridNavigation` / `ProcessGuiFocus` | 卡面外层尺寸为零，方向吸附跳过卡牌；焦点重绘后丢失 | 按实际卡面范围吸附，保留焦点，行内左右循环，上下保留列并滚动到卡牌；预览、弹窗与当前页面独占焦点。 |
 | `NSettingsSlider._GuiInput` | 设置滑条和下拉列表只能用鼠标 | 左右按原版每次调整 5%，可切换设置页、分页箭头和下拉选项；下拉列表滚动自身以显示聚焦项，取消只关闭当前层。 |
-| 浏览器手柄提示与按钮释放桥接 | 部分菜单缺少聚焦按键提示；模拟按下/抬起未等待界面更新，返回会触发两次 | 使用原版控制器图集显示当前选择绑定，跟随 Xbox/PS/Switch 与重绑定；抬起等待一帧，并使用正常鼠标点击的 detail，补齐事件、休息、宝箱、商店及弹窗的选择。 |
+| `NRemoteMouseCursorContainer` / `NRemoteMouseCursor` | 远程鼠标光标未绘制；手柄虚拟光标与全局指针样式粗糙 | 接入独立远程队友光标（同屏平滑移动、地图羽毛笔/橡皮擦显示及队友标签）；全局及手柄光标替换为原版石刻尖角指针与按压倾斜贴图。 |
+| `EventSplitVoteAnimation` / `NEventOptionButton.FlashConfirmation` | 多人事件分票无动画，选项缺少获胜高光与未选中灰化 | 实现分票 12~18 次平局轮盘摇奖动画（1.2s Sine Out 缓动）、`map_split_tick.mp3` 音效、胜者头像弹跳、未选选项灰化与获胜选项闪烁金光。 |
+| `NRollingBoulderVfx` | 滚石攻击即时全量触发所有伤害，缺乏碰撞与滚动时序 | 接入原版坠地震屏音效，按生物水平坐标从左至右依次接触触发 `HitCreature` 伤害信号与结束推进。 |
+| `NDeckViewScreen` / `NTreasureRoom` | 牌组浏览关闭音效静音；宝箱开启音效缺乏回退 | 补齐 `map_close.mp3` 关闭音效与各幕宝箱（`treasure_act1~3`）开启音效保障。 |
 
 ## 已确认仍有差异
 
 按优先级记录，不能用“原版规则已经转译”代替逐条验证。
 
 1. **每日联机状态分叉的具体触发条件仍需定位。** 用户报告每日挑战主机击杀怪物后，客机仍有血条。已有原版 checksum 分叉中止处理；它能避免双方静默继续，但不等于修复造成分叉的原始原因。应继续验证具体日期、词缀、最后出牌和玩家选牌暂停场景。
-2. **选择和分票的完整动画仍有缺口。** `EventSplitVoteAnimation` 的轮转高亮、获胜头像跳动和选项确认闪光尚未完整接入；共享宝箱的手势分配与跳过按钮仍与原版场景不同。结果由原版规则产生，但表现未达到 1:1。
-3. **玩家选择期间的桌面卡牌移位未完全还原。** 本轮接入等待意图与提示点，但原版 `NMultiplayerPlayerIntentHandler` 将已出牌缩至意图位置、恢复后重新加入出牌队列的完整动画还需单独核查。远程缩略卡的蓝色材质、波纹和瞄准线渐变也还需精确复刻。
-4. **独立远程鼠标光标尚未绘制。** 原版 `NRemoteMouseCursorContainer` 按双方当前屏幕决定显隐；本轮接入了坐标和战斗瞄准，但未添加完整远程光标、反应轮与表情交互。
-5. **滚石特效目前即时触发伤害信号。** `bridge.ts` 的 `NRollingBoulderVfx` 接入了伤害目标，但没有原版逐个接触角色、滚动并退出场景的时序表现，需要保留伤害规则并补动画。
-6. **粒子与音频引擎存在明确能力差异。** `render/particles.ts` 尚不模拟 turbulence、orbit velocity、sub-emitters；`audio.ts` 忽略部分 scatter distance / 3D 定位。不能将这些效果标为原版一致。
-7. **网页每日排行榜使用原版 NullLeaderboardStrategy。** 即浏览器账户下的离线榜，不连接 Steam 在线排行榜；没有将不同来源的榜伪装为原版在线榜。
-8. **开局后的断线重连尚未接入。** 当前房间服务在开局后拒绝加入，并在任一玩家断线时通知所有端停止；已有 token 只用于大厅刷新恢复槽位。原版 `RunLobby.HandleClientRejoinRequestMessage` / `RunManager.GetRejoinMessage` 返回 `SerializableRun` 与 `NetFullCombatState`，网页还未接回这条恢复路径。恢复原玩家与中途添加新玩家是不同需求；账号登录本身不能恢复战斗状态。
+2. **玩家选择期间的桌面卡牌移位未完全还原。** 本轮接入等待意图与提示点，但原版 `NMultiplayerPlayerIntentHandler` 将已出牌缩至意图位置、恢复后重新加入出牌队列的完整动画还需单独核查。远程缩略卡的蓝色材质、波纹和瞄准线渐变也还需精确复刻。
+3. **粒子与音频引擎存在明确能力差异。** `render/particles.ts` 尚不模拟 turbulence、orbit velocity、sub-emitters；`audio.ts` 忽略部分 scatter distance / 3D 定位。不能将这些效果标为原版一致。
+4. **网页每日排行榜使用原版 NullLeaderboardStrategy。** 即浏览器账户下的离线榜，不连接 Steam 在线排行榜；没有将不同来源的榜伪装为原版在线榜。
+5. **开局后的断线重连尚未接入。** 当前房间服务在开局后拒绝加入，并在任一玩家断线时通知所有端停止；已有 token 只用于大厅刷新恢复槽位。原版 `RunLobby.HandleClientRejoinRequestMessage` / `RunManager.GetRejoinMessage` 返回 `SerializableRun` 与 `NetFullCombatState`，网页还未接回这条恢复路径。恢复原玩家与中途添加新玩家是不同需求；账号登录本身不能恢复战斗状态。
 
 ## 核查约束
 
