@@ -166,7 +166,7 @@ function RewardButton({ v, r, set, width = 402 }: { v: RewardsView; r: any; set?
   const on = st !== '' && !busy;
   const bright = busy ? rest : st === 'press' ? 0.7 : st === 'hover' ? 1.1 : rest;
   return (
-    <div class={'reward-btn' + (on ? ' hover' : '') + (r instanceof G.RelicReward ? ' relic' : '')} ref={el} style={{ width: `${width}px` }}
+    <div class={'reward-btn' + (on ? ' hover' : '') + (r instanceof G.RelicReward ? ' relic' : '')} aria-disabled={busy} ref={el} style={{ width: `${width}px` }}
       onPointerEnter={() => {
         if (busy) return;
         setSt('hover');
@@ -210,7 +210,7 @@ export function GridHolder({ card, x, y, scale = 0.8, hover = 1, onPick, onInspe
   const pressed = useRef(-1);
   const el = useRef<HTMLDivElement>(null);
   return (
-    <div class={'grid-holder' + (cls ? ` ${cls}` : '')} ref={el} style={{ left: `${x}px`, top: `${y}px`, scale: String(hot ? hover : scale), zIndex: hot ? 2 : 1, transition: hot ? 'none' : `scale .5s ${EXPO_OUT}`, ...style }}
+    <div class={'grid-holder' + (cls ? ` ${cls}` : '')} aria-disabled={!clickable} ref={el} style={{ left: `${x}px`, top: `${y}px`, scale: String(hot ? hover : scale), zIndex: hot ? 2 : 1, transition: hot ? 'none' : `scale .5s ${EXPO_OUT}`, ...style }}
       onPointerEnter={() => {
         setHot(true);
         playOneShot('event:/sfx/ui/clicks/ui_hover');

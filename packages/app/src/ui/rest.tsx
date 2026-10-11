@@ -123,7 +123,7 @@ function RestButton({ view, o, x }: { view: any; o: any; x: number }) {
   const v = !enabled ? 0.6 : st === 'hover' ? 1.2 : 1;
   const active = ready && !view.disabled && enabled;
   return (
-    <div class="rest-btn" style={{ left: `${x}px` }}
+    <div class="rest-btn" aria-disabled={!active} style={{ left: `${x}px` }}
       ref={(e) => { if (e && !e.dataset.in) { e.dataset.in = '1'; e.animate([{ filter: 'brightness(0)', opacity: 0 }, { filter: 'brightness(1)', opacity: 1 }], { duration: 500, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' }).onfinish = () => setReady(true); } }}
       onPointerEnter={() => { if (!ready) return; setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); view.SetText(text()); }}
       onPointerLeave={() => { if (st) { setSt(''); view.FadeOutOptionDescription(); } }}

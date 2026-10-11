@@ -15,6 +15,17 @@ export function invitedRoomCode() {
   const code = new URLSearchParams(location.search).get('room')?.toUpperCase();
   return code && /^[A-F0-9]{12}$/.test(code) ? code : null;
 }
+/** Invitations carry a public room code, never another player's authenticated session token. */
+export function parseRoomInvitation(text: string) {
+  const value = text.trim();
+  if (/^[A-F0-9]{12}$/i.test(value)) return value.toUpperCase();
+  try {
+    const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(value) ? value : `https://${value}`);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    const code = url.searchParams.get('room');
+    return code && /^[A-F0-9]{12}$/i.test(code) ? code.toUpperCase() : null;
+  } catch { return null; }
+}
 let socket: WebSocket | null = null;
 let net: any = null;
 let timer: ReturnType<typeof setInterval> | null = null;

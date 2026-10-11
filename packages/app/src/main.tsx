@@ -38,7 +38,7 @@ import { FeedbackScreen, feedbackOpen } from './ui/feedback';
 import { topBarMapPressed } from './ui/map';
 import { fit, turned } from './view';
 import { getKeyboardBindings } from './input/hints';
-import { initGamepadLoop, VirtualCursor, GamepadToast } from './input/gamepad';
+import { initGamepadLoop, VirtualCursor, GamepadToast, ControllerFocusHint } from './input/gamepad';
 import './anchors.css'; // last: it adjusts what the other stylesheets place
 
 initGamepadLoop();
@@ -164,6 +164,7 @@ function App() {
       <Tip />
       {ui.toast && <div class="toast" onClick={() => { ui.toast = ''; invalidate(); }}>{ui.toast}</div>}
       <GamepadToast />
+      <ControllerFocusHint />
       <DevConsole />
     </>
   );

@@ -492,7 +492,7 @@ function Paginator({ r }: { r: Extract<Row, { kind: 'page' }> }) {
     vfx.current?.animate([{ translate: '0 0', opacity: 1, filter: 'brightness(1)' }, { translate: `${anim.dir < 0 ? 90 : -90}px 0`, opacity: 0, filter: 'brightness(0)' }], { duration: 250, easing: ease, fill: 'forwards' });
   }, [anim?.gen]);
   return (
-    <div class="st-page" data-ctl>
+    <div class="st-page">
       <PageArrow left onClick={() => page(-1)} />
       <div class="stp-mask">
         <div class="stp-label" ref={label}>{r.options[i] ?? '>:P'}</div>
@@ -510,7 +510,7 @@ function PageArrow({ left, onClick }: { left?: boolean; onClick: () => void }) {
   const t = st === 'hover' ? '.05s linear' : `.5s ${EXPO_OUT}`;
   const f = left ? frameByName('ui_atlas', 'settings_tiny_left_arrow') : null;
   return (
-    <div class={'stp-arrow' + (left ? ' left' : ' right')}
+    <div class={'stp-arrow' + (left ? ' left' : ' right')} data-ctl
       onPointerEnter={() => { setSt('hover'); hover(); }} onPointerLeave={() => { setSt(''); setTouched(true); }}
       onPointerDown={(e) => { if (e.button === 0) { setSt('press'); click(); } }}
       onPointerUp={(e) => { if (e.button === 0 && st === 'press') { setSt('hover'); onClick(); } }}>
@@ -526,6 +526,13 @@ function PageArrow({ left, onClick }: { left?: boolean; onClick: () => void }) {
  * handle at the value (smoothed), "N%" to its left. Pressing or dragging sets the value from x; steps of 1.
  */
 function Slider({ r }: { r: Extract<Row, { kind: 'slider' }> }) {
+  const control = useRef<HTMLDivElement>(null), live = useRef(r); live.current = r;
+  useEffect(() => {
+    const el = control.current;
+    const step = (e: Event) => { const row = live.current; row.set(Math.max(0, Math.min(100, Math.round(row.get() + (e as CustomEvent<number>).detail * 5)))); invalidate(); };
+    el?.addEventListener('controller-step', step);
+    return () => el?.removeEventListener('controller-step', step);
+  }, []);
   const v = safe(r.get, 0);
   const at = (e: PointerEvent) => {
     const rr = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -533,9 +540,9 @@ function Slider({ r }: { r: Extract<Row, { kind: 'slider' }> }) {
     invalidate();
   };
   return (
-    <div class="st-slider" data-ctl>
+    <div class="st-slider">
       <div class="sts-value">{v}%</div>
-      <div class="sts-bar"
+      <div class="sts-bar" data-ctl ref={control}
         onPointerDown={(e) => { if (e.button !== 0) return; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); at(e); }}
         onPointerMove={(e) => { if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) at(e); }}>
         <div class="sts-border" style={{ borderImageSource: `url(${imageUrl('images/ui/combat/health_bar_bg.png')})` }} />
@@ -562,9 +569,9 @@ function Dropdown({ label, options, disabled = false, onPick }: { label: string;
   const [open, setOpen] = useState(false);
   const [hot, setHot] = useState(false);
   return (
-    <div class={'st-drop' + (disabled ? ' disabled' : '')} data-ctl>
-      {open && <div class="std-dismiss" onPointerUp={() => setOpen(false)} />}
-      <div class="std-face" style={{ background: hot ? '#3C5B6B' : '#2C434F' }}
+    <div class={'st-drop' + (disabled ? ' disabled' : '')}>
+      {open && <div class="std-dismiss" onPointerDown={e => e.stopPropagation()} onPointerUp={() => setOpen(false)} />}
+      <div class="std-face" data-ctl style={{ background: hot ? '#3C5B6B' : '#2C434F' }}
         onPointerEnter={() => { if (disabled) return; setHot(true); hover(); }} onPointerLeave={() => setHot(false)}
         onPointerDown={(e) => { if (!disabled && e.button === 0) click(); }}
         onPointerUp={(e) => { if (!disabled && e.button === 0) setOpen(!open); }}>
@@ -573,7 +580,7 @@ function Dropdown({ label, options, disabled = false, onPick }: { label: string;
       </div>
       {open && (
         <div class="std-list" onWheel={(e) => e.stopPropagation()}>
-          {options.map((o, i) => <div class="std-item" onPointerEnter={hover} onPointerUp={() => { setOpen(false); onPick(i); }}>{o}</div>)}
+          {options.map((o, i) => <div class="std-item" data-ctl onPointerEnter={hover} onPointerUp={() => { setOpen(false); onPick(i); }}>{o}</div>)}
         </div>
       )}
     </div>

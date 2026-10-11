@@ -105,6 +105,7 @@ export function ProceedButton({ enabled, pulse, label, onClick, style }: { enabl
       <div class="gb-outline pb-outline" style={{ ...fit('compressed', 'proceed_button_outline', -11, -17, 296, 155), filter: tint(1, 0.8, 0) }} />
       <div class="gb-image" style={fit('ui_atlas', 'proceed_button', -11, -17, 296, 155)} />
       <div class="pb-label"><span>{text}</span></div>
+      {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint('select').replace('[img ', '[img size=48 ')} /></span>}
     </div>
   );
 }

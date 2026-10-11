@@ -84,7 +84,7 @@ function RelicHolder({ view, relic, index, el }: { view: TreasureView; relic: an
   const t = st === 'hover' ? 'scale .05s linear' : `scale .4s ${EXPO_OUT}`;
   const enabled = view.clickable && !view.selectionOff;
   return (
-    <div class="relic-holder-t" ref={el} data-relic-index={index} style={{ left: `${left}px`, translate: `0 ${view.fx.HolderY}px`, filter: `brightness(${view.fx.HolderV})` }}
+    <div class="relic-holder-t" ref={el} aria-disabled={!enabled} data-relic-index={index} style={{ left: `${left}px`, translate: `0 ${view.fx.HolderY}px`, filter: `brightness(${view.fx.HolderV})` }}
       onPointerEnter={() => { if (!view.clickable) return; setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); setTips(hoverTipsOf(relic), { kind: 'relic', rect: [left + 544, 391, 120, 120] }); }}
       onPointerLeave={() => { setSt(''); setTip(null); }}
       onPointerDown={(e) => { if (e.button === 0 && enabled) { setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}

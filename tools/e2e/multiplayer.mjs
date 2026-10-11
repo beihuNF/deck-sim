@@ -1,6 +1,6 @@
 // Two or four isolated browser profiles: locked-character preview, shared drawings, map votes and room entry.
 // Requires the local room server (wrangler dev --port 8787) and app server.
-// CHROME=<path> [URL=<host app>] [GUEST_URL=<guest app sharing the room service>] [INVITE=1] [PLAYERS=2|4] [MODE=standard|daily] [PARITY=1] [FORMATION=1] [DIFFERENT_SPEED=1|guest] [DIVERGENCE=1] [KEYBOARD_PING=1] [VIEW=...] [ASPECT=Auto] node tools/e2e/multiplayer.mjs <outDir>
+// CHROME=<path> [URL=<host app>] [GUEST_URL=<guest app sharing the room service>] [INVITE=1] [PASTE_INVITE=1] [PLAYERS=2|4] [MODE=standard|daily] [PARITY=1] [FORMATION=1] [DIFFERENT_SPEED=1|guest] [DIVERGENCE=1] [KEYBOARD_PING=1] [VIEW=...] [ASPECT=Auto] node tools/e2e/multiplayer.mjs <outDir>
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -61,7 +61,14 @@ try {
     } else {
       await p.locator('.submenu-btn').nth(1).click();
       if (p === guest) await p.screenshot({ path: `${out}/join-dialog.png` });
-      await p.fill('.mp-dialog-input', code);
+      if (process.env.PASTE_INVITE) {
+        const invitation = new URL(host.url()); invitation.searchParams.set('room', code);
+        await p.locator('.mp-dialog-input').evaluate((el, text) => {
+          const data = new DataTransfer(); data.setData('text/plain', text);
+          el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+        }, invitation.href);
+        assert.equal(await p.inputValue('.mp-dialog-input'), code);
+      } else await p.fill('.mp-dialog-input', code);
       await p.press('.mp-dialog-input', 'Enter');
     }
     await p.waitForSelector('.invite-code-btn');

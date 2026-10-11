@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { G, $, list } from '../game';
 import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
-  readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode,
+  readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode, parseRoomInvitation,
 } from '../multiplayer';
 import { BackButton, ConfirmButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
@@ -317,6 +317,10 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 autoFocus
                 placeholder="____________"
                 value={joinCode}
+                onPaste={e => {
+                  const code = parseRoomInvitation(e.clipboardData?.getData('text') ?? '');
+                  if (code) { e.preventDefault(); setJoinCode(code); }
+                }}
                 onInput={e => setJoinCode(e.currentTarget.value.toUpperCase().replace(/[^A-F0-9]/g, ''))}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && joinCode.length === 12) {
@@ -324,7 +328,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                   }
                 }}
               />
-              <div class="mp-dialog-hint">{tr('输入 12 位房间代码', 'Enter 12-character Room Code')}</div>
+              <div class="mp-dialog-hint">{tr('输入房间代码或粘贴邀请链接', 'Enter a room code or paste an invitation link')}</div>
             </div>
 
             <div class="mp-dialog-buttons">

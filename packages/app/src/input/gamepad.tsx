@@ -1,15 +1,17 @@
 /**
  * Gamepad controller subsystem.
- * Provides console-style combat focus navigation & targeting, and virtual cursor for menus/maps/shops.
+ * Provides directional focus navigation, combat targeting, and an optional virtual cursor.
  */
 import { $, G } from '../game';
+import { useEffect, useState } from 'preact/hooks';
 import { ui, invalidate } from '../store';
 import { getBindings, type ActionId } from './bindings';
 import { creatureViewsRef, targetManager } from '../cardnodes';
 import { getCombatHand, endTurnHotkey, peekHotkey, pileHotkey, confirmHotkey } from '../ui/combat';
 import { toggleCardsView, closeCardsView } from '../ui/pause';
 import { topBarMapPressed, restoreMapControllerScroll, mapControllerNavigationAllowed, scrollMapWithController } from '../ui/map';
-import { getInputDevice, setInputDevice, setControllerId, getKeyboardBindings } from './hints';
+import { getInputDevice, setInputDevice, setControllerId, getKeyboardBindings, actionHint } from './hints';
+import { RichText } from '../ui/richtext';
 import { modalOpen } from '../ui/modal';
 import { ftueActive } from '../ui/ftue';
 import { edge } from '../view';
@@ -29,6 +31,7 @@ let selectedHandIndex = 0;
 let activeHand: any = null;
 let selectedHolder: any = null;
 let lastTarget: any = null;
+let focusedControl: HTMLElement | null = null;
 
 // Analog stick debounce / repeat timers
 let stickXTimer = 0;
@@ -95,28 +98,68 @@ function combatInputActive() {
   return ui.screen === 'run' && !ui.pauseOpen && !ui.subscreen && !ui.cardsView && !ui.mapOpen && !ui.overlays.length && !modalOpen() && !ftueActive() && !!document.querySelector('.combat .combat-ui');
 }
 function clearFocus(mouseTarget: EventTarget | null = null) {
-  const focused = document.querySelectorAll('.input-focus');
+  const focused = new Set<Element>(Array.from(document.querySelectorAll('.input-focus')));
+  if (focusedControl?.isConnected) focused.add(focusedControl);
+  focusedControl = null;
   focused.forEach(el => {
     el.classList.remove('input-focus');
     // A real mouse may already have entered this focused control before mousemove reaches window.
     // Keep its native hover; synthesizing leave here makes the first mouse click on a map node fail.
-    if (!(mouseTarget instanceof Node && el.contains(mouseTarget))) el.dispatchEvent(new PointerEvent('pointerleave', { bubbles: false }));
+    if (!(mouseTarget instanceof Node && el.contains(mouseTarget))) (el.closest('.grid-holder') ?? el).dispatchEvent(new PointerEvent('pointerleave', { bubbles: false }));
   });
-  if (focused.length) virtualHovered = null;
+  if (focused.size) virtualHovered = null;
 }
-const CONTROL_SELECTOR = 'button:not(:disabled), [data-ctl]:not(.disabled), .settings-tab, .submenu-btn:not(.disabled), .chs-btn, .game-btn.shown, .mp.travelable, .event-option:not(.disabled), .ancient-next, .anc-hitbox, .reward-btn, .bundle, .gh-card, .pause-btn, .vp-btn:not(.disabled), .chs-arrow';
-function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = CONTROL_SELECTOR, move = true) {
+const CONTROL_SELECTOR = 'button:not(:disabled), input:not(:disabled):not([type="hidden"]), a[href], [data-ctl]:not(.disabled):not(.nscrollbar), .mm-btn, .mm-profile, .settings-tab, .submenu-btn, .chs-btn, .game-btn.shown, .mp.travelable, .event-option, .anc-hitbox, .reward-btn, .bundle, .grid-holder .gh-card, .pause-btn, .vp-btn, .chs-arrow, .rest-btn, .chest-btn, .relic-holder-t, .merchant-btn, .shop-hit, .alt-btn, .view-upgrades, .sort-btn, .inspect-arrow, .ic-upgrade, .ftue-confirm, .cr-arrow, .ea-proceed, .invite-code-btn';
+function navigationRoot(selector?: string): ParentNode {
+  // Only the foremost layer owns focus. Screens underneath remain mounted for the original animations.
+  const last = (selector: string) => Array.from(document.querySelectorAll<HTMLElement>(selector)).at(-1);
+  if (modalOpen()) return document.querySelector('.modal-slot') ?? document;
+  const dialog = last('.mp-join-modal-backstop'); if (dialog) return dialog.querySelector('.mp-join-dialog, .mp-settings-dialog') ?? dialog;
+  const dropdown = last('.std-list'); if (dropdown) return dropdown;
+  const inspect = last('.inspect-screen'); if (inspect) return inspect.closest('.stage-root') ?? inspect;
+  if (ftueActive()) return last('.ftue') ?? document;
+  if (ui.subscreen) return document.querySelector('.subscreen-root') ?? document;
+  if (ui.pauseOpen) return last('.settings-screen, .pause-menu') ?? document;
+  if (ui.cardsView) return last('.cards-screen, .mp-expanded') ?? document;
+  if (ui.mapOpen) return document.querySelector('.map-screen') ?? document;
+  if (ui.overlays.length) {
+    const screen = last('.rewards-screen, .card-reward-screen, .choose-card-screen, .bundle-screen, .grid-screen');
+    return screen?.querySelector('.grid-preview, .bundle-preview') ?? screen ?? document;
+  }
+  if (selector?.startsWith('.tb-')) return document;
+  if (document.querySelector('.shop-inv.open')) return document.querySelector('.shop-inv.open')!;
+  if (ui.screen === 'run') {
+    const room = last('.event, .rest, .treasure, .shop');
+    if (room) return room;
+  }
+  return document.querySelector('.stage-root') ?? document;
+}
+function navigationCandidates(selector: string) {
   const mapOnly = selector === MAP_SELECTOR;
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector)).filter(el => {
-    const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && (r.bottom > 0 || mapOnly || !!el.closest('.settings-panel')) && (r.top < innerHeight || mapOnly || !!el.closest('.settings-panel')) && r.right > 0 && r.left < innerWidth
-      && getComputedStyle(el).visibility !== 'hidden' && !el.closest('.disabled, [data-rebinding="true"]');
+  return Array.from(navigationRoot(selector).querySelectorAll<HTMLElement>(selector)).filter(el => {
+    const r = el.getBoundingClientRect(), style = getComputedStyle(el);
+    const scrollable = !!el.closest('.settings-panel, .scroll-area, .cg-scroll, .ncg-scroll, .std-list');
+    return r.width > 0 && r.height > 0 && (r.bottom > 0 || mapOnly || scrollable) && (r.top < innerHeight || mapOnly || scrollable) && r.right > 0 && r.left < innerWidth
+      && style.visibility !== 'hidden' && style.pointerEvents !== 'none' && !el.closest('.disabled, [aria-disabled="true"], [data-rebinding="true"]')
+      && !(el instanceof HTMLInputElement && el.parentElement?.closest('[data-ctl]'));
   });
-  const focused = document.querySelector<HTMLElement>('.input-focus');
+}
+function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = CONTROL_SELECTOR, move = true) {
+  const existing = focusedControl?.isConnected ? focusedControl : document.querySelector<HTMLElement>('.input-focus'), root = navigationRoot(selector);
+  if (move && existing?.matches('.sts-bar') && root instanceof Node && root.contains(existing) && (direction === 'left' || direction === 'right')) {
+    existing.dispatchEvent(new CustomEvent('controller-step', { detail: direction === 'left' ? -1 : 1 })); return;
+  }
+  if (!move && existing && root instanceof Node && root.contains(existing) && existing.matches(selector)
+      && !existing.closest('.disabled, [aria-disabled="true"], [data-rebinding="true"]')
+      && existing.getBoundingClientRect().width > 0 && getComputedStyle(existing).visibility !== 'hidden' && getComputedStyle(existing).pointerEvents !== 'none') {
+    existing.classList.add('input-focus'); focusedControl = existing; return;
+  }
+  const candidates = navigationCandidates(selector);
+  const focused = existing;
   const current = focused && candidates.includes(focused) ? focused : null;
   const origin = current?.getBoundingClientRect();
   const center = (el: HTMLElement) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
-  let next = candidates.find(el => el.matches('.mp.travelable, .chs-btn.selected')) ?? candidates[0];
+  let next = candidates.find(el => el.matches('.mp.travelable, .chs-btn.selected, .event-option, .rest-btn, .chest-btn, .relic-holder-t, .reward-btn, .gh-card, .bundle, .shop-hit, .mm-btn')) ?? candidates[0];
   if (current && !move) return;
   if (origin && move) {
     const x = origin.left + origin.width / 2, y = origin.top + origin.height / 2;
@@ -127,20 +170,47 @@ function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = C
       return { el, forward, score: forward + across * 3 };
     }).filter(v => v.forward > 8).sort((a, b) => a.score - b.score);
     next = ranked[0]?.el ?? current ?? next;
+    // NCardGrid.UpdateGridNavigation wraps horizontally within each row and preserves the column vertically.
+    const grid = current?.closest('.cg-scroll, .ncg-scroll');
+    if (grid && current?.matches('.gh-card')) {
+      const rows = new Map<number, HTMLElement[]>();
+      for (const card of candidates.filter(el => el.matches('.gh-card') && grid.contains(el))) {
+        const top = parseFloat((card.closest('.grid-holder') as HTMLElement).style.top);
+        const row = rows.get(top) ?? []; row.push(card); rows.set(top, row);
+      }
+      const sorted = [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, row]) => row.sort((a, b) => center(a)[0] - center(b)[0]));
+      const rowIndex = sorted.findIndex(row => row.includes(current!)), row = sorted[rowIndex], col = row?.indexOf(current) ?? -1;
+      if (row && col >= 0) {
+        if (direction === 'left' || direction === 'right') next = row[(col + (direction === 'left' ? -1 : 1) + row.length) % row.length];
+        else next = sorted[rowIndex + (direction === 'up' ? -1 : 1)]?.[col] ?? current;
+      }
+    }
   }
-  if (next === current) return;
+  if (next === current) { next?.classList.add('input-focus'); return; }
   clearFocus();
   next?.classList.add('input-focus');
+  focusedControl = next ?? null;
   if (next) {
     const root = document.querySelector('.stage-root')!.getBoundingClientRect(), r = next.getBoundingClientRect();
     syncControllerFocus((r.left + r.width / 2 - root.left) / root.width * 1920, (r.top + r.height / 2 - root.top) / root.height * 1080);
-    if (next.closest('.settings-panel')) {
+    const dropdown = next.closest<HTMLElement>('.std-list');
+    if (dropdown) {
+      const box = dropdown.getBoundingClientRect(), bottom = Math.min(box.bottom, innerHeight - 8), top = Math.max(box.top, 0);
+      dropdown.scrollTop += r.bottom > bottom ? r.bottom - bottom : r.top < top ? r.top - top : 0;
+    } else if (next.closest('.settings-panel')) {
       const r = next.getBoundingClientRect(), root = document.querySelector('.stage-root')!.getBoundingClientRect(), scale = root.width / 1920;
       const upper = root.top + 200 * scale;
       const delta = r.bottom > innerHeight - 30 ? (r.bottom - innerHeight + 30) / scale : r.top < upper ? (r.top - upper) / scale : 0;
       if (delta) window.dispatchEvent(new CustomEvent('input-scroll', { detail: delta }));
+    } else {
+      const scroll = next.closest<HTMLElement>('.scroll-area, .cg-scroll, .ncg-scroll');
+      if (scroll) {
+        const box = scroll.getBoundingClientRect(), root = next.closest('.stage-root')!.getBoundingClientRect();
+        const delta = r.bottom > box.bottom ? r.bottom - box.bottom + 20 : r.top < box.top ? r.top - box.top - 20 : 0;
+        if (delta) scroll.dispatchEvent(new WheelEvent('wheel', { deltaY: delta / (root.width / 1920) + .01, bubbles: true }));
+      }
     }
-    next.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
+    (next.closest('.grid-holder') ?? next).dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
     if (next instanceof HTMLButtonElement) next.focus({ preventScroll: true });
   }
 }
@@ -171,7 +241,7 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (matches('confirm') && !combatInputActive() && !modalOpen()) {
-    const confirm = document.querySelector<HTMLElement>('.confirm-btn.shown');
+    const confirm = navigationRoot().querySelector<HTMLElement>('.confirm-btn.shown');
     if (confirm) { e.preventDefault(); e.stopImmediatePropagation(); activateControl(confirm); return; }
   }
   if ((matches('viewDeck') || matches('viewExhaust')) && document.querySelector('.settings-screen, .charselect, .coop-charselect')) {
@@ -463,19 +533,22 @@ function handleMenuVirtualCursor(
     if (actionJustPressed('viewDeck')) toggleCardsView('deck');
     return;
   }
-  // Move virtual cursor with left stick
+  // Left stick and remapped directional buttons use the same focus graph. Right stick retains pointer access.
+  focusControls('right', CONTROL_SELECTOR, false);
+  const analog = stickDirection(dt, lx, ly);
+  if (analog) focusControls(analog);
+  // Move the optional virtual cursor with the right stick's horizontal axis.
   const speed = 1200; // pixels per second
   // A delayed frame must not jump over an entire control (or across the screen after tab resume).
   const cursorDt = Math.min(dt, 1 / 30);
-  cursorX = Math.max(edge.l + 20, Math.min(edge.r - 20, cursorX + lx * speed * cursorDt));
-  cursorY = Math.max(edge.t + 20, Math.min(edge.b - 20, cursorY + ly * speed * cursorDt));
-  if (lx || ly) clearFocus();
-  if (getInputDevice() === 'gamepad' && !document.querySelector('.input-focus')) hoverElementUnderCursor();
+  cursorX = Math.max(edge.l + 20, Math.min(edge.r - 20, cursorX + rx * speed * cursorDt));
+  cursorY = Math.max(edge.t + 20, Math.min(edge.b - 20, cursorY + (rx ? ry * speed * cursorDt : 0)));
+  if (rx) { clearFocus(); hoverElementUnderCursor(); }
   invalidate();
 
   // Scroll views with right stick (e.g. Map, Compendium, Settings)
   if (Math.abs(ry) > 0.2) {
-    const el = getElementUnderCursor();
+    const el = document.querySelector<HTMLElement>('.input-focus') ?? getElementUnderCursor();
     if (el) {
       el.dispatchEvent(new WheelEvent('wheel', {
         deltaY: ry * 35,
@@ -487,9 +560,8 @@ function handleMenuVirtualCursor(
   }
 
   if (modalOpen()) {
-    if (actionJustPressed('confirm') || actionJustPressed('select')) window.dispatchEvent(new KeyboardEvent('keydown', { key: getKeyboardBindings().confirm, bubbles: true }));
-    else if (actionJustPressed('cancel')) simulateEscape();
-    return;
+    // A chooses the focused Yes/No button; Y retains the modal's direct confirm action.
+    if (actionJustPressed('confirm')) { window.dispatchEvent(new KeyboardEvent('keydown', { key: getKeyboardBindings().confirm, bubbles: true })); return; }
   }
 
   const onPageScreen = !!document.querySelector('.settings-screen, .charselect, .coop-charselect');
@@ -506,7 +578,7 @@ function handleMenuVirtualCursor(
     if (focused) activateControl(focused); else clickElementUnderCursor();
   }
   if (actionJustPressed('confirm')) {
-    const confirm = document.querySelector<HTMLElement>('.confirm-btn.shown, .vp-btn.yes:not(.disabled)');
+    const confirm = navigationRoot().querySelector<HTMLElement>('.confirm-btn.shown, .vp-btn.yes:not(.disabled)');
     if (confirm) activateControl(confirm);
   }
 
@@ -574,6 +646,7 @@ function clickElementUnderCursor() {
 }
 
 function activateControl(el: HTMLElement) {
+  if (el.matches('.sts-bar')) return; // NSettingsSlider changes only on left/right navigation.
   const rect = el.getBoundingClientRect();
   const evInit: PointerEventInit = {
     clientX: rect.left + rect.width / 2,
@@ -584,8 +657,14 @@ function activateControl(el: HTMLElement) {
     isPrimary: true,
   };
   el.dispatchEvent(new PointerEvent('pointerdown', evInit));
-  el.dispatchEvent(new PointerEvent('pointerup', evInit));
-  el.click();
+  // Give Preact's pressed state time to render before release; immediate synthetic down/up loses the release.
+  requestAnimationFrame(() => {
+    if (!el.isConnected) return;
+    el.dispatchEvent(new PointerEvent('pointerup', evInit));
+    // A normal click has detail=1. detail=0 would trigger BackButton's keyboard fallback a second time.
+    el.dispatchEvent(new MouseEvent('click', { ...evInit, detail: 1 }));
+    if (el instanceof HTMLInputElement) el.focus({ preventScroll: true });
+  });
 }
 
 function simulateEscape() {
@@ -593,7 +672,11 @@ function simulateEscape() {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: getKeyboardBindings().cancel, bubbles: true }));
     return;
   }
-  const closers = document.querySelectorAll<HTMLElement>('[data-esc]');
+  const dialogCancel = navigationRoot().querySelector<HTMLElement>('.mp-dialog-buttons .vp-btn.no');
+  if (dialogCancel) { activateControl(dialogCancel); return; }
+  const dropdownDismiss = document.querySelector('.std-list')?.closest('.st-drop')?.querySelector<HTMLElement>('.std-dismiss');
+  if (dropdownDismiss) { activateControl(dropdownDismiss); return; }
+  const closers = navigationRoot().querySelectorAll<HTMLElement>('[data-esc]');
   const close = closers[closers.length - 1];
   if (close) {
     close.click();
@@ -611,7 +694,7 @@ function simulateEscape() {
  * Virtual cursor visual indicator rendered over the stage.
  */
 export function VirtualCursor() {
-  if (!cursorActive || getInputDevice() !== 'gamepad' || combatInputActive() || (ui.mapOpen && mapControllerNavigationAllowed() && !ui.pauseOpen && !ui.cardsView && !ui.overlays.length && !modalOpen() && !ftueActive())) return null;
+  if (!cursorActive || getInputDevice() !== 'gamepad' || document.querySelector('.input-focus') || combatInputActive() || (ui.mapOpen && mapControllerNavigationAllowed() && !ui.pauseOpen && !ui.cardsView && !ui.overlays.length && !modalOpen() && !ftueActive())) return null;
   return (
     <div
       class="gamepad-cursor"
@@ -640,6 +723,22 @@ export function VirtualCursor() {
       </svg>
     </div>
   );
+}
+
+/** The focused control's actual Select binding, using the original controller-family atlas. */
+export function ControllerFocusHint() {
+  const [at, setAt] = useState<{ x: number; y: number; hint: string; width: number } | null>(null);
+  useEffect(() => $.onFrame(() => {
+    const el = getInputDevice() === 'gamepad' ? document.querySelector<HTMLElement>('.input-focus') : null;
+    const slider = el?.matches('.sts-bar'), width = slider ? 104 : 48;
+    const hint = slider ? `${actionHint('handPrev')} ${actionHint('handNext')}` : actionHint('select');
+    const r = el?.getBoundingClientRect();
+    const popupButton = el?.matches('.vp-btn');
+    const next = r && hint && !el?.querySelector('.input-button-hint') ? { x: Math.max(0, Math.min(innerWidth - width - 4, popupButton ? r.right - 24 : r.right + 6)), y: Math.max(0, Math.min(innerHeight - 48, popupButton ? r.bottom - 24 : r.top + r.height / 2 - 24)), hint, width } : null;
+    setAt(prev => prev?.x === next?.x && prev?.y === next?.y && prev?.hint === next?.hint ? prev : next);
+    return true;
+  }), []);
+  return at && <div class="controller-focus-hint" style={{ position: 'fixed', left: at.x, top: at.y, width: at.width, height: 48, pointerEvents: 'none', zIndex: 10000 }}><RichText text={at.hint.replaceAll('[img ', '[img size=48 ')} /></div>;
 }
 
 /**
