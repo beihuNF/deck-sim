@@ -88,7 +88,7 @@ export function CharSelect() {
     void charSelectBg(locked ? null : isRandom(c) ? 'random_character' : String(c.Id.Entry).toLowerCase());
     const m = locked ? 0 : maxAscension(c);
     const pref = safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(c.Id).PreferredAscension, 0);
-    setLevel(isRandom(c) ? m : Math.min(pref, m));
+    setLevel(Math.min(pref, m));
     setSel({ c, locked, n: (sel?.n ?? 0) + 1 });
   };
   // OnSubmenuOpened: the first button is selected, or a newly unlocked character plays its unlock first
@@ -104,8 +104,8 @@ export function CharSelect() {
   }, []);
   const changeLevel = (n: number) => {
     setLevel(n);
-    // StartRunLobby.UpdatePreferredAscension
-    if (sel && !isRandom(sel.c)) safe(() => { G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(sel.c.Id).PreferredAscension = n; }, undefined);
+    // StartRunLobby.UpdatePreferredAscension: 原版允许并持久化保存 RandomCharacter 的 PreferredAscension
+    if (sel) safe(() => { G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(sel.c.Id).PreferredAscension = n; }, undefined);
   };
   const embark = async () => {
     if (!sel || sel.locked || embarking) return;

@@ -26,6 +26,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Restored deck view close sound and fallback audio for opening act chests.
 • Simulated rolling boulder sequence with impacts, screen shakes, and progressive damage timing.
 
+[gold][b]Gameplay[/b][/gold]
+• Aligned random character ascension selection with original StartRunLobby: fixed random character defaulting to ascension 10, properly respecting and saving preferred ascension level.
+
 [gold][b]Controls[/b][/gold]
 • Aligned controller selection indicator with the original game's golden reticle corners and subtle highlights.`,
     zhs: `[gold][b]多人联机[/b][/gold]
@@ -51,6 +54,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 全局及手柄虚拟光标接入原版石刻尖角指针与按压倾斜贴图。
 • 补齐牌组浏览关闭音效与宝箱房间开启音效回退保障。
 • 还原巨石翻滚（Rolling Boulder）逐个撞击目标受击伤害时序与震屏音效。
+
+[gold][b]游戏机制[/b][/gold]
+• 随机角色进阶难度对齐原版 StartRunLobby：修复选随机角色时无脑默认进阶 10 难度的错误，正常记忆并保存玩家设定的偏好进阶。
 
 [gold][b]操作[/b][/gold]
 • 对齐原版手柄选中视觉效果，采用原作金箔折角瞄准框与金色光晕高亮。`,

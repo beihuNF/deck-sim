@@ -126,11 +126,11 @@ export interface RunOptions { ascension?: number; seed?: string | null; modifier
 /** NCharacterSelectScreen / NCustomRunScreen / NDailyRunScreen → NGame.StartNewSingleplayerRun. */
 export async function startRun(character: any, o: RunOptions = {}) {
   resetUi();
-  ui.menuStack = [];
   const seed = o.seed || new URLSearchParams(location.search).get('seed') || G.SeedHelper.GetRandomSeed(null, 12);
-  if (G.RandomCharacter && character instanceof G.RandomCharacter) character = rollRandomCharacter();
+  const isRandomChar = G.RandomCharacter && character instanceof G.RandomCharacter;
+  if (isRandomChar) character = rollRandomCharacter();
   // StartRunLobby.UpdatePreferredAscension: remember the level picked for this character (not for dailies)
-  if (!o.dailyTime && o.ascension != null) safe(() => { G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(character.Id).PreferredAscension = o.ascension; });
+  if (!o.dailyTime && o.ascension != null && !isRandomChar) safe(() => { G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(character.Id).PreferredAscension = o.ascension; });
   await G.startNewSingleplayerRun({
     character, seed, shouldSave: true, ascension: o.ascension ?? 0, modifiers: o.modifiers ?? [], dailyTime: o.dailyTime,
     attach: (rs: any) => { run = rs; attachRun(rs); },
