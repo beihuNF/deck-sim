@@ -39,7 +39,7 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
 img { -webkit-user-drag: none; user-drag: none; }
 input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; }
-html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); font-family: var(--font); overflow: clip; -webkit-user-select: none; user-select: none; touch-action: none; }
+html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); font-family: var(--font); overflow: clip; -webkit-user-select: none; user-select: none; touch-action: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #app { width: 100%; height: 100%; }
 .viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; overflow: clip; }
 /* The frame every position is written in; what shows is the viewport around it (the clip, and the background's spread). */
@@ -1505,3 +1505,34 @@ textarea,
   50% { opacity: 1; transform: scale(1.02); }
   100% { opacity: 0; transform: scale(1); }
 }
+
+/* ---- 移动端缺陷内核（手机 QQ 内置浏览器）文字描边安全降级 ---- */
+.broken-paint-order .mm-label,
+.broken-paint-order .mmp-title,
+.broken-paint-order .ea-header,
+.broken-paint-order .ea-proceed span,
+.broken-paint-order .vpb-label,
+.broken-paint-order .mp-dialog-title,
+.broken-paint-order .mprb-title,
+.broken-paint-order .mps-title,
+.broken-paint-order .wfpo-title,
+.broken-paint-order .chs-title,
+.broken-paint-order .chs-stat span,
+.broken-paint-order .chs-subtitle,
+.broken-paint-order .reward-btn .rb-label,
+.broken-paint-order .vu-label,
+.broken-paint-order .shop-price span,
+.broken-paint-order .anc-title,
+.broken-paint-order .anc-next-label,
+.broken-paint-order .anc-epithet-text,
+.broken-paint-order .potion-popup-btn span,
+.broken-paint-order .fb-header {
+  -webkit-text-stroke: 0 !important;
+  text-shadow:
+    -2px -2px 0 rgba(0, 0, 0, 0.85),
+     2px -2px 0 rgba(0, 0, 0, 0.85),
+    -2px  2px 0 rgba(0, 0, 0, 0.85),
+     2px  2px 0 rgba(0, 0, 0, 0.85),
+     0px  3px 6px rgba(0, 0, 0, 0.6) !important;
+}
+

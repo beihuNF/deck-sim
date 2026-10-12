@@ -48,6 +48,15 @@ import './anchors.css'; // last: it adjusts what the other stylesheets place
 initGamepadLoop();
 initGameCursor();
 
+// 检测存在 paint-order 绘制缺陷的移动端 QQ 内置浏览器（严格排除支持良好的微信 MicroMessenger）
+if (typeof navigator !== 'undefined' && typeof document !== 'undefined') {
+  const ua = navigator.userAgent;
+  const isMobileQQ = (/\bQQ\/\d+/i.test(ua) || /V1_(AND|IPH)_SQ_/i.test(ua)) && !/MicroMessenger/i.test(ua);
+  if (isMobileQQ) {
+    document.documentElement.classList.add('broken-paint-order');
+  }
+}
+
 window.addEventListener('resize', () => { fit(); invalidate(); });
 // While turned, page coordinates are reported as the unturned stage sees them (x = page y, y = width − page x), so
 // every client → stage conversion in the views (and Pixi's) stays as written.
