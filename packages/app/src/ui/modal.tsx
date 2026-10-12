@@ -9,8 +9,8 @@ import { loc } from '../i18n';
 import { hsvFilter, tint } from '../filters';
 import { RichText } from './richtext';
 import { view } from '../view';
-import { getKeyboardBindings, actionHint } from '../input/hints';
-import { setDynamicTip, setTip } from './tooltip';
+import { getKeyboardBindings } from '../input/hints';
+import { setTip } from './tooltip';
 
 let modal: { key: number; render: () => any; holes?: () => number[][] } | null = null;
 let modalKey = 0;
@@ -118,8 +118,8 @@ export function PopupButton({ yes, text, onClick, disabled, style }: { yes: bool
   const fit = (f: any) => { const k = f ? Math.min(196 / (f.sw * 2), 96 / (f.sh * 2)) : 1; return frameStyle(f, f ? f.sw * 2 * k : 196, f ? f.sh * 2 * k : 96); };
   return (
     <div class={'vp-btn ' + (yes ? 'yes' : 'no') + (disabled ? ' disabled' : '')} style={{ ...style, pointerEvents: disabled ? 'none' : undefined, opacity: disabled ? 0.5 : 1, filter: disabled ? 'grayscale(0.6)' : undefined }}
-      onPointerEnter={() => { if (disabled) return; setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); setDynamicTip(() => { const hint = actionHint(yes ? 'confirm' : 'cancel'); return { title: hint ? `${text} (${hint})` : text, body: '' }; }); }}
-      onPointerLeave={() => { setSt(''); setTip(null); }}
+      onPointerEnter={() => { if (disabled) return; setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); }}
+      onPointerLeave={() => setSt('')}
       onPointerDown={(e) => { if (disabled) return; if (e.button === 0) { setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
       onPointerUp={(e) => { if (disabled) return; if (e.button === 0 && st === 'press') { setSt(''); onClick(); } }}>
       <div class="vpb-visuals" style={{ scale: st === 'hover' ? '1.025' : st === 'press' ? '0.975' : '1', transition: `scale ${t}` }}>

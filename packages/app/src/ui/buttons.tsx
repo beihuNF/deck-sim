@@ -8,8 +8,7 @@ import { loc } from '../i18n';
 import { tint, hsvFilter } from '../filters';
 import { invalidate } from '../store';
 import { RichText } from './richtext';
-import { actionHint, getInputDevice, actionHintTitle } from '../input/hints';
-import { setDynamicTip, setTip } from './tooltip';
+import { actionHint, getInputDevice } from '../input/hints';
 
 const GOLD = () => tint(0.941, 0.706, 0), CREAM = () => tint(1, 0.965, 0.886);
 
@@ -41,7 +40,7 @@ export function ConfirmButton({ enabled: on, onClick, style, hotkey }: { enabled
   const enabled = useMounted() && on;
   const hovered = useRef(false), pressed = useRef(false);
   const press = () => { pressed.current = true; set('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); };
-  const release = () => { if (pressed.current) { pressed.current = false; if (hotkey) setTip(null); onClick(); } };
+  const release = () => { if (pressed.current) { pressed.current = false; onClick(); } };
   const live = useRef({ press, release });
   live.current = { press, release };
   useEffect(() => {
@@ -59,8 +58,8 @@ export function ConfirmButton({ enabled: on, onClick, style, hotkey }: { enabled
   }, [enabled]);
   return (
     <div class={`game-btn confirm-btn ${enabled ? 'shown' : ''} ${st}`} style={style}
-      onPointerEnter={() => { hovered.current = true; if (enabled) { set('hover'); hover(); if (hotkey) setDynamicTip(() => ({ title: actionHintTitle('confirm'), body: '' })); } }}
-      onPointerLeave={() => { hovered.current = false; if (enabled) set(''); if (hotkey) setTip(null); }}
+      onPointerEnter={() => { hovered.current = true; if (enabled) { set('hover'); hover(); } }}
+      onPointerLeave={() => { hovered.current = false; if (enabled) set(''); }}
       onPointerDown={(e) => { if (enabled && e.button === 0) press(); }}
       onPointerUp={(e) => { if (enabled && e.button === 0) release(); }}>
       <div class="gb-shadow" style={fit('ui_atlas', 'confirm_button', -41, -1, 267, 150)} />
@@ -78,9 +77,9 @@ export function BackButton({ enabled: on, onClick, style }: { enabled: boolean; 
   const enabled = useMounted() && on;
   return (
     <div class={`game-btn back-btn ${enabled ? 'shown' : ''} ${st}`} style={style} data-esc={enabled ? '' : undefined}
-      onClick={(e) => { if (enabled && e.detail === 0) { setTip(null); onClick(); } }}
-      onPointerEnter={() => { if (enabled) { set('hover'); hover(); setDynamicTip(() => ({ title: actionHintTitle('cancel'), body: '' })); } }}
-      onPointerLeave={() => { set(st ? 'hovered' : ''); setTip(null); }}
+      onClick={(e) => { if (enabled && e.detail === 0) onClick(); }}
+      onPointerEnter={() => { if (enabled) { set('hover'); hover(); } }}
+      onPointerLeave={() => set(st ? 'hovered' : '')}
       onPointerDown={(e) => { if (enabled && e.button === 0) { set('press'); playOneShot('event:/sfx/ui/clicks/ui_back'); } }}
       onPointerUp={(e) => { if (enabled && e.button === 0 && st === 'press') { set('hover'); onClick(); } }}>
       <div class="gb-shadow" style={fit('ui_atlas', 'back_button', -9, -1, 267, 150)} />
@@ -144,8 +143,8 @@ export function UnreadyButton({ enabled: on, onClick, style }: { enabled: boolea
     <div
       class={`game-btn confirm-btn unready-btn ${enabled ? 'shown' : ''} ${st}`}
       style={style}
-      onPointerEnter={() => { if (enabled) { set('hover'); hover(); setDynamicTip(() => ({ title: actionHintTitle('cancel'), body: '' })); } }}
-      onPointerLeave={() => { if (enabled) set(''); setTip(null); }}
+      onPointerEnter={() => { if (enabled) { set('hover'); hover(); } }}
+      onPointerLeave={() => { if (enabled) set(''); }}
       onPointerDown={(e) => { if (enabled && e.button === 0) { set('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
       onPointerUp={(e) => { if (enabled && e.button === 0 && st === 'press') { set('hover'); onClick(); } }}
     >

@@ -19,6 +19,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Smart in-game cursor scaling & authentic interaction: custom cursors now smoothly adapt to viewport dimensions with pixel-perfect hotspot alignment (eliminating oversized 64px pointers); globally preserved in-game cursors on option hover instead of reverting to native hand pointers, with authentic tilted press animations.
 • Restored authentic gamepad reticle highlights and missing audio effects across menus and maps.
 • Enhanced cross-browser compatibility: fixed mobile portrait viewport flipping and loading stalls on certain mobile browsers.
+• Cleaned up intrusive shortcut hover tooltips on confirm/cancel/back/peek buttons, restoring original clean hover aesthetics.
 
 [gold][b]Gameplay[/b][/gold]
 • Fixed random character ascension selection, properly respecting preferred ascension levels.`,
@@ -39,6 +40,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 原版鼠标指针智能自适应与交互还原：光标尺寸根据视口与屏幕比例平滑缩放，针尖热点精准对齐（告别过大的 64px 粗糙指针）；悬停选项与按钮时保持游戏原版指针，彻底消除突兀的系统手型回退，并还原按压时的原版倾斜反馈。
 • 还原原版手柄瞄准框高亮视觉，全面补齐地图与菜单交互音效。
 • 优化多浏览器兼容性：修复手机竖屏时画面异常翻转的问题，修复部分移动端浏览器卡在加载界面的问题。
+• 清理确认、返回、取消与手牌偷看等通用按钮上多余的悬停快捷键黑框提示，对齐原版干净清爽的交互体验。
 
 [gold][b]游戏机制[/b][/gold]
 • 修复选择随机角色时默认进阶难度异常的问题，正常保存玩家设定的偏好进阶。`,

@@ -7,8 +7,7 @@ import { imageUrl, frameByName, frameStyle } from '../assets';
 import { RichText } from './richtext';
 import { Card } from './card';
 import { ConfirmButton, type ButtonHotkey } from './buttons';
-import { setTips, setTip, setDynamicTip, hoverTipsOf } from './tooltip';
-import { actionHintTitle } from '../input/hints';
+import { setTips, setTip, hoverTipsOf } from './tooltip';
 import { playOneShot } from '../audio';
 import { tint } from '../filters';
 import { UPGRADE_BEFORE, UPGRADE_AFTER, type HandView } from '../cardnodes';
@@ -164,8 +163,8 @@ export function PeekButton({ peeking, onToggle, wiggle = 0, hotkey }: { peeking:
   const seen = useRef(wiggle);
   useEffect(() => { if (wiggle !== seen.current) { seen.current = wiggle; c.wiggle(); } }, [wiggle]);
   return (
-    <div class="peek-button" onPointerEnter={() => { c.hover(true); setDynamicTip(() => ({ title: actionHintTitle('peek'), body: '' })); }}
-      onPointerLeave={() => { c.hover(false); setTip(null); }}
+    <div class="peek-button" onPointerEnter={() => c.hover(true)}
+      onPointerLeave={() => c.hover(false)}
       onPointerDown={(e) => { if (e.button === 0 && c.hovered) c.press(); }} onPointerUp={(e) => { if (e.button === 0 && c.hovered) c.release(); }}>
       {/* Flash: additive, show_behind_parent, modulate (0.918, 0.724, 0.676), turning with Visuals around its pivot */}
       <img class="peek-flash" ref={flash} src={imageUrl('images/packed/common_ui/peek_button_sdf.png') ?? ''} style={{ display: 'none', filter: tint(0.918008, 0.723657, 0.675867) }} />
