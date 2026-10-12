@@ -2,10 +2,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.qq.com:3478' },
-  { urls: 'stun:stun.miwifi.com:3478' },
-  { urls: 'stun:stun.chat.bilibili.com:3478' },
-  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.cloudflare.com:53'] },
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+  { urls: ['stun:stun.qq.com:3478', 'stun:stun.miwifi.com:3478'] },
   { urls: 'stun:stun.syncthing.net:3478' },
 ];
 
@@ -48,7 +47,10 @@ class PeerConnection {
   private init() {
     if (typeof RTCPeerConnection === 'undefined') return;
     try {
-      this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      this.pc = new RTCPeerConnection({
+        iceServers: ICE_SERVERS,
+        iceCandidatePoolSize: 2,
+      });
       console.log(`[WebRTC] Initializing peer connection with player ${this.peerId} (myId: ${this.myId})`);
     } catch (e) {
       console.warn('[WebRTC] RTCPeerConnection init failed', e);
