@@ -80,7 +80,10 @@ export function BootScreen() {
   }, [stage]);
 
   const isZh = document.documentElement.dataset.lang === 'zhs';
-  const loadingText = loc('main_menu_ui', 'LOADING_OVERLAY.label') || (isZh ? '正在加载...' : 'Loading...');
+  const rawLoc = loc('main_menu_ui', 'LOADING_OVERLAY.label');
+  const loadingText = (!rawLoc || rawLoc.toUpperCase().includes('LOADING_OVERLAY'))
+    ? (isZh ? '正在加载...' : 'Loading...')
+    : rawLoc;
 
   return (
     <div
