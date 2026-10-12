@@ -9,8 +9,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]Experience & Fixes[/b][/gold]
 • Refined custom cursor, controls, and audio effects.
-• Fixed font rendering artifacts and distorted outlines on Mobile QQ browser.
-• Fixed display and loading issues on certain browsers.
+• Fixed text rendering artifacts and stroke distortions on mobile QQ browser.
+• Fixed main menu backdrop loading error on certain mobile browsers.
 • Fixed several known bugs and improved stability.`,
     zhs: `[gold][b]多人联机[/b][/gold]
 • 新增 Steam 云存档同步与跨设备进度漫游。
@@ -19,8 +19,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]体验与修复[/b][/gold]
 • 优化鼠标指针、按键与音效等操作细节。
-• 修复手机 QQ 内置浏览器下文字异常加粗与高光毛边的问题。
-• 修复部分设备与浏览器下的画面显示和加载问题。
+• 全面修复移动端字体渲染异常与手机 QQ 下的描边毛边。
+• 修复部分移动浏览器下主菜单背景偶现加载黑屏的问题。
 • 解决了一些已知问题，优化体验。`,
   },
   {

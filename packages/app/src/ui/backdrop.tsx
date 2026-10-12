@@ -8,18 +8,24 @@ export function Backdrop({ build, id }: { build: () => Promise<Container | null>
   useEffect(() => {
     const root = new Container();
     let dead = false;
-    getApp()
-      .then((a) => {
-        if (dead) return;
-        a.stage.removeChildren();
-        a.stage.addChild(root);
-        if (host.current && a.canvas.parentElement !== host.current) {
-          host.current.appendChild(a.canvas);
-        }
-      })
-      .catch((err) => {
-        console.warn('Backdrop getApp failed for id:', id, err);
-      });
+    const attachApp = (retry = true) => {
+      getApp()
+        .then((a) => {
+          if (dead) return;
+          a.stage.removeChildren();
+          a.stage.addChild(root);
+          if (host.current && a.canvas.parentElement !== host.current) {
+            host.current.appendChild(a.canvas);
+          }
+        })
+        .catch((err) => {
+          console.warn('Backdrop getApp failed for id:', id, err);
+          if (retry && !dead) {
+            setTimeout(() => { if (!dead) attachApp(false); }, 600);
+          }
+        });
+    };
+    attachApp(true);
     build()
       .then((c) => {
         if (c) {

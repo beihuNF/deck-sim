@@ -1,6 +1,6 @@
 // Pixi stage for combat: creatures as Spine skeletons placed per their creature_visuals scenes.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture, WebGLRenderer } from 'pixi.js';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { A, skelSrc, spineIndex, imageSourceSize } from '../assets';
 import { loadScene, attachCreatureFx, particleItem, buildScene, sceneTexture } from './scene';
@@ -52,62 +52,67 @@ export let gpuDetails: GpuDetails | null = null;
 export function getApp() {
   if (!appReady) {
     appReady = (async () => {
-      const a = new Application();
-      // software rendering: no MSAA, half resolution (¼ of the pixels to fill) and 30 fps keep it off a full CPU core.
-      // WebGL fixes antialiasing when the context is created, so SettingsSave.Msaa applies from the next load.
-      soft = softwareGL();
-      const msaa = Number(G.SaveManager.Instance?.SettingsSave?.Msaa ?? 2) > 0;
       try {
-        await a.init({
-          preference: 'webgl',
-          powerPreference: 'high-performance',
-          width: W,
-          height: H,
-          backgroundAlpha: 0,
-          antialias: msaa && !soft && !mobileRendering,
-          autoDensity: true,
-          resolution: soft ? 0.5 : renderResolution(),
-        });
-      } catch (err) {
-        console.warn('Initial Pixi WebGL init failed, retrying with safe fallback options:', err);
-        await a.init({
-          preference: 'webgl',
-          width: W,
-          height: H,
-          backgroundAlpha: 0,
-          antialias: false,
-          autoDensity: true,
-          resolution: 1,
-        });
-      }
-      app = fullView(a);
-
-      const gl = (a.renderer as any).gl as WebGL2RenderingContext | undefined;
-      if (gl) {
+        const a = new Application();
+        // software rendering: no MSAA, half resolution (¼ of the pixels to fill) and 30 fps keep it off a full CPU core.
+        // WebGL fixes antialiasing when the context is created, so SettingsSave.Msaa applies from the next load.
+        soft = softwareGL();
+        const msaa = Number(G.SaveManager.Instance?.SettingsSave?.Msaa ?? 2) > 0;
         try {
-          const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-          const rend = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER) || 'WebGL 2.0';
-          const vend = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR) || '';
-          gpuDetails = {
-            renderer: String(rend),
-            vendor: String(vend),
-            isSoftware: soft,
+          await a.init({
+            preference: 'webgl',
             powerPreference: 'high-performance',
-          };
-        } catch {
-          gpuDetails = { renderer: 'WebGL 2.0', vendor: '', isSoftware: soft, powerPreference: 'high-performance' };
+            width: W,
+            height: H,
+            backgroundAlpha: 0,
+            antialias: msaa && !soft && !mobileRendering,
+            autoDensity: true,
+            resolution: soft ? 0.5 : renderResolution(),
+          });
+        } catch (err) {
+          console.warn('Initial Pixi WebGL init failed, retrying with safe fallback options:', err);
+          await a.init({
+            preference: 'webgl',
+            width: W,
+            height: H,
+            backgroundAlpha: 0,
+            antialias: false,
+            autoDensity: true,
+            resolution: 1,
+          });
         }
-      }
+        app = fullView(a);
 
-      // Godot's BLEND_MODE_SUB (dst − src) for CanvasItemMaterial blend_mode = 2 / render_mode blend_sub
-      const blend = () => {
-        const glCtx = (a.renderer as any).gl as WebGL2RenderingContext | undefined, map = (a.renderer as any).state?.blendModesMap;
-        if (glCtx && map) map.subtract = [glCtx.ONE, glCtx.ONE, glCtx.ONE, glCtx.ONE, glCtx.FUNC_REVERSE_SUBTRACT, glCtx.FUNC_ADD];
-      };
-      blend();
-      a.canvas.addEventListener('webglcontextrestored', blend);
-      applyFpsLimit();
-      return a;
+        const gl = (a.renderer as any).gl as WebGL2RenderingContext | undefined;
+        if (gl) {
+          try {
+            const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+            const rend = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER) || 'WebGL 2.0';
+            const vend = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR) || '';
+            gpuDetails = {
+              renderer: String(rend),
+              vendor: String(vend),
+              isSoftware: soft,
+              powerPreference: 'high-performance',
+            };
+          } catch {
+            gpuDetails = { renderer: 'WebGL 2.0', vendor: '', isSoftware: soft, powerPreference: 'high-performance' };
+          }
+        }
+
+        // Godot's BLEND_MODE_SUB (dst − src) for CanvasItemMaterial blend_mode = 2 / render_mode blend_sub
+        const blend = () => {
+          const glCtx = (a.renderer as any).gl as WebGL2RenderingContext | undefined, map = (a.renderer as any).state?.blendModesMap;
+          if (glCtx && map) map.subtract = [glCtx.ONE, glCtx.ONE, glCtx.ONE, glCtx.ONE, glCtx.FUNC_REVERSE_SUBTRACT, glCtx.FUNC_ADD];
+        };
+        blend();
+        a.canvas.addEventListener('webglcontextrestored', blend);
+        applyFpsLimit();
+        return a;
+      } catch (e) {
+        appReady = null;
+        throw e;
+      }
     })();
   }
   return appReady;

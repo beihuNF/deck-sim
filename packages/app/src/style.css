@@ -36,10 +36,10 @@
   --ui-bg: rgba(20, 24, 30, 0.92);
   --font: 'Kreon', 'StsRU', 'StsCJK', 'StsCJKJ', 'StsKR', 'StsTH', Georgia, serif;
 }
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; -moz-text-size-adjust: 100% !important; }
 img { -webkit-user-drag: none; user-drag: none; }
 input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; }
-html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); font-family: var(--font); overflow: clip; -webkit-user-select: none; user-select: none; touch-action: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); font-family: var(--font); overflow: clip; -webkit-user-select: none; user-select: none; touch-action: none; -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }
 #app { width: 100%; height: 100%; }
 .viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; overflow: clip; }
 /* The frame every position is written in; what shows is the viewport around it (the clip, and the background's spread). */
@@ -1507,32 +1507,60 @@ textarea,
 }
 
 /* ---- 移动端缺陷内核（手机 QQ 内置浏览器）文字描边安全降级 ---- */
-.broken-paint-order .mm-label,
-.broken-paint-order .mmp-title,
-.broken-paint-order .ea-header,
-.broken-paint-order .ea-proceed span,
-.broken-paint-order .vpb-label,
-.broken-paint-order .mp-dialog-title,
-.broken-paint-order .mprb-title,
-.broken-paint-order .mps-title,
-.broken-paint-order .wfpo-title,
-.broken-paint-order .chs-title,
-.broken-paint-order .chs-stat span,
-.broken-paint-order .chs-subtitle,
-.broken-paint-order .reward-btn .rb-label,
-.broken-paint-order .vu-label,
-.broken-paint-order .shop-price span,
-.broken-paint-order .anc-title,
-.broken-paint-order .anc-next-label,
-.broken-paint-order .anc-epithet-text,
-.broken-paint-order .potion-popup-btn span,
-.broken-paint-order .fb-header {
+/* 1. 共同特征全站通杀：在缺陷内核下彻底清空一切居中向内侵蚀的 -webkit-text-stroke，彻底杜绝字体异常加粗、发白毛边与膨胀畸变 */
+.broken-paint-order * {
   -webkit-text-stroke: 0 !important;
-  text-shadow:
-    -2px -2px 0 rgba(0, 0, 0, 0.85),
-     2px -2px 0 rgba(0, 0, 0, 0.85),
-    -2px  2px 0 rgba(0, 0, 0, 0.85),
-     2px  2px 0 rgba(0, 0, 0, 0.85),
-     0px  3px 6px rgba(0, 0, 0, 0.6) !important;
+  -webkit-text-stroke-width: 0 !important;
 }
 
+/* 2. 重点标题、按钮与铭牌：采用 4 方向高清纯黑外阴影替代向内侵蚀的描边，确保字型锐利、对比清晰、层次分明 */
+.broken-paint-order :is(
+  .mm-label,
+  .mmp-title,
+  .smb-title,
+  .icb-label,
+  .remote-solo-label,
+  .stb-label,
+  .stab-label,
+  .std-label,
+  .ea-header,
+  .ea-proceed span,
+  .vpb-label,
+  .mp-dialog-title,
+  .mprb-title,
+  .mps-title,
+  .wfpo-title,
+  .chs-title,
+  .chs-stat span,
+  .chs-subtitle,
+  .reward-btn .rb-label,
+  .vu-label,
+  .shop-price span,
+  .anc-title,
+  .anc-next-label,
+  .anc-epithet-text,
+  .potion-popup-btn span,
+  .fb-header,
+  .modes-title,
+  .modes-card-title,
+  .modes-btn,
+  .coop-title,
+  .patchnotes-title,
+  .mp-dialog-btn,
+  .mp-quick-steam-btn span,
+  .room-code-tag,
+  button,
+  .game-btn
+) {
+  text-shadow:
+    -1.5px -1.5px 0 rgba(0, 0, 0, 0.95),
+     1.5px -1.5px 0 rgba(0, 0, 0, 0.95),
+    -1.5px  1.5px 0 rgba(0, 0, 0, 0.95),
+     1.5px  1.5px 0 rgba(0, 0, 0, 0.95),
+     0px    2px   4px rgba(0, 0, 0, 0.75) !important;
+}
+
+/* 主菜单背景兜底，防止极端异常情况下纯黑死屏 */
+.stage-host[data-backdrop="main-menu"] {
+  background: radial-gradient(circle at 50% 40%, #151a24 0%, #0a0c10 70%, #050608 100%);
+}
