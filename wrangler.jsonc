@@ -18,5 +18,8 @@
     { "pattern": "sts2.136521.xyz", "custom_domain": true },
     { "pattern": "fast.136521.xyz/*", "zone_name": "136521.xyz" }
   ],
+  "observability": {
+    "enabled": true
+  },
   "workers_dev": true
 }

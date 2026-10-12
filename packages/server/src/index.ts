@@ -18,6 +18,34 @@ function isPrivateHost(hostname: string): boolean {
     /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname) || hostname.endsWith('.local');
 }
 
+export function getAllowedOrigin(req: Request): string | null {
+  const origin = req.headers.get('Origin');
+  if (!origin) return null;
+  const url = new URL(req.url);
+  if (origin === url.origin) return origin;
+  try {
+    const originUrl = new URL(origin);
+    if (isPrivateHost(url.hostname) && isPrivateHost(originUrl.hostname)) return origin;
+    if (url.hostname.endsWith('.136521.xyz') && originUrl.hostname.endsWith('.136521.xyz')) return origin;
+    if (url.hostname.endsWith('.workers.dev') && originUrl.hostname.endsWith('.workers.dev')) return origin;
+  } catch {}
+  return null;
+}
+
+function withCors(res: Response, req: Request): Response {
+  if (res.status === 101) return res;
+  const allowed = getAllowedOrigin(req);
+  if (!allowed) return res;
+  const headers = new Headers(res.headers);
+  headers.set('Access-Control-Allow-Origin', allowed);
+  headers.set('Vary', 'Origin');
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+  });
+}
+
 export function sameOrigin(req: Request): boolean {
   const url = new URL(req.url);
   const origin = req.headers.get('Origin');
@@ -28,6 +56,7 @@ export function sameOrigin(req: Request): boolean {
       const originUrl = new URL(origin);
       if (isPrivateHost(url.hostname) && isPrivateHost(originUrl.hostname)) return true;
       if (url.hostname.endsWith('.136521.xyz') && originUrl.hostname.endsWith('.136521.xyz')) return true;
+      if (url.hostname.endsWith('.workers.dev') && originUrl.hostname.endsWith('.workers.dev')) return true;
     } catch {}
     return false;
   }
@@ -44,6 +73,8 @@ export function sameOrigin(req: Request): boolean {
       const refUrl = new URL(referer);
       if (refUrl.origin === url.origin) return true;
       if (isPrivateHost(url.hostname) && isPrivateHost(refUrl.hostname)) return true;
+      if (url.hostname.endsWith('.136521.xyz') && refUrl.hostname.endsWith('.136521.xyz')) return true;
+      if (url.hostname.endsWith('.workers.dev') && refUrl.hostname.endsWith('.workers.dev')) return true;
       return false;
     } catch {
       return false;
@@ -66,6 +97,23 @@ export function sameOrigin(req: Request): boolean {
 export default {
   async fetch(req: Request, env: Env) {
     const path = new URL(req.url).pathname;
+
+    if (req.method === 'OPTIONS' && path.startsWith('/api/')) {
+      const allowed = getAllowedOrigin(req);
+      if (allowed) {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': allowed,
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+            'Access-Control-Max-Age': '86400',
+            'Vary': 'Origin',
+          },
+        });
+      }
+    }
+
     const inviteMatch = /^\/(?:r|room)\/([A-F0-9]{12})\/?$/i.exec(path);
     if (inviteMatch) {
       const targetUrl = new URL(req.url);
@@ -75,14 +123,14 @@ export default {
     }
     if (path.startsWith('/api/auth/')) {
       try {
-        return await authFetch(req, env);
+        return withCors(await authFetch(req, env), req);
       } catch (err: any) {
         console.error('[auth error]:', err);
-        return json({ error: 'steam_service', details: String(err?.message || err) }, 503);
+        return withCors(json({ error: 'steam_service', details: String(err?.message || err) }, 503), req);
       }
     }
     if (!path.startsWith('/api/multiplayer/')) return env.ASSETS.fetch(req);
-    if (!sameOrigin(req)) return json({ error: 'origin' }, 403);
+    if (!sameOrigin(req)) return withCors(json({ error: 'origin' }, 403), req);
     const identity = await steamIdentity(req, env);
     const profileHeaders: Record<string, string> = identity ? { 'X-Steam-Profile': JSON.stringify(identity) } : {};
 
@@ -100,19 +148,21 @@ export default {
       const limit = await env.ROOMS.get(env.ROOMS.idFromName('creation-limit'), roomOpts).fetch(new Request('https://room/limit', {
         method: 'POST', body: req.headers.get('CF-Connecting-IP') ?? 'local',
       }));
-      if (!limit.ok) return limit;
+      if (!limit.ok) return withCors(limit, req);
       const code = crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
       const url = new URL(req.url); url.pathname = `${PREFIX}/${code}`;
       const body = await req.text();
-      if (body.length > 512 * 1024) return json({ error: 'request' }, 413);
-      return env.ROOMS.get(env.ROOMS.idFromName(code), roomOpts).fetch(new Request(url, { method: 'POST', body, headers: { 'X-Create-Room': '1', 'X-CF-Colo': colo, ...profileHeaders } }));
+      if (body.length > 512 * 1024) return withCors(json({ error: 'request' }, 413), req);
+      const res = await env.ROOMS.get(env.ROOMS.idFromName(code), roomOpts).fetch(new Request(url, { method: 'POST', body, headers: { 'X-Create-Room': '1', 'X-CF-Colo': colo, ...profileHeaders } }));
+      return withCors(res, req);
     }
     const m = new RegExp(`^${PREFIX}/([A-F0-9]{12})(/socket)?$`).exec(path);
-    if (!m) return json({ error: 'room' }, 404);
+    if (!m) return withCors(json({ error: 'room' }, 404), req);
     const headers = new Headers(req.headers); headers.delete('X-Create-Room'); headers.delete('X-Steam-Profile');
     if (identity) headers.set('X-Steam-Profile', JSON.stringify(identity));
     if (colo) headers.set('X-CF-Colo', colo);
-    return env.ROOMS.get(env.ROOMS.idFromName(m[1]), roomOpts).fetch(new Request(req, { headers }));
+    const res = await env.ROOMS.get(env.ROOMS.idFromName(m[1]), roomOpts).fetch(new Request(req, { headers }));
+    return withCors(res, req);
   },
 } satisfies ExportedHandler<Env>;
 
