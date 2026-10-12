@@ -19,6 +19,7 @@ import { playOneShot } from '../audio';
 import { tint } from '../filters';
 import { charSelectBg } from '../render/scene';
 import { transitionView } from './transition';
+import './multiplayer.css';
 import { steam, loadSteamProfile, loginSteam, logoutSteam, getGuestName, setGuestName, hasSetGuestName, effectivePlayerName } from '../steam';
 import { cloudSave, uploadCloudSave, restoreCloudSaveFromCloud, fetchCloudSaveMeta, formatCloudSaveTime } from '../cloud-save';
 import { confirmPopup } from './modal';
