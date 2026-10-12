@@ -298,3 +298,17 @@ g.AchievementsHelper.CheckForDefeatedAllEnemiesAchievement = (act: any, player: 
   const beaten = new Set(Array.from(g.SaveManager.Instance.Progress.EnemyStats.Values).filter((e: any) => e.TotalWins > 0).map((e: any) => e.Id.Entry));
   if (Array.from(act.AllMonsters).every((m: any) => beaten.has(m.Id.Entry))) g.AchievementsUtil.Unlock(achievement, player);
 };
+
+/** Web 平台联机玩家昵称解析器：对接真实玩家昵称，替代原版无平台模式下的 Test Host 测试占位符 */
+let webPlayerNameResolver: ((playerId: any) => string | undefined) | null = null;
+export function setWebPlayerNameResolver(resolver: ((playerId: any) => string | undefined) | null) {
+  webPlayerNameResolver = resolver;
+}
+
+const origGetPlayerName = g.NullPlatformUtilStrategy.prototype.GetPlayerName;
+g.NullPlatformUtilStrategy.prototype.GetPlayerName = function (playerId: any) {
+  const custom = webPlayerNameResolver?.(playerId);
+  if (custom) return custom;
+  return origGetPlayerName.call(this, playerId);
+};
+

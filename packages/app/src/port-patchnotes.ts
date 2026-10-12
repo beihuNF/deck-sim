@@ -9,6 +9,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Fixed map doodle sync latency and teammate drawing cursor hotspot alignment.
 • Polished waiting for players overlay visuals and fixed button positioning.
 • Enhanced room invitations and guest play with custom nicknames, and optimized invite links with offline navigation fallback.
+• Fixed multiplayer combat displaying the host's character name as the placeholder Test Host, now properly showing actual player nicknames.
 
 [gold][b]Experience & Fixes[/b][/gold]
 • Refined custom cursor, controls, and audio effects.
@@ -22,6 +23,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 修复联机地图涂鸦同步延迟、丢笔与队友画笔光标位置偏移的问题。
 • 优化局内等待队友重连遮罩样式，修复弹窗边框与退出按钮沉底被截断的问题。
 • 优化房间邀请与游客模式，支持自定义昵称；优化邀请直链与剪贴板分享信息，并强化弱网及离线导航回退。
+• 修复多人战斗中房主与队友角色名显示为官方测试占位符 Test Host 的问题，实时展示真实玩家昵称。
 • 引入 WebRTC DataChannel P2P 点对点直连传输（支持 STUN 自动打洞与 WebSocket 无感保底回退），大幅降低国内联机延迟与丢包。
 
 [gold][b]体验与修复[/b][/gold]

@@ -4,3 +4,4 @@ export * from './shell';
 export * from './version';
 export * from './backup';
 export * from './multiplayer';
+export { setWebPlayerNameResolver } from './overrides';

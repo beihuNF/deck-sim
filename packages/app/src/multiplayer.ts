@@ -1,4 +1,4 @@
-import { G, $, GAME_VERSION, list } from './game';
+import { G, $, GAME_VERSION, list, setWebPlayerNameResolver } from './game';
 import { ui, invalidate } from './store';
 import { startCoopRun, loadSavedCoopRun, quickReloadCoopRun } from './flow';
 import { loc } from './i18n';
@@ -128,6 +128,13 @@ export function multiplayerPlayerName(id: number) {
   if (id === multiplayer.id) return effectivePlayerName();
   return `${mpText('玩家', 'Player')} ${id}`;
 }
+
+// 将真实玩家昵称解析器注册至规则层运行时，覆盖战斗与卡牌描述中原版无平台测试桩 Test Host
+setWebPlayerNameResolver((id: any) => {
+  const numId = Number(id);
+  if (!numId) return undefined;
+  return multiplayerPlayerName(numId);
+});
 
 export function renameMultiplayer(name: string) {
   const clean = setGuestName(name);

@@ -224,4 +224,27 @@ describe('web multiplayer packets', () => {
       expect(remote.layers.get(2)).toHaveLength(1);
     } finally { local.dispose(); remote.dispose(); }
   });
+  it('resolves real player nicknames instead of hardcoded Test Host placeholder', () => {
+    // 默认未注册时，回退到原版测试占位
+    expect(G.PlatformUtil.GetPlayerNameRaw(G.PlatformType.None, 1)).toBe('Test Host');
+    expect(G.PlatformUtil.GetPlayerNameRaw(G.PlatformType.None, 2)).toBe('2');
+
+    // 注入自定义解析器后，能够正确拿到真实名字
+    G.setWebPlayerNameResolver((id: any) => {
+      if (Number(id) === 1) return 'HostPlayer';
+      if (Number(id) === 2) return 'TeammatePlayer';
+      return undefined;
+    });
+    try {
+      expect(G.PlatformUtil.GetPlayerNameRaw(G.PlatformType.None, 1)).toBe('HostPlayer');
+      expect(G.PlatformUtil.GetPlayerNameRaw(G.PlatformType.None, 2)).toBe('TeammatePlayer');
+      // 未命中映射的继续回退到原逻辑
+      expect(G.PlatformUtil.GetPlayerNameRaw(G.PlatformType.None, 1000)).toBe('Test Client 1');
+    } finally {
+      G.setWebPlayerNameResolver(null);
+    }
+    // 清除后恢复
+    expect(G.PlatformUtil.GetPlayerNameRaw(G.PlatformType.None, 1)).toBe('Test Host');
+  });
 });
+
