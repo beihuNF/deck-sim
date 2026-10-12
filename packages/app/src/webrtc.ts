@@ -45,6 +45,7 @@ class PeerConnection {
   private fallbackTimer: any = null;
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private closed = false;
+  private makingOffer = false;
 
   constructor(myId: number, peerId: number, sendSignal: SignalSender, onReceive: PacketReceiver, onStatusChange: () => void) {
     this.myId = myId;
@@ -98,15 +99,17 @@ class PeerConnection {
       }
     };
 
+    // 双方均统一注册 ondatachannel 监听，确保无论哪一方作为 offerer 协商成功均能绑定通道
+    this.pc.ondatachannel = e => {
+      console.log(`[WebRTC] Received data channel: ${e.channel.label} from player ${this.peerId}`);
+      this.bindDataChannel(e.channel);
+    };
+
     // 默认较小 ID 主动发起 Offer；较大 ID 等待接收 Offer
     if (this.myId < this.peerId) {
       this.setupOffererChannels();
       void this.createOffer();
     } else {
-      this.pc.ondatachannel = e => {
-        console.log(`[WebRTC] Received data channel: ${e.channel.label} from player ${this.peerId}`);
-        this.bindDataChannel(e.channel);
-      };
       // 容错机制：若 3 秒内未收到较小 ID 的 Offer，自动发起连接避免死锁
       this.fallbackTimer = setTimeout(() => {
         if (!this.connected && !this.closed && this.pc && !this.reliableDc) {
@@ -133,8 +136,22 @@ class PeerConnection {
   private bindDataChannel(dc: RTCDataChannel) {
     console.log(`[WebRTC] Binding data channel: ${dc.label} for peer ${this.peerId}`);
     if (dc.label === 'sts2_reliable') {
+      if (this.reliableDc && this.reliableDc !== dc) {
+        this.reliableDc.onopen = null;
+        this.reliableDc.onclose = null;
+        this.reliableDc.onerror = null;
+        this.reliableDc.onmessage = null;
+        try { this.reliableDc.close(); } catch {}
+      }
       this.reliableDc = dc;
     } else if (dc.label === 'sts2_unreliable') {
+      if (this.unreliableDc && this.unreliableDc !== dc) {
+        this.unreliableDc.onopen = null;
+        this.unreliableDc.onclose = null;
+        this.unreliableDc.onerror = null;
+        this.unreliableDc.onmessage = null;
+        try { this.unreliableDc.close(); } catch {}
+      }
       this.unreliableDc = dc;
     }
 
@@ -182,8 +199,10 @@ class PeerConnection {
   }
 
   private async createOffer() {
-    if (!this.pc || this.closed) return;
+    if (!this.pc || this.closed || this.makingOffer) return;
+    if (this.pc.signalingState !== 'stable') return;
     try {
+      this.makingOffer = true;
       console.log(`[WebRTC] Creating offer for player ${this.peerId}...`);
       const offer = await this.pc.createOffer();
       if (this.closed || !this.pc) return;
@@ -197,6 +216,8 @@ class PeerConnection {
       });
     } catch (e) {
       console.warn('[WebRTC] createOffer failed', e);
+    } finally {
+      this.makingOffer = false;
     }
   }
 
@@ -204,16 +225,35 @@ class PeerConnection {
     if (!this.pc || this.closed) return;
     try {
       if (data.offer) {
-        console.log(`[WebRTC] Received offer from player ${this.peerId}`);
+        console.log(`[WebRTC] Received offer from player ${this.peerId} (current signalingState: ${this.pc.signalingState})`);
         if (this.fallbackTimer) {
           clearTimeout(this.fallbackTimer);
           this.fallbackTimer = null;
         }
+
+        // 碰撞保护 (Offer Collision Handling - Perfect Negotiation):
+        // 较小 ID 为 impolite peer（主导方），较大 ID 为 polite peer（从属方）
+        const isCollision = this.makingOffer || this.pc.signalingState !== 'stable';
+        const isPolite = this.myId > this.peerId;
+        if (isCollision) {
+          if (!isPolite) {
+            console.log(`[WebRTC] Offer collision detected: impolite peer ${this.myId} ignores remote offer from ${this.peerId}`);
+            return;
+          }
+          console.log(`[WebRTC] Offer collision detected: polite peer ${this.myId} rolls back local offer for ${this.peerId}`);
+          try {
+            await this.pc.setLocalDescription({ type: 'rollback' } as any);
+          } catch (rbErr) {
+            console.warn('[WebRTC] rollback failed or not supported:', rbErr);
+          }
+        }
+
         await this.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
         for (const c of this.pendingCandidates) {
           try { await this.pc.addIceCandidate(c); } catch {}
         }
         this.pendingCandidates = [];
+
         const answer = await this.pc.createAnswer();
         if (this.closed || !this.pc) return;
         await this.pc.setLocalDescription(answer);
@@ -225,17 +265,21 @@ class PeerConnection {
           },
         });
       } else if (data.answer) {
-        console.log(`[WebRTC] Received answer from player ${this.peerId}`);
+        console.log(`[WebRTC] Received answer from player ${this.peerId} (current signalingState: ${this.pc.signalingState})`);
+        // 状态保护：只有在 have-local-offer 状态下才能接受 answer，避免报 InvalidStateError
+        if (this.pc.signalingState !== 'have-local-offer') {
+          console.warn(`[WebRTC] Ignoring redundant/unexpected answer from player ${this.peerId} in state ${this.pc.signalingState}`);
+          return;
+        }
         await this.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         for (const c of this.pendingCandidates) {
           try { await this.pc.addIceCandidate(c); } catch {}
         }
         this.pendingCandidates = [];
       } else if (data.candidate) {
-        console.log(`[WebRTC] Received ICE candidate from player ${this.peerId}`);
         const candidate = new RTCIceCandidate(data.candidate);
-        if (this.pc.remoteDescription) {
-          await this.pc.addIceCandidate(candidate);
+        if (this.pc.remoteDescription && this.pc.signalingState !== 'closed') {
+          try { await this.pc.addIceCandidate(candidate); } catch {}
         } else {
           this.pendingCandidates.push(data.candidate);
         }

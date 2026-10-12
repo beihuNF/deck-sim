@@ -9,6 +9,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Improved room invitations and player nickname displays.
 
 [gold][b]Experience & Fixes[/b][/gold]
+• Optimized web loading performance and startup experience.
 • Polished controls, audio effects, and mobile browser compatibility.
 • Fixed several known bugs and improved stability.`,
     zhs: `[gold][b]多人联机[/b][/gold]
@@ -18,6 +19,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 优化房间邀请与玩家昵称展示。
 
 [gold][b]体验与修复[/b][/gold]
+• 优化网页加载性能与开屏体验。
 • 优化操作手感、音效及移动端浏览器兼容性。
 • 修复了一些已知问题，优化体验。`,
   },

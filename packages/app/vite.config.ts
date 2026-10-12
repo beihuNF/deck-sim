@@ -33,7 +33,23 @@ export default defineConfig(({ command }) => ({
     target: 'es2020', chunkSizeWarningLimit: 20000, sourcemap: false, assetsDir: 'js',
     // Skeletons (src/assets.ts skelSrc) are emitted as .bin: the CDN in front caches by extension and .skel is not on its list.
     assetsInlineLimit: (file) => (file.endsWith('.skel') ? false : undefined),
-    rollupOptions: { output: { assetFileNames: (a) => `js/[name]-[hash]${a.names[0]?.endsWith('.skel') ? '.bin' : '[extname]'}` } },
+    rollupOptions: {
+      output: {
+        assetFileNames: (a) => `js/[name]-[hash]${a.names[0]?.endsWith('.skel') ? '.bin' : '[extname]'}`,
+        // 代码分割：将大型第三方库与核心规则层拆分成独立 chunk，支持 HTTP/2 / HTTP/3 并行下载并大幅提升缓存命中率
+        manualChunks(id) {
+          if (id.includes('node_modules/pixi.js') || id.includes('node_modules/@esotericsoftware/spine-pixi-v8')) {
+            return 'vendor-render';
+          }
+          if (id.includes('node_modules/preact')) {
+            return 'vendor-preact';
+          }
+          if (id.includes('packages/core/')) {
+            return 'sts2-core';
+          }
+        },
+      },
+    },
   },
   preview: { port: 47174, strictPort: true, host: '127.0.0.1' },
   // Asset URLs ask for the …@0.5x images as %40 (sw.js, the wiki), as Cloudflare serves them; the preview's static server
