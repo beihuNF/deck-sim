@@ -148,15 +148,15 @@ void main() {
 }
 
 /** Validate on the main renderer, without keeping another GPU context alive just for shader checks. */
-function compiles(gl: WebGLRenderingContext | WebGL2RenderingContext, fragment: string): boolean {
+function compiles(gl: WebGLRenderingContext | WebGL2RenderingContext, fragment: string): { ok: boolean; log: string } {
   const sh = (type: number, src: string) => { const x = gl.createShader(type)!; gl.shaderSource(x, src); gl.compileShader(x); return x; };
   const v = sh(gl.VERTEX_SHADER, VERTEX), f = sh(gl.FRAGMENT_SHADER, fragment);
   const p = gl.createProgram()!;
   gl.attachShader(p, v); gl.attachShader(p, f); gl.linkProgram(p);
   const ok = !!gl.getProgramParameter(p, gl.LINK_STATUS);
-  if (!ok) console.debug('[shader]', gl.getShaderInfoLog(f));
+  const log = ok ? '' : (gl.getShaderInfoLog(f) || gl.getProgramInfoLog(p) || '');
   gl.deleteProgram(p); gl.deleteShader(v); gl.deleteShader(f);
-  return ok;
+  return { ok, log };
 }
 
 const shaderCache = new Map<string, Promise<GodotShader | null>>();
@@ -172,12 +172,15 @@ export function loadShader(src: string): Promise<GodotShader | null> {
       if (renderer.gl.isContextLost()) {
         await new Promise<void>((resolve) => canvas.addEventListener('webglcontextrestored', () => resolve(), { once: true }));
       }
+      let lastLog = '';
       for (const floats of [false, true, 'cmp'] as const) {
         const t = translate(code, floats);
         if (!t) return null;
-        if (compiles(renderer.gl, t.fragment)) return t;
+        const res = compiles(renderer.gl, t.fragment);
+        if (res.ok) return t;
+        lastLog = res.log;
       }
-      console.debug('[shader] unsupported', rel);
+      console.debug('[shader] unsupported', rel, lastLog);
       return null;
     }).catch(() => null);
     shaderCache.set(rel, p);
