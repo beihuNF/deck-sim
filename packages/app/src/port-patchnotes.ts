@@ -3,37 +3,23 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Added Steam Cloud save synchronization and cross-device backup.
-• Introduced WebRTC DataChannel P2P direct connection with dedicated domestic TURN/STUN relay, slashing peer-to-peer latency.
-• Improved multiplayer lobby flow, reconnection stability, and room reload.
-• Fixed map doodle sync latency and teammate drawing cursor hotspot alignment.
-• Polished waiting for players overlay visuals and fixed button positioning.
-• Enhanced room invitations and guest play with custom nicknames, and optimized invite links with offline navigation fallback.
-• Fixed multiplayer combat displaying the host's character name as the placeholder Test Host, now properly showing actual player nicknames.
-• Fixed multiplayer run save persistence so interrupted runs can resume properly, added resume/abandon save entries in the host creation menu, and replaced full-page reload on exit with smooth main menu transition.
+• Optimized co-op networking for lower latency and smoother gameplay.
+• Added Steam Cloud save synchronization and backup.
+• Supported resuming interrupted multiplayer runs from save.
+• Improved room invitations and player nickname displays.
 
 [gold][b]Experience & Fixes[/b][/gold]
-• Refined custom cursor, controls, and audio effects.
-• Fixed text rendering artifacts and stroke distortions on mobile QQ browser.
-• Fixed main menu backdrop loading error on certain mobile browsers.
-• Eliminated false-positive shader compilation warning logs in console during startup asset probing.
+• Polished controls, audio effects, and mobile browser compatibility.
 • Fixed several known bugs and improved stability.`,
     zhs: `[gold][b]多人联机[/b][/gold]
-• 新增 Steam 云存档同步与跨设备进度漫游。
-• 优化多人联机大厅、断线重连体验与快速重载。
-• 修复联机地图涂鸦同步延迟、丢笔与队友画笔光标位置偏移的问题。
-• 优化局内等待队友重连遮罩样式，修复弹窗边框与退出按钮沉底被截断的问题。
-• 优化房间邀请与游客模式，支持自定义昵称；优化邀请直链与剪贴板分享信息，并强化弱网及离线导航回退。
-• 修复多人战斗中房主与队友角色名显示为官方测试占位符 Test Host 的问题，实时展示真实玩家昵称。
-• 修复多人游戏存盘持久化文件名匹配错误导致对局中断无法继续的问题，在房主创建房间菜单中补充恢复与放弃多人存档入口，并移除退出时强制刷新页面，支持平滑返回主菜单。
-• 引入 WebRTC DataChannel P2P 点对点直连传输，并接入自建国内高可用 TURN/STUN 中继节点，彻底解决对称型 NAT 穿透失败回退海外中继的高延迟问题。
+• 优化多人联机网络，大幅降低联机延迟与卡顿。
+• 新增 Steam 云存档同步与进度备份。
+• 支持断线恢复与继续未完成的多人游戏对局。
+• 优化房间邀请与玩家昵称展示。
 
 [gold][b]体验与修复[/b][/gold]
-• 优化鼠标指针、按键与音效等操作细节。
-• 全面修复移动端字体渲染异常与手机 QQ 下的描边毛边。
-• 修复部分移动浏览器下主菜单背景偶现加载黑屏的问题。
-• 优化着色器兼容探测逻辑，消除启动加载阶段控制台出现的误报编译报错日志。
-• 解决了一些已知问题，优化体验。`,
+• 优化操作手感、音效及移动端浏览器兼容性。
+• 修复了一些已知问题，优化体验。`,
   },
   {
     date: '2026_10_11',
