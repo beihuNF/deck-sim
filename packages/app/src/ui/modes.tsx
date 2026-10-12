@@ -404,7 +404,7 @@ function ModifierTickbox({ row, on, disabled = false, onToggle }: { row: ModRow;
     <div
       class={'cr-mod' + (disabled ? ' disabled' : '')}
       data-ctl
-      style={{ cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.85 : 1 }}
+      style={{ cursor: disabled ? 'default' : 'var(--game-cursor-default, auto)', opacity: disabled ? 0.85 : 1 }}
       onPointerEnter={() => { if (!disabled) setSt('hover'); }}
       onPointerLeave={() => setSt('')}
       onPointerDown={(e) => { if (!disabled && e.button === 0) setSt('press'); }}

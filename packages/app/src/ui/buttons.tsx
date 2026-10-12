@@ -192,7 +192,7 @@ export function GameTextureButton({
         height: `${height}px`,
         scale: String(k),
         transition: `scale ${t}`,
-        cursor: disabled ? 'not-allowed' : 'pointer',
+        cursor: disabled ? 'not-allowed' : 'var(--game-cursor-default, auto)',
         opacity: disabled ? 0.5 : 1,
         pointerEvents: disabled ? 'none' : undefined,
         display: 'inline-flex',

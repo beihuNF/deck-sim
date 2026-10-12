@@ -132,13 +132,65 @@ html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); 
   50% { opacity: 1; filter: drop-shadow(0 0 14px rgba(127, 255, 0, 0.7)); }
 }
 .fatal { color: #f88; padding: 20px; white-space: pre-wrap; }
-button { font-family: var(--font); cursor: var(--game-cursor-default, pointer); }
+button { font-family: var(--font); }
 
-.stage-root, .stage-root button, .stage-root [role="button"], .stage-root a {
+/* -------------------------------------------------------------------------- */
+/* 原版游戏光标系统 (NCursorManager Parity)                                    */
+/* 严格遵循原版设计：全局统一游戏内指针，选项悬停保持游戏指针，彻底消除系统手型回退  */
+/* -------------------------------------------------------------------------- */
+:root,
+body,
+#root,
+.stage-root,
+.stage-root * {
   cursor: var(--game-cursor-default, auto);
 }
-.stage-root:active, .stage-root button:active, .stage-root [role="button"]:active {
-  cursor: var(--game-cursor-tilted, auto);
+
+/* 统一覆盖所有可交互元素：按钮、链接、卡片、选项、各类自定义按钮，全部保持原版光标 */
+a,
+button,
+select,
+summary,
+label,
+[role="button"],
+[data-ctl],
+[onclick],
+.pointer,
+[class*="-btn"],
+[class*="-arrow"],
+[class*="-toggle"],
+[class*="-item"],
+.stage-root a,
+.stage-root button,
+.stage-root select,
+.stage-root [role="button"],
+.stage-root [data-ctl],
+:is(
+  .mm-btn, .mm-profile, .mm-github, .mm-notice span, .submenu-btn,
+  .chs-btn, .chs-arrow, .shop-item, .toast, .lib-toggle, .tb-potion,
+  .tb-button, .potion-popup-btn, .relic-holder, .ea-proceed, .st-bind-btn,
+  .csph-cell, .csph-divine, .pf-button, .pf-delete, .tl-btn, .tl-arrow,
+  .dr-lb-arrow, .cr-mod, .pn-button, .pn-toggle, .pn-prev, .pn-next,
+  .cl-search-clear, .cl-pool, .cl-sort, .cl-type, .cl-cost, .cl-rarity,
+  .cl-stat, .relic-entry, .inspect-arrow, .ic-upgrade, .rhs-arrow,
+  .mp-tab, .mp-room-item, .mp-server-btn, .ping-btn, .treasure-skip
+) {
+  cursor: var(--game-cursor-default, auto) !important;
+}
+
+/* 鼠标按压状态（包含原生 :active 与全局按压态 .mouse-down），切换为原版倾斜指针 */
+:active,
+:active *,
+:root.mouse-down,
+:root.mouse-down * {
+  cursor: var(--game-cursor-tilted, auto) !important;
+}
+
+/* 文本输入框：保留操作系统 I-beam 文本光标，方便定位输入 */
+input,
+textarea,
+[contenteditable="true"] {
+  cursor: text !important;
 }
 
 /* ---- menu ---- */

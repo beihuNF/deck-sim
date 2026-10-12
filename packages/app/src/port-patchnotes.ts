@@ -13,7 +13,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]Visuals & Audio[/b][/gold]
 • Restored the original top-left Profile Switcher button, cleanly separating it from Steam login.
-• Fixed cursor textures and background preload assets.
+• Smart in-game cursor scaling & authentic interaction: custom cursors now smoothly adapt to viewport dimensions with pixel-perfect hotspot alignment; globally preserved in-game cursors on option hover instead of reverting to native hand pointers, with authentic tilted press animations.
 • Restored authentic gamepad reticle highlights and missing audio effects across menus and maps.
 
 [gold][b]Gameplay[/b][/gold]
@@ -29,7 +29,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]视听与体验[/b][/gold]
 • 恢复主菜单左上角原版切换存档按钮，解绑第三方账号覆盖。
-• 修复部分鼠标光标贴图与背景加载异常问题。
+• 原版鼠标指针智能自适应与交互还原：光标尺寸根据视口与屏幕比例平滑缩放，针尖热点精准对齐；悬停选项与按钮时保持游戏原版指针，消除系统手型回退，并还原按压时的原版倾斜反馈。
 • 还原原版手柄瞄准框高亮视觉，全面补齐地图与菜单交互音效。
 
 [gold][b]游戏机制[/b][/gold]

@@ -237,7 +237,7 @@ function LibHolder({ card, preview, vis, x, y, stats, onInspect }: { card: any; 
   const [hot, setHot] = useState(false);
   const pressed = useRef(-1);
   return (
-    <div class="grid-holder cl-holder" style={{ left: `${x}px`, top: `${y}px`, scale: hot ? '1' : '0.8', zIndex: hot ? 2 : 1, transition: hot ? 'none' : `scale .5s ${EXPO_OUT}`, cursor: vis === 'visible' ? 'pointer' : 'default' }}
+    <div class="grid-holder cl-holder" style={{ left: `${x}px`, top: `${y}px`, scale: hot ? '1' : '0.8', zIndex: hot ? 2 : 1, transition: hot ? 'none' : `scale .5s ${EXPO_OUT}`, cursor: vis === 'visible' ? 'var(--game-cursor-default, auto)' : 'default' }}
       onPointerEnter={(e) => {
         setHot(true); hoverSfx();
         if (vis !== 'visible') return;

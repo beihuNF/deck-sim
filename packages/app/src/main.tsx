@@ -42,9 +42,11 @@ import { initGamepadLoop, VirtualCursor, GamepadToast, ControllerFocusHint, Cont
 import { RemoteMouseCursors } from './ui/multiplayer-cursors';
 import { steam, loadSteamProfile } from './steam';
 import { checkCloudSaveSync } from './cloud-save';
+import { initGameCursor } from './cursor';
 import './anchors.css'; // last: it adjusts what the other stylesheets place
 
 initGamepadLoop();
+initGameCursor();
 
 window.addEventListener('resize', () => { fit(); invalidate(); });
 // While turned, page coordinates are reported as the unturned stage sees them (x = page y, y = width − page x), so
