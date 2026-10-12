@@ -56,6 +56,100 @@ html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); 
 
 .boot { position: absolute; inset: 0; display: grid; place-items: center; font-size: 42px; color: var(--gold); }
 
+/* ---- Multi-Tab / Save Conflict Dialog ---- */
+.boot-conflict-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.boot-conflict-card {
+  max-width: 580px;
+  width: 100%;
+  background: #14161a;
+  border: 1px solid rgba(240, 180, 0, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 24px rgba(240, 180, 0, 0.15);
+  border-radius: 12px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.boot-conflict-title {
+  font-size: 20px;
+  line-height: 1.6;
+  color: #eeddbb;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.boot-conflict-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.boot-conflict-btn {
+  height: 48px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.boot-conflict-btn.primary {
+  background: #d49a16;
+  color: #121212;
+  border: none;
+}
+
+.boot-conflict-btn.primary:hover {
+  background: #f0b400;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(240, 180, 0, 0.35);
+}
+
+.boot-conflict-btn.secondary {
+  background: #252a32;
+  color: #e5d8c5;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.boot-conflict-btn.secondary:hover {
+  background: #333a46;
+  border-color: rgba(240, 180, 0, 0.4);
+}
+
+.boot-conflict-btn.tertiary {
+  background: transparent;
+  color: #8892a0;
+  border: none;
+  height: 38px;
+  font-size: 14px;
+}
+
+.boot-conflict-btn.tertiary:hover {
+  color: #b5c2d4;
+  text-decoration: underline;
+}
+
+
 /* ---- Modern GPU Accelerated Boot Screen ---- */
 .boot-screen {
   position: absolute;

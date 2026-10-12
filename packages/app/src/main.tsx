@@ -11,7 +11,7 @@ import { installBridge } from './bridge';
 import { unlockAll } from './flow';
 import { initAnalytics, reportError, trackUncleanExits } from './analytics';
 import { mobileRendering } from './render/quality';
-import { acquireSaveLock, saveMetadata } from './saves';
+import { acquireSaveLock, forceAcquireSaveLock, saveMetadata } from './saves';
 import './render/vfx-cards';
 import './render/vfx-attacks';
 import './render/vfx-misc';
@@ -282,66 +282,112 @@ async function boot() {
     console.error('save write failed', path, err);
     if (!warned) { warned = true; ui.toast = appText('storageFull'); invalidate(); }
   });
+  const mountAndLaunch = async () => {
+    // after the lock: a second tab must not take the running one's mark for its own crash
+    trackUncleanExits(() => ({ screen: ui.screen, room: ui.room?.kind ?? null, mobile: mobileRendering, memory: (navigator as any).deviceMemory ?? null }));
+    await $.vfs.mount(); // saves live in IndexedDB (localStorage ones migrate on first run)
+    G.initGame({});
+    // players only get Normal/Fast (NFastModeTickbox); Instant is a test mode in which some event animation loops spin
+    const prefs = G.SaveManager.Instance.PrefsSave;
+    if (prefs.FastMode === G.FastModeType.Instant) prefs.FastMode = G.FastModeType.Fast;
+    if (!$.vfs.persistent) ui.toast = appText('noStorage');
+    const st = G.SaveManager.Instance.SettingsSave;
+    fit(); // SettingsSave.AspectRatioSetting is known now
+    setVolumes({ master: st.VolumeMaster, music: st.VolumeBgm, sfx: st.VolumeSfx, amb: st.VolumeAmbience });
+    // always: a saved SettingsSave.Language may differ from the tables fetched above (the device's language changed)
+    G.SaveManager.Instance.SettingsSave.Language = lang;
+    G.LocManager.Instance.SetLanguage(lang);
+    document.documentElement.dataset.lang = lang; // style.css: FontManager's per-language font substitution
+
+    if (st.SkipIntroLogo) {
+      finishLogo();
+    }
+
+    updateBootProgress({
+      progress: 100,
+      ready: true,
+      title: appText('bootReady', lang),
+      detail: 'Launching…',
+    });
+
+    // 等待原版开场 Logo 动画播放完毕或用户跳过
+    await logoDonePromise;
+
+    await new Promise((r) => setTimeout(r, 60));
+    await transitionView.FadeOut(); // NGame.LaunchMainMenu: after the logo animation, before the menu fades in
+    ui.screen = 'menu';
+    invalidate();
+    (window as any).G = G;
+    (window as any).ui = ui;
+    (window as any).unlockAll = () => unlockAll(true);
+    (window as any).invalidate = invalidate;
+    if (import.meta.env.DEV) Object.assign(window, { __loadShader: loadShader, __resolveSfx: resolveSfx }); // tools/e2e/shaders.mjs, audio.mjs
+    // NGame._Notification(WM_CLOSE_REQUEST) → Quit: closing the tab saves settings, prefs, progress and the profile
+    const saveOnHide = () => {
+      if ($.vfs.restored) return;
+      $.vfs.setUnloading(true);
+      try { saveMetadata(); } catch (e) { console.warn('save on hide', e); }
+    };
+    window.addEventListener('pageshow', (e) => { if (e.persisted) $.vfs.setUnloading(false); });
+    window.addEventListener('pagehide', saveOnHide);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) saveOnHide(); else $.vfs.setUnloading(false); });
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('unlock') === 'all') unlockAll(true);
+    if (qs.get('tutorials') === 'off') { G.SaveManager.Instance.SetFtuesEnabled(false); G.SaveManager.Instance.SettingsSave.SeenEaDisclaimer = true; }
+    window.dispatchEvent(new Event('sts2:boot-ready'));
+    void loadSteamProfile().then(() => {
+      if (steam.profile) void checkCloudSaveSync();
+    });
+  };
+
   if (!await acquireSaveLock()) {
-    setRenderer(() => render(<div class="boot">{appText('saveTabOpen', lang)}<br /><button onClick={() => location.reload()}>{appText('reloadGame', lang)}</button></div>, root));
+    const resume = async () => {
+      setRenderer(() => render(<App />, root));
+      invalidate();
+      await mountAndLaunch();
+    };
+    setRenderer(() => render(
+      <div class="boot-conflict-overlay">
+        <div class="boot-conflict-card">
+          <div class="boot-conflict-title">{appText('saveTabOpen', lang)}</div>
+          <div class="boot-conflict-actions">
+            <button
+              class="boot-conflict-btn primary"
+              onClick={async () => {
+                forceAcquireSaveLock();
+                await resume();
+              }}
+            >
+              {appText('forceLaunch', lang)}
+            </button>
+            <button
+              class="boot-conflict-btn secondary"
+              onClick={async () => {
+                if (await acquireSaveLock(1, 200)) {
+                  await resume();
+                } else {
+                  location.reload();
+                }
+              }}
+            >
+              {appText('retryCheckLock', lang)}
+            </button>
+            <button
+              class="boot-conflict-btn tertiary"
+              onClick={() => location.reload()}
+            >
+              {appText('reloadGame', lang)}
+            </button>
+          </div>
+        </div>
+      </div>,
+      root
+    ));
     invalidate();
     return;
   }
-  // after the lock: a second tab must not take the running one's mark for its own crash
-  trackUncleanExits(() => ({ screen: ui.screen, room: ui.room?.kind ?? null, mobile: mobileRendering, memory: (navigator as any).deviceMemory ?? null }));
-  await $.vfs.mount(); // saves live in IndexedDB (localStorage ones migrate on first run)
-  G.initGame({});
-  // players only get Normal/Fast (NFastModeTickbox); Instant is a test mode in which some event animation loops spin
-  const prefs = G.SaveManager.Instance.PrefsSave;
-  if (prefs.FastMode === G.FastModeType.Instant) prefs.FastMode = G.FastModeType.Fast;
-  if (!$.vfs.persistent) ui.toast = appText('noStorage');
-  const st = G.SaveManager.Instance.SettingsSave;
-  fit(); // SettingsSave.AspectRatioSetting is known now
-  setVolumes({ master: st.VolumeMaster, music: st.VolumeBgm, sfx: st.VolumeSfx, amb: st.VolumeAmbience });
-  // always: a saved SettingsSave.Language may differ from the tables fetched above (the device's language changed)
-  G.SaveManager.Instance.SettingsSave.Language = lang;
-  G.LocManager.Instance.SetLanguage(lang);
-  document.documentElement.dataset.lang = lang; // style.css: FontManager's per-language font substitution
 
-  if (st.SkipIntroLogo) {
-    finishLogo();
-  }
-
-  updateBootProgress({
-    progress: 100,
-    ready: true,
-    title: appText('bootReady', lang),
-    detail: 'Launching…',
-  });
-
-  // 等待原版开场 Logo 动画播放完毕或用户跳过
-  await logoDonePromise;
-
-  await new Promise((r) => setTimeout(r, 60));
-  await transitionView.FadeOut(); // NGame.LaunchMainMenu: after the logo animation, before the menu fades in
-  ui.screen = 'menu';
-  invalidate();
-  (window as any).G = G;
-  (window as any).ui = ui;
-  (window as any).unlockAll = () => unlockAll(true);
-  (window as any).invalidate = invalidate;
-  if (import.meta.env.DEV) Object.assign(window, { __loadShader: loadShader, __resolveSfx: resolveSfx }); // tools/e2e/shaders.mjs, audio.mjs
-  // NGame._Notification(WM_CLOSE_REQUEST) → Quit: closing the tab saves settings, prefs, progress and the profile
-  const saveOnHide = () => {
-    if ($.vfs.restored) return;
-    $.vfs.setUnloading(true);
-    try { saveMetadata(); } catch (e) { console.warn('save on hide', e); }
-  };
-  window.addEventListener('pageshow', (e) => { if (e.persisted) $.vfs.setUnloading(false); });
-  window.addEventListener('pagehide', saveOnHide);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) saveOnHide(); else $.vfs.setUnloading(false); });
-  const qs = new URLSearchParams(location.search);
-  if (qs.get('unlock') === 'all') unlockAll(true);
-  if (qs.get('tutorials') === 'off') { G.SaveManager.Instance.SetFtuesEnabled(false); G.SaveManager.Instance.SettingsSave.SeenEaDisclaimer = true; }
-  window.dispatchEvent(new Event('sts2:boot-ready'));
-  void loadSteamProfile().then(() => {
-    if (steam.profile) void checkCloudSaveSync();
-  });
+  await mountAndLaunch();
 }
 // offline cache (production builds only; the dev server serves modules that must not be cached). Boot waits (briefly)
 // for the worker to claim the page when no worker serves this build's asset tree yet: on a first visit, so the assets

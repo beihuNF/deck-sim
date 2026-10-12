@@ -65,16 +65,98 @@ export async function protectStorage() {
   } catch { notice('storageNotProtected'); }
 }
 
-/** Hold one writer per origin for this page's lifetime. Closing/reloading releases the browser lock. */
-export async function acquireSaveLock(): Promise<boolean> {
+const TAB_ID = Math.random().toString(36).slice(2);
+const LOCK_NAME = 'sts2-save-writer';
+const lockChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('sts2-tab-lock') : null;
+
+let releaseHeldLock: (() => void) | null = null;
+let lockSuspended = false;
+
+// 监听跨标签页协作广播
+if (lockChannel) {
+  lockChannel.onmessage = (e) => {
+    const data = e.data;
+    if (!data || data.from === TAB_ID) return;
+    if (data.type === 'REQUEST_RELEASE') {
+      // 若当前页面处于后台挂起状态，主动让出锁给前台活跃标签页
+      if (typeof document !== 'undefined' && document.hidden && releaseHeldLock) {
+        releaseHeldLock();
+        releaseHeldLock = null;
+      }
+    } else if (data.type === 'FORCE_TAKEOVER') {
+      // 其他页面被强制接管，释放锁并暂停本地写盘以防冲突
+      if (releaseHeldLock) {
+        releaseHeldLock();
+        releaseHeldLock = null;
+      }
+      lockSuspended = true;
+      $.setStorageErrorHandler((path: string, err: unknown) => {
+        console.warn('Save writing suspended due to tab takeover:', path, err);
+      });
+      ui.toast = appText('tabTakenOver');
+      invalidate();
+    }
+  };
+}
+
+/** 单次尝试获取锁 */
+function tryAcquireLockOnce(): Promise<boolean> {
+  if (!navigator.locks) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    let resolved = false;
+    navigator.locks.request(LOCK_NAME, { ifAvailable: true }, (lock) => {
+      if (lock) {
+        resolved = true;
+        resolve(true);
+        return new Promise<void>((rel) => {
+          releaseHeldLock = rel;
+        });
+      } else {
+        resolved = true;
+        resolve(false);
+        return undefined;
+      }
+    }).catch(() => {
+      if (!resolved) resolve(false);
+    });
+  });
+}
+
+/**
+ * 尝试获取存档独占锁。
+ * 包含退避重试（避免刷新页面时旧进程锁尚未解绑的微秒冲突），以及跨标签页自动协商。
+ */
+export async function acquireSaveLock(retries = 3, intervalMs = 280): Promise<boolean> {
   if (!navigator.locks) return true;
-  return Promise.race([
-    new Promise<boolean>((resolve, reject) => {
-      void navigator.locks.request('sts2-save-writer', { ifAvailable: true }, lock => {
-        resolve(!!lock);
-        return lock ? new Promise<void>(() => {}) : undefined;
-      }).catch(reject);
-    }),
-    new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 1200)),
-  ]);
+
+  if (await tryAcquireLockOnce()) return true;
+
+  // 首次未成功，向其他标签页发出让出请求（若有在后台闲置的页面，它会自动释放）
+  try { lockChannel?.postMessage({ type: 'REQUEST_RELEASE', from: TAB_ID }); } catch {}
+
+  // 渐进重试等待旧页面卸载解绑
+  for (let i = 0; i < retries; i++) {
+    await new Promise((r) => setTimeout(r, intervalMs));
+    if (await tryAcquireLockOnce()) return true;
+  }
+
+  return false;
+}
+
+/**
+ * 强制在此页面启动并接管控制权。
+ * 向其他标签页广播接管通知，使其暂停写盘；并在后台尝试接续申请系统锁。
+ */
+export function forceAcquireSaveLock() {
+  try { lockChannel?.postMessage({ type: 'FORCE_TAKEOVER', from: TAB_ID }); } catch {}
+  if (navigator.locks) {
+    setTimeout(() => {
+      navigator.locks.request(LOCK_NAME, (lock) => {
+        if (!lock) return;
+        return new Promise<void>((rel) => {
+          releaseHeldLock = rel;
+        });
+      }).catch(() => {});
+    }, 400);
+  }
 }
