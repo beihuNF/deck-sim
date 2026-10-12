@@ -313,6 +313,16 @@ export class WebRoom extends DurableObject<Env> {
     const me = this.room.players.find(p => p.id === id);
     if (!me) return ws.close(1008, 'Invalid player');
     if (msg.type === 'ping') { ws.send(JSON.stringify({ type: 'pong', colo: this.colo })); return; }
+    if (msg.type === 'signal') {
+      if (!Number.isInteger(msg.to) || !this.room.players.some(p => p.id === msg.to)) return;
+      const payload = JSON.stringify({ type: 'signal', from: id, data: msg.data });
+      for (const other of this.ctx.getWebSockets()) {
+        try {
+          if (other !== ws && other.deserializeAttachment()?.id === msg.to) other.send(payload);
+        } catch {}
+      }
+      return;
+    }
     if (msg.type === 'ack' && this.room.protocol === 4) {
       const channel = this.channel(id);
       if (Number.isSafeInteger(msg.seq) && msg.seq >= 0 && msg.seq <= channel.sent) {

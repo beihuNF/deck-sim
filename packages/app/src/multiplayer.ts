@@ -3,6 +3,7 @@ import { ui, invalidate } from './store';
 import { startCoopRun, loadSavedCoopRun, quickReloadCoopRun } from './flow';
 import { loc } from './i18n';
 import { effectivePlayerName, setGuestName } from './steam';
+import { webrtc } from './webrtc';
 
 export const multiplayer = {
   phase: 'idle' as 'idle' | 'connecting' | 'lobby' | 'starting' | 'playing' | 'reconnecting' | 'ended',
@@ -11,6 +12,8 @@ export const multiplayer = {
   waiting: false,
   ping: 0,
   colo: '',
+  isP2P: false,
+  p2pPing: 0,
   saveJson: undefined as string | undefined,
   loadInfo: undefined as any,
   players: [] as { id: number; character: string; ready: boolean; connected: boolean; profile?: { steamId: string; name: string; avatar: string } }[], error: '',
@@ -24,9 +27,6 @@ export function getRelayHost(): string {
   if (relay) {
     if (q && q !== stored) safe(() => localStorage.setItem('sts2_relay', q), null);
     return relay.startsWith('http') ? relay.replace(/\/+$/, '') : `${location.protocol}//${relay.replace(/\/+$/, '')}`;
-  }
-  if (location.hostname === 'sts2.136521.xyz') {
-    return 'https://fast.136521.xyz';
   }
   return location.origin;
 }
@@ -161,6 +161,9 @@ function failed(error: string) {
     G.CombatManager.Instance.Pause();
   } else multiplayer.phase = 'idle';
   if (timer) clearInterval(timer); timer = null;
+  webrtc.stop();
+  multiplayer.isP2P = false;
+  multiplayer.p2pPing = 0;
   socket?.close(); socket = null;
   changed();
 }
@@ -177,8 +180,8 @@ export function leaveMultiplayer() {
   try { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'leave' })); } catch {}
   if ($.vfs.ephemeral) { socket?.close(); location.reload(); return; }
   if (timer) clearInterval(timer); timer = null;
-  socket?.close(); socket = null;
-  Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, maxAscension: 0, settings: { ascension: 0, seed: '', modifiers: [], dailyDate: '' }, players: [], waiting: false, error: '', saveJson: undefined, loadInfo: undefined });
+  webrtc.stop();
+  Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, maxAscension: 0, settings: { ascension: 0, seed: '', modifiers: [], dailyDate: '' }, players: [], waiting: false, error: '', saveJson: undefined, loadInfo: undefined, ping: 0, colo: '', isP2P: false, p2pPing: 0 });
   changed();
 }
 function send(msg: unknown) {
@@ -276,9 +279,30 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
     history.replaceState(history.state, '', roomUrl);
     const ws = socket = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
+    webrtc.start(
+      result.id,
+      (to, data) => {
+        try { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'signal', to, data })); } catch {}
+      },
+      (bytes, sender) => {
+        net?.receive(bytes, sender);
+        changed();
+      },
+      () => {
+        const status = webrtc.getStatus();
+        multiplayer.isP2P = status.isP2P;
+        multiplayer.p2pPing = status.ping;
+        changed();
+      }
+    );
     if (!reconnecting) {
       received = 0; sent = 0; outgoing = [];
       net = new G.WebNetService(result.id, (bytes: number[], to = 0, transient = false) => {
+        // 优先尝试 WebRTC P2P 直连通道（局域网/国内骨干网直连，零延迟绕过跨境链路）
+        if (webrtc.send({ volatile: transient, bytes, to, sender: result.id })) {
+          return;
+        }
+        // 未完成打洞或 P2P 不可用时，自动降级走 WebSocket 中继保底
         if (transient) { transportSend({ type: 'volatile', bytes, to }); return; }
         if (outgoing.length >= 2048) { failed('backlog'); return; }
         const packet = { type: 'packet' as const, seq: ++sent, bytes, to };
@@ -290,6 +314,8 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
     timer = setInterval(() => {
       if (Date.now() - lastSeen > 20_000) disconnected();
       else if (ws.readyState === WebSocket.OPEN) {
+        // 页面若处于后台挂起状态，跳过发送 ping，避免切回主线程时把挂起时间算入网络延时
+        if (typeof document !== 'undefined' && document.hidden) return;
         lastPingSent = performance.now();
         ws.send(JSON.stringify({ type: 'ping' }));
       }
@@ -309,10 +335,19 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           const bytes = new Uint8Array(e.data); net.receive(Array.from(bytes.slice(1)), bytes[0]); changed(); return;
         }
         const msg = JSON.parse(e.data);
+        if (msg.type === 'signal') {
+          webrtc.handleSignal(msg.from, msg.data);
+          return;
+        }
         if (msg.type === 'pong') {
-          if (lastPingSent > 0) {
-            const rtt = Math.max(1, Math.round(performance.now() - lastPingSent));
-            multiplayer.ping = multiplayer.ping ? Math.round(multiplayer.ping * 0.8 + rtt * 0.2) : rtt;
+          if (lastPingSent > 0 && !(typeof document !== 'undefined' && document.hidden)) {
+            const rawRtt = Math.max(1, Math.round(performance.now() - lastPingSent));
+            // 过滤切屏造成的严重失真异常值（> 3000ms），正常情况下采用平滑移动平均
+            if (rawRtt < 3000) {
+              multiplayer.ping = multiplayer.ping ? Math.round(multiplayer.ping * 0.7 + rawRtt * 0.3) : rawRtt;
+            } else {
+              multiplayer.ping = rawRtt;
+            }
             if (msg.colo) multiplayer.colo = msg.colo;
             changed();
           }
@@ -332,6 +367,7 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           outgoing = outgoing.filter(p => p.seq > msg.seq); return; }
         if (msg.type === 'room') {
           multiplayer.players = msg.players;
+          webrtc.syncPeers(msg.players.filter((p: any) => p.connected).map((p: any) => p.id));
           if (msg.started && (multiplayer.phase === 'playing' || multiplayer.phase === 'reconnecting')) {
             multiplayer.phase = 'playing'; multiplayer.waiting = msg.players.some((p: any) => !p.connected);
             retryStarted = 0; retryCount = 0;

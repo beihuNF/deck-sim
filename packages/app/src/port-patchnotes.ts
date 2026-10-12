@@ -4,11 +4,11 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Added Steam Cloud save synchronization and cross-device backup.
+• Introduced WebRTC DataChannel P2P direct connection with automatic WebSocket fallback, slashing peer-to-peer latency.
 • Improved multiplayer lobby flow, reconnection stability, and room reload.
 • Fixed map doodle sync latency and teammate drawing cursor hotspot alignment.
 • Polished waiting for players overlay visuals and fixed button positioning.
 • Enhanced room invitations and guest play with custom nicknames.
-• Optimized network latency with APAC region hints and relay node support.
 
 [gold][b]Experience & Fixes[/b][/gold]
 • Refined custom cursor, controls, and audio effects.
@@ -21,7 +21,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 修复联机地图涂鸦同步延迟、丢笔与队友画笔光标位置偏移的问题。
 • 优化局内等待队友重连遮罩样式，修复弹窗边框与退出按钮沉底被截断的问题。
 • 优化房间邀请与游客模式，支持自定义昵称。
-• 优化联机机房路由，增加亚太就近调度与加速中继支持。
+• 引入 WebRTC DataChannel P2P 点对点直连传输（支持 STUN 自动打洞与 WebSocket 无感保底回退），大幅降低国内联机延迟与丢包。
 
 [gold][b]体验与修复[/b][/gold]
 • 优化鼠标指针、按键与音效等操作细节。

@@ -354,12 +354,20 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           </div>
           <div class="mps-desc">
             {steam.profile ? tr('已连接 Steam', 'Steam Connected') : tr('点击登录 Steam', 'Sign In Steam')}
-            {mp.ping > 0 && (
+            {((mp.isP2P && mp.p2pPing > 0) || mp.ping > 0) && (
               <span
-                style={{ marginLeft: '6px', color: mp.ping > 150 ? '#f1c40f' : '#85e89d', fontWeight: 'bold' }}
-                title={mp.colo ? tr(`当前接入机房: ${mp.colo}`, `Data Center: ${mp.colo}`) : undefined}
+                style={{
+                  marginLeft: '6px',
+                  color: (mp.isP2P ? mp.p2pPing : mp.ping) > 150 ? '#f1c40f' : '#85e89d',
+                  fontWeight: 'bold',
+                }}
+                title={
+                  mp.isP2P
+                    ? tr('WebRTC P2P 点对点直连（国内骨干网零绕行）', 'WebRTC P2P Direct Connection')
+                    : (mp.colo ? tr(`当前接入机房: ${mp.colo}`, `Data Center: ${mp.colo}`) : undefined)
+                }
               >
-                • {mp.ping}ms{mp.colo ? ` (${mp.colo})` : ''}
+                • {mp.isP2P ? `${mp.p2pPing}ms (P2P)` : `${mp.ping}ms${mp.colo ? ` (${mp.colo})` : ''}`}
               </span>
             )}
           </div>

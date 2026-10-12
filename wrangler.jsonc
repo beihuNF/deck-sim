@@ -15,8 +15,7 @@
   },
   // Keep this origin stable: players' saves live in their browsers. Cloudflare manages DNS and TLS for the custom domain.
   "routes": [
-    { "pattern": "sts2.136521.xyz", "custom_domain": true },
-    { "pattern": "fast.136521.xyz/*", "zone_name": "136521.xyz" }
+    { "pattern": "sts2.136521.xyz", "custom_domain": true }
   ],
   "observability": {
     "enabled": true
