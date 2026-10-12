@@ -355,8 +355,11 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           <div class="mps-desc">
             {steam.profile ? tr('已连接 Steam', 'Steam Connected') : tr('点击登录 Steam', 'Sign In Steam')}
             {mp.ping > 0 && (
-              <span style={{ marginLeft: '6px', color: mp.ping > 150 ? '#f1c40f' : '#85e89d', fontWeight: 'bold' }}>
-                • {mp.ping}ms
+              <span
+                style={{ marginLeft: '6px', color: mp.ping > 150 ? '#f1c40f' : '#85e89d', fontWeight: 'bold' }}
+                title={mp.colo ? tr(`当前接入机房: ${mp.colo}`, `Data Center: ${mp.colo}`) : undefined}
+              >
+                • {mp.ping}ms{mp.colo ? ` (${mp.colo})` : ''}
               </span>
             )}
           </div>

@@ -84,9 +84,19 @@ export default {
     if (!sameOrigin(req)) return json({ error: 'origin' }, 403);
     const identity = await steamIdentity(req, env);
     const profileHeaders: Record<string, string> = identity ? { 'X-Steam-Profile': JSON.stringify(identity) } : {};
+
+    // 针对国内与亚太地区玩家，提示 Cloudflare 优先在亚太（APAC）机房创建/路由 Durable Object 实例
+    const cf = (req as any).cf;
+    const country = cf?.country as string | undefined;
+    const ray = req.headers.get('cf-ray') || '';
+    const coloMatch = /-([A-Z0-9]+)$/.exec(ray);
+    const colo = (cf?.colo as string | undefined) || (coloMatch ? coloMatch[1] : '');
+    const isApac = !country || ['CN', 'HK', 'MO', 'TW', 'JP', 'KR', 'SG', 'MY', 'VN', 'TH'].includes(country);
+    const roomOpts = isApac ? { locationHint: 'apac' as const } : undefined;
+
     if (path === PREFIX && req.method === 'POST') {
       // One small shared limiter for room creation. Game packets never pass through this object.
-      const limit = await env.ROOMS.get(env.ROOMS.idFromName('creation-limit')).fetch(new Request('https://room/limit', {
+      const limit = await env.ROOMS.get(env.ROOMS.idFromName('creation-limit'), roomOpts).fetch(new Request('https://room/limit', {
         method: 'POST', body: req.headers.get('CF-Connecting-IP') ?? 'local',
       }));
       if (!limit.ok) return limit;
@@ -94,19 +104,21 @@ export default {
       const url = new URL(req.url); url.pathname = `${PREFIX}/${code}`;
       const body = await req.text();
       if (body.length > 512 * 1024) return json({ error: 'request' }, 413);
-      return env.ROOMS.get(env.ROOMS.idFromName(code)).fetch(new Request(url, { method: 'POST', body, headers: { 'X-Create-Room': '1', ...profileHeaders } }));
+      return env.ROOMS.get(env.ROOMS.idFromName(code), roomOpts).fetch(new Request(url, { method: 'POST', body, headers: { 'X-Create-Room': '1', 'X-CF-Colo': colo, ...profileHeaders } }));
     }
     const m = new RegExp(`^${PREFIX}/([A-F0-9]{12})(/socket)?$`).exec(path);
     if (!m) return json({ error: 'room' }, 404);
     const headers = new Headers(req.headers); headers.delete('X-Create-Room'); headers.delete('X-Steam-Profile');
     if (identity) headers.set('X-Steam-Profile', JSON.stringify(identity));
-    return env.ROOMS.get(env.ROOMS.idFromName(m[1])).fetch(new Request(req, { headers }));
+    if (colo) headers.set('X-CF-Colo', colo);
+    return env.ROOMS.get(env.ROOMS.idFromName(m[1]), roomOpts).fetch(new Request(req, { headers }));
   },
 } satisfies ExportedHandler<Env>;
 
 /** Each room owns up to 4 authenticated sockets. Reuse original game packets; no original MOD code is copied. */
 export class WebRoom extends DurableObject<Env> {
   private room?: Room;
+  private colo = '';
   private delivery: Record<string, { received: number; sent: number; pending: { seq: number; sender: number; bytes: number[] }[] }> = {};
   private channel(id: number) { return this.delivery[id] ??= { received: 0, sent: 0, pending: [] }; }
   private counts = new Map<string, { n: number; at: number }>();
@@ -115,6 +127,8 @@ export class WebRoom extends DurableObject<Env> {
     ctx.blockConcurrencyWhile(async () => { this.room = await ctx.storage.get<Room>('room'); this.delivery = await ctx.storage.get('delivery') ?? {}; });
   }
   async fetch(req: Request) {
+    const coloHeader = req.headers.get('X-CF-Colo');
+    if (coloHeader) this.colo = coloHeader;
     const url = new URL(req.url);
     if (url.pathname === '/limit') {
       const ip = await req.text(), now = Date.now();
@@ -247,7 +261,7 @@ export class WebRoom extends DurableObject<Env> {
     try { msg = JSON.parse(data); } catch { return ws.close(1008, 'Invalid JSON'); }
     const me = this.room.players.find(p => p.id === id);
     if (!me) return ws.close(1008, 'Invalid player');
-    if (msg.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); return; }
+    if (msg.type === 'ping') { ws.send(JSON.stringify({ type: 'pong', colo: this.colo })); return; }
     if (msg.type === 'ack' && this.room.protocol === 4) {
       const channel = this.channel(id);
       if (Number.isSafeInteger(msg.seq) && msg.seq >= 0 && msg.seq <= channel.sent) {

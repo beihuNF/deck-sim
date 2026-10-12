@@ -10,12 +10,25 @@ export const multiplayer = {
   settings: { ascension: 0, seed: '', modifiers: [] as string[], dailyDate: '' },
   waiting: false,
   ping: 0,
+  colo: '',
   saveJson: undefined as string | undefined,
   loadInfo: undefined as any,
   players: [] as { id: number; character: string; ready: boolean; connected: boolean; profile?: { steamId: string; name: string; avatar: string } }[], error: '',
 };
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
+
+export function getRelayHost(): string {
+  const q = new URLSearchParams(location.search).get('relay');
+  const stored = safe(() => localStorage.getItem('sts2_relay'), null);
+  const relay = (q || stored || '').trim();
+  if (relay) {
+    if (q && q !== stored) safe(() => localStorage.setItem('sts2_relay', q), null);
+    return relay.startsWith('http') ? relay.replace(/\/+$/, '') : `${location.protocol}//${relay.replace(/\/+$/, '')}`;
+  }
+  return location.origin;
+}
 const API = '/api/multiplayer/rooms';
+export const getApiUrl = (sub = '') => `${getRelayHost()}${API}${sub}`;
 const version = `${GAME_VERSION}/${__BUILD_ID__}/web-coop-4`;
 export function extractRoomCode(str: string): string | null {
   if (!str) return null;
@@ -232,7 +245,8 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
     const body = code
       ? { version, token: saved?.token, instance, protocol: 4, guestName }
       : { version, mode, maxPlayers: 4, instance, protocol: 4, guestName, saveJson: extra?.saveJson, loadInfo: extra?.loadInfo };
-    const res = await fetch(code ? `${API}/${code.toUpperCase()}` : API, {
+    const apiTarget = code ? getApiUrl(`/${code.toUpperCase()}`) : getApiUrl();
+    const res = await fetch(apiTarget, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
@@ -252,8 +266,8 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
       code: result.code, id: result.id, mode: result.mode ?? mode, maxPlayers: result.maxPlayers ?? 4,
       saveJson: result.saveJson ?? extra?.saveJson, loadInfo: result.loadInfo ?? extra?.loadInfo,
     });
-    const url = new URL(`${API}/${result.code}/socket`, location.href);
-    url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = new URL(getApiUrl(`/${result.code}/socket`));
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     url.searchParams.set('token', result.token); url.searchParams.set('instance', instance);
     const roomUrl = new URL(location.href); roomUrl.searchParams.set('room', result.code);
     history.replaceState(history.state, '', roomUrl);
@@ -296,6 +310,7 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           if (lastPingSent > 0) {
             const rtt = Math.max(1, Math.round(performance.now() - lastPingSent));
             multiplayer.ping = multiplayer.ping ? Math.round(multiplayer.ping * 0.8 + rtt * 0.2) : rtt;
+            if (msg.colo) multiplayer.colo = msg.colo;
             changed();
           }
           return;

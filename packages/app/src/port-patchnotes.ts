@@ -6,6 +6,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Added Steam Cloud save synchronization and cross-device backup.
 • Improved multiplayer lobby flow, reconnection stability, and room reload.
 • Enhanced room invitations and guest play with custom nicknames.
+• Optimized network latency with APAC region hints and relay node support.
 
 [gold][b]Experience & Fixes[/b][/gold]
 • Refined custom cursor, controls, and audio effects.
@@ -16,6 +17,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 新增 Steam 云存档同步与跨设备进度漫游。
 • 优化多人联机大厅、断线重连体验与快速重载。
 • 优化房间邀请与游客模式，支持自定义昵称。
+• 优化联机机房路由，增加亚太就近调度与加速中继支持。
 
 [gold][b]体验与修复[/b][/gold]
 • 优化鼠标指针、按键与音效等操作细节。
