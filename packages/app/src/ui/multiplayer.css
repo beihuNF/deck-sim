@@ -602,6 +602,9 @@
   max-width: 360px;
   box-sizing: border-box;
   pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
   display: flex;
   flex-direction: column;
   justify-content: center;

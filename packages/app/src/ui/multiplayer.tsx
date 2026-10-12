@@ -329,10 +329,19 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         <div
           class={'mp-steam-badge' + (accountHover ? ' hover' : '')}
           data-ctl
-          onPointerEnter={() => { setAccountHover(true); playOneShot('event:/sfx/ui/clicks/ui_hover'); }}
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            playOneShot('event:/sfx/ui/clicks/ui_click');
+            setShowAccountDialog(true);
+          }}
+          onPointerEnter={e => {
+            if (e.pointerType !== 'touch') {
+              setAccountHover(true);
+              playOneShot('event:/sfx/ui/clicks/ui_hover');
+            }
+          }}
           onPointerLeave={() => setAccountHover(false)}
-          onPointerDown={e => { if (e.button === 0) playOneShot('event:/sfx/ui/clicks/ui_click'); }}
-          onPointerUp={e => { if (e.button === 0) setShowAccountDialog(true); }}
         >
           <img
             class="mps-icon"
