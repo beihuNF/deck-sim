@@ -12,6 +12,7 @@ import { imageUrl } from '../assets';
 import { loc, appText } from '../i18n';
 import { BackButton } from './buttons';
 import { SettingsButton } from './settings';
+import browser, { type BrowserDetailInfo } from 'browser-tool';
 
 const s = (k: string) => loc('settings_ui', k);
 const SURVEY_URL = 'https://app.tianji.dev/open/workspace/cmv45lubl27755xc7mytpfzcm/survey/cmv45se5t2ash5xc74929ds2n/submit';
@@ -29,17 +30,43 @@ export function openFeedback() {
 function close() { open = false; draft.closedAt = Date.now(); invalidate(); }
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
+
 /**
- * One survey field each (Tianji stores keys it has no field for too). Tianji records the browser, OS, browser language
- * and location from the request itself; the seed is there only in a run.
+ * 使用 mumuy/browser 智能识别用户所处浏览器、系统与硬件环境
  */
-function buildDiagnosticReport(): string {
+async function collectBrowserDiagnostics(): Promise<BrowserDetailInfo> {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const parsed = safe(() => browser.parse(ua), {});
+
+  // 在真实浏览器环境尝试获取 GPU、屏幕刷新率、内存等高级特征（带 500ms 超时保护防阻断）
+  if (typeof window !== 'undefined' && typeof requestAnimationFrame !== 'undefined') {
+    try {
+      const advanced = await Promise.race([
+        browser.getInfo(['browser', 'system', 'device', 'gpu', 'network', 'screen', 'language', 'timezone']),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 500)),
+      ]);
+      if (advanced) {
+        return { ...parsed, ...advanced };
+      }
+    } catch {
+      // 降级使用基础 UA 结构化解析
+    }
+  }
+
+  return parsed;
+}
+
+/**
+ * 格式化输出易读的环境诊断报告
+ */
+function buildDiagnosticReport(bInfo: BrowserDetailInfo): string {
+  const dpr = typeof window !== 'undefined' && window.devicePixelRatio ? ` (DPR: ${window.devicePixelRatio})` : '';
   const lines: string[] = [
     '------------------------------',
     '【环境诊断信息 / System Diagnostics】',
     `- 游戏版本: v${GAME_VERSION} (${__BUILD_ID__})`,
     `- 游戏语言: ${safe(() => G.LocManager.Instance.Language, 'zhs')}`,
-    `- 视口分辨率: ${innerWidth}x${innerHeight}`,
+    `- 视口分辨率: ${innerWidth}x${innerHeight}${dpr}`,
   ];
 
   const state = safe(() => G.RunManager.Instance?.State, null);
@@ -60,14 +87,45 @@ function buildDiagnosticReport(): string {
     lines.push('- 对局状态: 主菜单 / 未在对局中');
   }
 
-  lines.push(`- 浏览器环境: ${navigator.userAgent}`);
+  // 接入 mumuy/browser 智能识别信息
+  const browserLabel = [bInfo.browser, bInfo.browserVersion].filter(Boolean).join(' ') || '未知浏览器';
+  const engineLabel = bInfo.engine ? ` (${bInfo.engine} 内核)` : '';
+  lines.push(`- 浏览器: ${browserLabel}${engineLabel}`);
+
+  const sysLabel = [bInfo.system, bInfo.systemVersion].filter(Boolean).join(' ') || '未知系统';
+  const archLabel = bInfo.architecture ? ` [${bInfo.architecture}${bInfo.bitness ? ` ${bInfo.bitness}位` : ''}]` : '';
+  lines.push(`- 操作系统: ${sysLabel}${archLabel} (${bInfo.device || '未知设备'})`);
+
+  if (bInfo.isWebview !== undefined) {
+    lines.push(`- 运行形态: ${bInfo.isWebview ? '应用内置 WebView 容器' : '独立浏览器'}`);
+  }
+
+  const gpuName = bInfo.gpuModel || bInfo.gpu;
+  if (gpuName) {
+    lines.push(`- 图形渲染 (GPU): ${gpuName}`);
+  }
+
+  if (bInfo.screenFPS) {
+    lines.push(`- 屏幕刷新率: ~${bInfo.screenFPS} FPS`);
+  }
+
+  if (bInfo.deviceMemory) {
+    lines.push(`- 设备参考内存: ~${bInfo.deviceMemory} GB`);
+  }
+
+  if (bInfo.network) {
+    lines.push(`- 网络类型: ${bInfo.network}`);
+  }
+
+  lines.push(`- 完整 UA: ${navigator.userAgent}`);
   return lines.join('\n');
 }
 
 async function send(text: string): Promise<boolean> {
   if (!text.trim()) return true; // SendFeedback: nothing to send, success anyway
   const trimmed = text.trim();
-  const diagnostics = buildDiagnosticReport();
+  const bInfo = await collectBrowserDiagnostics();
+  const diagnostics = buildDiagnosticReport(bInfo);
   const fullContent = `${trimmed}\n\n${diagnostics}`;
 
   const payload = {
@@ -79,6 +137,15 @@ async function send(text: string): Promise<boolean> {
     gameLanguage: safe(() => G.LocManager.Instance.Language, ''),
     viewport: `${innerWidth}x${innerHeight}`,
     seed: safe(() => G.RunManager.Instance.State?.Rng.StringSeed ?? '', ''),
+    // mumuy/browser 结构化诊断字段
+    browser: bInfo.browser || '',
+    browserVersion: bInfo.browserVersion || '',
+    system: bInfo.system || '',
+    systemVersion: bInfo.systemVersion || '',
+    engine: bInfo.engine || '',
+    device: bInfo.device || '',
+    isWebview: Boolean(bInfo.isWebview),
+    gpu: String(bInfo.gpuModel || bInfo.gpu || ''),
     userAgent: navigator.userAgent,
   };
   try {

@@ -10,6 +10,7 @@
   "dependencies": {
     "@esotericsoftware/spine-pixi-v8": "~4.2.60",
     "@sts2/core": "workspace:*",
+    "browser-tool": "^1.3.4",
     "fastnoise-lite": "^1.1.1",
     "pixi.js": "^8.6.0",
     "preact": "^10.26.0",
