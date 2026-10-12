@@ -3,6 +3,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
+• Fixed guest player WebSocket handshake being rejected (403) by correcting Steam ID identity validation for unauthenticated guest profiles.
 • Fixed mobile multiplayer room creation showing "Connection lost or synchronization failed" error by enhancing same-origin verification to support Origin-less mobile requests, LAN IP debugging, and WebSocket handshakes, and increased room creation payload limit to 512KB.
 • Fixed mobile Steam login instantly closing/flashing by transitioning touch and mobile devices to full-page authentication redirects with automatic lobby recovery, and guarded desktop popup dismissal on verified profiles.
 • Restored co-op run save & resume functionality (1:1 aligned with original NMultiplayerLoadGameScreen, supporting resuming from save and discarding co-op runs).
@@ -18,6 +19,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Restored co-op audio effects for map pings, split route votes, and combat pings.
 
 [gold][b]Visuals & Audio[/b][/gold]
+• Fixed cursor WebP textures resolving to 404 under stylesheet subpaths by converting cursor URLs to absolute site paths.
+• Fixed main menu background scene preload path resolving to 404 during boot.
 • Restored missing status icons (HP, Gold, Floor) in the multiplayer save recovery panel using authentic atlas frames.
 • Expanded audio fallback dictionary (SYN) to support full native playback for pause menus, map open/close/selection/erasing, and merchant voice effects.
 • Fixed campfire sleep option icon mapping to accurately display original option_heal texture across all conditions.
@@ -32,6 +35,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Controls[/b][/gold]
 • Aligned controller selection indicator with the original game's golden reticle corners and subtle highlights.`,
     zhs: `[gold][b]多人联机[/b][/gold]
+• 修复游客身份创建多人房间时 WebSocket 握手失败被拒（403）的严重缺陷：修正套接字连接时对游客空 Steam ID 的校验逻辑。
 • 修复移动端创建多人房间显示“连接中断或同步失败”的问题：完善同源安全校验机制，支持移动端无 Origin 同源请求、局域网真机调试及 WebSocket 握手协议，并放宽建房请求体上限至 512KB。
 • 修复移动端点击“登录 Steam”弹窗闪退的问题：移动端与触控设备全面采用整页跳转认证流，登录后自动重定向返回多人大厅；桌面端增加登录状态校验，避免关闭窗口时误关账号设置界面。
 • 完整还原多人存档恢复与断点续玩机制（1:1 对齐原版 NMultiplayerLoadGameScreen 读档大厅，支持主菜单继续联机或放弃存档）。
@@ -47,6 +51,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 补齐多人地图催促、分路投票及局内快捷 Ping 提示音效。
 
 [gold][b]视听表现[/b][/gold]
+• 修复鼠标指针贴图在生产环境下解析为 /js/assets/... 导致 404 的问题：CSS 变量统一转换为绝对路径。
+• 修复开屏资源预加载时主菜单背景场景文件名路径错误导致 404 的问题。
 • 修复多人读档大厅信息面板中生命、金币与层数图标展示，使用原版 ui_atlas 精灵规范渲染。
 • 扩充音频同义词回退表（SYN），全面恢复原版暂停菜单开闭、地图开启/关闭/选点/擦除及反转商人等音效的精准播放。
 • 修复营火休息（Rest/Heal）选项图标映射，确保各种选项 ID 下均 1:1 展示原版 option_heal 图标。

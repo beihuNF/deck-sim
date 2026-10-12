@@ -215,12 +215,13 @@ async function boot() {
   $.setGodotLogSink((level: string, msg: string) => (level === 'error' ? console.error(msg) : level === 'warn' ? console.warn(msg) : undefined));
   installBridge();
 
-  // 注入原版鼠标指针
+  // 注入原版鼠标指针（强制转为基于站点根路径的绝对 URL，避免 CSS 相对路径被解析为 /js/assets/...）
+  const toAbs = (url: string) => (url.startsWith('/') || url.startsWith('http') ? url : '/' + url);
   const defCursor = imageUrl('images/packed/common_ui/cursor_default.webp');
   const tiltCursor = imageUrl('images/packed/common_ui/cursor_tilted.webp');
   if (defCursor && tiltCursor) {
-    document.documentElement.style.setProperty('--game-cursor-default', `url("${defCursor}") 0 0, auto`);
-    document.documentElement.style.setProperty('--game-cursor-tilted', `url("${tiltCursor}") 0 0, auto`);
+    document.documentElement.style.setProperty('--game-cursor-default', `url("${toAbs(defCursor)}") 0 0, auto`);
+    document.documentElement.style.setProperty('--game-cursor-tilted', `url("${toAbs(tiltCursor)}") 0 0, auto`);
   }
 
   // 着色器缓存预热 (Prewarm Shader Cache)
@@ -246,7 +247,7 @@ async function boot() {
     detail: 'Menu Background & Scene Visuals',
   });
 
-  try { await loadScene('scenes/backgrounds/mainmenu/main_menu_background'); } catch {}
+  try { await loadScene('scenes/backgrounds/main_menu_bg.tscn'); } catch {}
 
   // 挂载存档并初始化规则层
   updateBootProgress({

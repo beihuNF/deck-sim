@@ -85,6 +85,48 @@ describe('web co-op room handlers', () => {
     expect(sockets[2].closed).toBe(true);
     expect(values.get('room').players[2].character).toBe('IRONCLAD');
   });
+  it('allows guest players without Steam identity to connect socket successfully', async () => {
+    const values = new Map(), sockets: any[] = [];
+    const ctx = {
+      storage: { get: async (key: string) => values.get(key), put: async (key: string, value: any) => values.set(key, structuredClone(value)), setAlarm: async () => {}, deleteAll: async () => values.clear() },
+      blockConcurrencyWhile: (f: any) => f(),
+      getWebSockets: () => sockets,
+      acceptWebSocket: (s: any) => sockets.push(s),
+    };
+    (globalThis as any).WebSocketPair = class {
+      0 = {}; 1 = { serializeAttachment: () => {} };
+    };
+    const origResponse = globalThis.Response;
+    (globalThis as any).Response = class extends origResponse {
+      constructor(body?: any, init?: any) {
+        if (init?.status === 101) {
+          super(null, { ...init, status: 200 });
+          Object.defineProperty(this, 'status', { value: 101 });
+        } else {
+          super(body, init);
+        }
+      }
+    };
+    try {
+      const room = new WebRoom(ctx, {});
+      const createRes = await room.fetch(new Request('https://room/api/multiplayer/rooms/TESTROOM0001', {
+        method: 'POST',
+        headers: { 'X-Create-Room': '1' },
+        body: JSON.stringify({ version: 'test', guestName: 'Byrdlett', protocol: 4, instance: 'inst-1' }),
+      }));
+      expect(createRes.status).toBe(200);
+      const data = await createRes.json();
+      expect(data.token).toBeDefined();
+
+      const socketRes = await room.fetch(new Request(`https://room/api/multiplayer/rooms/TESTROOM0001/socket?token=${data.token}&instance=inst-1`, {
+        method: 'GET',
+        headers: { Upgrade: 'websocket' },
+      }));
+      expect(socketRes.status).toBe(101);
+    } finally {
+      globalThis.Response = origResponse;
+    }
+  });
 });
 
 

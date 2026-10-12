@@ -193,7 +193,7 @@ export class WebRoom extends DurableObject<Env> {
     if (!this.room || !url.pathname.endsWith('/socket')) return json({ error: 'room' }, 404);
     if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'socket' }, 400);
     const player = this.room.players.find(p => p.token === url.searchParams.get('token'));
-    if (!player || (player.profile && player.profile.steamId !== profile?.steamId) || (this.room.started && (this.room.protocol !== 4 || player.instance !== url.searchParams.get('instance')))) return json({ error: 'closed' }, 403);
+    if (!player || (player.profile?.steamId && player.profile.steamId !== profile?.steamId) || (this.room.started && (this.room.protocol !== 4 || player.instance !== url.searchParams.get('instance')))) return json({ error: 'closed' }, 403);
     const existingSockets = this.ctx.getWebSockets(String(player.id));
     if (existingSockets.length) {
       for (const old of existingSockets) old.close(1000, 'Replaced');
