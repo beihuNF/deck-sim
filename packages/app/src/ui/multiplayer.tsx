@@ -318,8 +318,8 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
   return (
     <div class="mp-screen-container">
-      {/* 多人游戏 Steam 账号 / 联机身份徽章（独立置于右上角，不遮挡左上角原版存档切换） */}
-      {mp.phase === 'idle' && view === 'menu' && (
+      {/* 多人游戏 Steam 账号 / 联机身份徽章（独立置于右上角，支持全流程随时查看与登录） */}
+      {(mp.phase === 'idle' || mp.phase === 'lobby') && (
         <div
           class={'mp-steam-badge' + (accountHover ? ' hover' : '')}
           data-ctl
@@ -338,7 +338,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             {steam.profile?.name || tr('游客身份', 'Guest')}
           </div>
           <div class="mps-desc">
-            {steam.profile ? tr('已连接 Steam', 'Steam Connected') : tr('点击管理身份', 'Manage Account')}
+            {steam.profile ? tr('已连接 Steam', 'Steam Connected') : tr('点击登录 Steam', 'Sign In Steam')}
             {mp.ping > 0 && (
               <span style={{ marginLeft: '6px', color: mp.ping > 150 ? '#f1c40f' : '#85e89d', fontWeight: 'bold' }}>
                 • {mp.ping}ms
@@ -510,6 +510,22 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                   }
                 }}
               />
+            </div>
+
+            {/* 游客迎宾弹窗提供 Steam 快捷登录 */}
+            <div class="mp-join-identity-bar" style={{ marginTop: '-12px', marginBottom: '24px' }}>
+              <span class="mp-jib-label">
+                {steam.profile ? tr('已连接 Steam：', 'Steam Connected: ') : tr('或者直接使用 Steam：', 'Or use Steam: ')}
+                {steam.profile && <strong style={{ color: '#efc851' }}>{steam.profile.name}</strong>}
+              </span>
+              <button
+                type="button"
+                class="mp-quick-steam-btn"
+                onClick={() => setShowAccountDialog(true)}
+              >
+                <img src={steam.profile?.avatar || imageUrl('images/ui/mods/steam_logo.png') || ''} alt="" class="mqs-icon" />
+                <span>{steam.profile ? tr('管理账号', 'Account') : tr('登录 Steam', 'Sign In Steam')}</span>
+              </button>
             </div>
 
             <div class="mp-dialog-buttons">
@@ -700,6 +716,34 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             <h2 class="mp-dialog-title">{m('JOIN.title')}</h2>
             <p class="mp-dialog-desc">{m('JOIN.description')}</p>
 
+            {/* 加入房间弹窗：常驻展示当前身份，提供 Steam 快捷登录入口 */}
+            <div class="mp-join-identity-bar">
+              <span class="mp-jib-label">
+                {steam.profile ? tr('联机身份：', 'Identity: ') : tr('当前身份：', 'Playing as: ')}
+                <strong style={{ color: '#efc851' }}>{effectivePlayerName()}</strong>
+                {!steam.profile && <span style={{ opacity: 0.7 }}> ({tr('游客', 'Guest')})</span>}
+              </span>
+              {!steam.profile ? (
+                <button
+                  type="button"
+                  class="mp-quick-steam-btn"
+                  onClick={() => setShowAccountDialog(true)}
+                >
+                  <img src={imageUrl('images/ui/mods/steam_logo.png') || ''} alt="" class="mqs-icon" />
+                  <span>{tr('登录 Steam', 'Sign In Steam')}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  class="mp-quick-steam-btn signed-in"
+                  onClick={() => setShowAccountDialog(true)}
+                >
+                  <img src={steam.profile.avatar || imageUrl('images/ui/mods/steam_logo.png') || ''} alt="" class="mqs-icon" />
+                  <span>{tr('管理账号', 'Account')}</span>
+                </button>
+              )}
+            </div>
+
             <div class="mp-dialog-input-wrap">
               <input
                 type="text"
@@ -865,8 +909,13 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           {/* 右下角原版按钮：未准备时为 ConfirmButton（打勾确认），已准备时为 UnreadyButton（红叉取消准备） */}
           {!me?.ready ? (
             <ConfirmButton
-              enabled={!!me && !selectedCharObj?.locked && me.character === currentHeroId}
-              onClick={() => readyMultiplayer(true)}
+              enabled={!!me && !selectedCharObj?.locked}
+              onClick={() => {
+                if (me && me.character !== currentHeroId) {
+                  selectMultiplayerCharacter(currentHeroId);
+                }
+                readyMultiplayer(true);
+              }}
             />
           ) : (
             <UnreadyButton

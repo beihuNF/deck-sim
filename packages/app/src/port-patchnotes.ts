@@ -4,6 +4,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Added Steam Cloud save synchronization: signed-in Steam players can now seamlessly back up and sync save progress across devices and browsers, with manual backup and restore options in Settings and Account screens.
+• Fixed multiplayer lobby confirm/ready button visibility and restored proper screen positioning across various device aspect ratios.
+• Enhanced "Join Room" dialog layout with authentic nine-patch panel slicing, responsive input sizing, and a direct Steam sign-in option.
+• Kept Steam account profile badge consistently visible throughout multiplayer setup and lobby screens.
 • Fixed mobile room creation failures, Steam login dismissal, and guest connection errors.
 • Improved reconnection reliability: instant wake-up when returning from background/sleep and authentic in-game teammate waiting overlay.
 • Added dedicated top-right Steam profile badge and real-time network latency (Ping) display in the lobby.
@@ -13,13 +16,17 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]Visuals & Audio[/b][/gold]
 • Restored the original top-left Profile Switcher button, cleanly separating it from Steam login.
-• Smart in-game cursor scaling & authentic interaction: custom cursors now smoothly adapt to viewport dimensions with pixel-perfect hotspot alignment; globally preserved in-game cursors on option hover instead of reverting to native hand pointers, with authentic tilted press animations.
+• Smart in-game cursor scaling & authentic interaction: custom cursors now smoothly adapt to viewport dimensions with pixel-perfect hotspot alignment (eliminating oversized 64px pointers); globally preserved in-game cursors on option hover instead of reverting to native hand pointers, with authentic tilted press animations.
 • Restored authentic gamepad reticle highlights and missing audio effects across menus and maps.
+• Enhanced cross-browser compatibility: fixed mobile portrait viewport flipping and loading stalls on certain mobile browsers.
 
 [gold][b]Gameplay[/b][/gold]
 • Fixed random character ascension selection, properly respecting preferred ascension levels.`,
     zhs: `[gold][b]多人联机[/b][/gold]
 • 接入 Steam 云存档漫游服务：登录 Steam 账号即可跨设备/换浏览器自动备份与同步存档进度，设置与账号面板支持手动备份与从云端恢复。
+• 修复多人大厅准备与返回按钮在移动端和不同宽高比下的显示异常，确保确认准备按钮始终可见。
+• 优化“加入房间”弹窗样式与九宫格切片，输入框自适应移动端屏幕，并在弹窗内直接提供 Steam 快捷登录入口。
+• Steam 账号登录徽章在多人模式全流程及大厅中保持常驻展示，支持随时查看与管理账号。
 • 修复移动端创建房间失败、Steam 登录闪退及游客连接异常的问题。
 • 优化多人断线重连体验：切后台或锁屏回游戏即时唤醒，新增局内等待队友重连的原生提示。
 • 多人大厅右上角新增独立 Steam 账号徽章与网络延迟（Ping）状态显示。
@@ -29,8 +36,9 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]视听与体验[/b][/gold]
 • 恢复主菜单左上角原版切换存档按钮，解绑第三方账号覆盖。
-• 原版鼠标指针智能自适应与交互还原：光标尺寸根据视口与屏幕比例平滑缩放，针尖热点精准对齐；悬停选项与按钮时保持游戏原版指针，消除系统手型回退，并还原按压时的原版倾斜反馈。
+• 原版鼠标指针智能自适应与交互还原：光标尺寸根据视口与屏幕比例平滑缩放，针尖热点精准对齐（告别过大的 64px 粗糙指针）；悬停选项与按钮时保持游戏原版指针，彻底消除突兀的系统手型回退，并还原按压时的原版倾斜反馈。
 • 还原原版手柄瞄准框高亮视觉，全面补齐地图与菜单交互音效。
+• 优化多浏览器兼容性：修复手机竖屏时画面异常翻转的问题，修复部分移动端浏览器卡在加载界面的问题。
 
 [gold][b]游戏机制[/b][/gold]
 • 修复选择随机角色时默认进阶难度异常的问题，正常保存玩家设定的偏好进阶。`,

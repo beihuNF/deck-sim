@@ -23,7 +23,8 @@
 /* ---- full-rect leaves: backstops, backgrounds, input catchers */
 :is(.overlay-backstop, .capstone-backstop, .modal-backstop, .cs-background, .gp-bg, .inspect-backstop, .go-black, .go-summary-back,
     .combat-ui > .select-backstop, .chs-unlock-backstop, .pf-loading, .credits, .rhs-outofdate, .tl-bg, .tl-input-blocker, .tl-backstop,
-    .room-empty, .anc-hitbox, .shop-backstop, .shop-blocker, .coll-contents, .stats-grid, .settings-mask, .fb-bg) { inset: calc(-1 * var(--oy)) calc(-1 * var(--ox)); }
+    .room-empty, .anc-hitbox, .shop-backstop, .shop-blocker, .coll-contents, .stats-grid, .settings-mask, .fb-bg,
+    .mp-join-modal-backstop, .mp-loading-overlay) { inset: calc(-1 * var(--oy)) calc(-1 * var(--ox)); }
 /* containers that take input over the whole screen while their box stays the frame */
 :is(.capstone, .tl-slots, .tl-insp.over)::before { content: ''; position: absolute; inset: calc(-1 * var(--oy)) calc(-1 * var(--ox)); }
 /* the colour behind a scene (treasure_room.tscn ColorRect and the like), out to the viewport's edges */
@@ -35,8 +36,12 @@
 
 /* ---- main menu (main_menu.tscn) */
 :is(.mm-profile) { margin-left: calc(-1 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
-/* ReleaseInfo, PatchNotesButton, mp-steam-badge: R,T */
-:is(.mm-release, .pn-button, .pn-toggle, .mp-steam-badge) { margin-left: var(--ox); margin-top: calc(-1 * var(--oy)); }
+/* ReleaseInfo, PatchNotesButton: R,T */
+:is(.mm-release, .pn-button, .pn-toggle) { margin-left: var(--ox); margin-top: calc(-1 * var(--oy)); }
+/* mp-steam-badge: R,T anchored accurately to right edge across all ratios */
+.mp-steam-badge { right: calc(24px - var(--ox)); margin-top: calc(-1 * var(--oy)); }
+/* multiplayer lobby player list: L,T */
+.remote-player-container { margin-left: calc(-1 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
 /* the port's own corners */
 .mm-github { margin-left: calc(-1 * var(--ox)); margin-top: var(--oy); }
 .mm-notice { margin-left: var(--ox); margin-top: var(--oy); }
