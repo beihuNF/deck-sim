@@ -1070,13 +1070,16 @@ export function MultiplayerStatus() {
 
   // 1. 局内等待队友重连或同步（1:1 对齐原版 NCombatRoom %WaitingForOtherPlayers 规范）
   if (mp.waiting && mp.phase === 'playing') {
+    const disconnectedPlayers = mp.players.filter((p: any) => !p.connected).map((p: any) => multiplayerPlayerName(p.id));
+    const who = disconnectedPlayers.length > 0 ? disconnectedPlayers.join('、') : '';
+    const subText = who
+      ? tr(`正在等待队友 ${who} 重新连接并同步数据`, `Waiting for teammate ${who} to reconnect and synchronize`)
+      : tr('对局已自动暂停，正在等待队友重新连接并同步数据', 'Run paused, waiting for teammates to reconnect and synchronize');
+
     return (
       <div class="waiting-for-players-overlay">
         <div class="wfpo-banner">
-          <div
-            class="wfpo-bg"
-            style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }}
-          />
+          <RoomDialogBackground />
           <div class="wfpo-title">
             {loc('gameplay_ui', 'MULTIPLAYER_WAITING')}
             <span class="thinky-dots">
@@ -1084,7 +1087,7 @@ export function MultiplayerStatus() {
             </span>
           </div>
           <div class="wfpo-sub">
-            {tr('对局已自动暂停，正在等待队友重新连接并同步数据', 'Run paused, waiting for teammates to reconnect and synchronize')}
+            {subText}
           </div>
           <div class="wfpo-btn-wrap">
             <PopupButton

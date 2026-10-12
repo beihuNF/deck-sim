@@ -924,7 +924,9 @@
 .waiting-for-players-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -934,31 +936,25 @@
 }
 .wfpo-banner {
   position: relative;
-  width: 680px;
-  min-height: 120px;
-  padding: 24px 36px;
+  width: 620px;
+  min-height: 220px;
+  padding: 36px 40px 32px 40px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-}
-.wfpo-bg {
-  position: absolute;
-  inset: 0;
-  border: 42px solid transparent;
-  border-image-slice: 42 fill;
-  filter: brightness(0) opacity(0.8);
-  pointer-events: none;
+  gap: 16px;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 24px rgba(0, 0, 0, 0.6);
 }
 .wfpo-title {
   position: relative;
-  font: 700 36px/1.2 'Kreon', var(--font);
-  color: #7FFF00;
-  -webkit-text-stroke: 4px #153500;
+  font: 700 34px/1.2 'Kreon', var(--font);
+  color: #EFC851;
+  -webkit-text-stroke: 5px #3D2C04;
   paint-order: stroke fill;
-  text-shadow: 0 0 16px rgba(127, 255, 0, 0.6);
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
   letter-spacing: 2px;
   display: flex;
   align-items: center;
@@ -966,15 +962,33 @@
 }
 .wfpo-sub {
   position: relative;
-  font: 400 18px/1.4 'Kreon', var(--font);
-  color: #fff6e2;
+  font: 400 20px/1.5 'Kreon', var(--font);
+  color: #FFF6E2;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
   letter-spacing: 1px;
   text-align: center;
+  max-width: 520px;
 }
 .wfpo-btn-wrap {
   position: relative;
-  margin-top: 14px;
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 72px;
+}
+.wfpo-btn-wrap .vp-btn,
+.wfpo-btn-wrap .vp-btn.no,
+.wfpo-btn-wrap .vp-btn.yes {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  flex: 0 0 196px;
+  width: 196px;
+  height: 72px;
 }
 
 /* Steam 弹窗国内网络提示卡片 */
