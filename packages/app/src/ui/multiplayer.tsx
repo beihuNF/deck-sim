@@ -363,8 +363,10 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 }}
                 title={
                   mp.isP2P
-                    ? tr('WebRTC P2P 点对点直连（国内骨干网零绕行）', 'WebRTC P2P Direct Connection')
-                    : (mp.colo ? tr(`当前接入机房: ${mp.colo}`, `Data Center: ${mp.colo}`) : undefined)
+                    ? tr('WebRTC P2P 端到端直连（国内骨干网零绕行）', 'WebRTC P2P Direct Connection')
+                    : (mp.colo
+                      ? tr(`当前为单人等待状态，接入机房为 ${mp.colo}；队友进房后将自动建立 P2P 端到端直连`, `Lobby on ${mp.colo} edge. P2P direct connection will activate once teammates join.`)
+                      : undefined)
                 }
               >
                 • {mp.isP2P ? `${mp.p2pPing}ms (P2P)` : `${mp.ping}ms${mp.colo ? ` (${mp.colo})` : ''}`}

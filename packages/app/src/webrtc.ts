@@ -2,9 +2,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const ICE_SERVERS: RTCIceServer[] = [
+  { urls: 'stun:stun.qq.com:3478' },
+  { urls: 'stun:stun.miwifi.com:3478' },
+  { urls: 'stun:stun.chat.bilibili.com:3478' },
   { urls: 'stun:stun.cloudflare.com:3478' },
   { urls: 'stun:stun.syncthing.net:3478' },
-  { urls: 'stun:stun.l.google.com:19302' },
 ];
 
 export interface P2PPeerStatus {
@@ -46,7 +48,9 @@ class PeerConnection {
     if (typeof RTCPeerConnection === 'undefined') return;
     try {
       this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    } catch {
+      console.log(`[WebRTC] Initializing peer connection with player ${this.peerId} (myId: ${this.myId})`);
+    } catch (e) {
+      console.warn('[WebRTC] RTCPeerConnection init failed', e);
       return;
     }
 
@@ -58,6 +62,7 @@ class PeerConnection {
 
     this.pc.onconnectionstatechange = () => {
       const state = this.pc?.connectionState;
+      console.log(`[WebRTC] Peer ${this.peerId} connection state changed: ${state}`);
       if (state === 'connected') {
         this.checkChannels();
       } else if (state === 'disconnected' || state === 'failed' || state === 'closed') {
@@ -65,7 +70,7 @@ class PeerConnection {
       }
     };
 
-    // 较小 ID 发起 Offer，较大 ID 等待接收 Offer
+    // 较小 ID 发起 Offer，较大 ID 等待接收 Offer（防止两端 Glare 冲突）
     if (this.myId < this.peerId) {
       this.setupOffererChannels();
       void this.createOffer();
@@ -83,19 +88,31 @@ class PeerConnection {
       this.bindDataChannel(rDc);
       const uDc = this.pc.createDataChannel('sts2_unreliable', { ordered: false, maxRetransmits: 0 });
       this.bindDataChannel(uDc);
-    } catch {}
+    } catch (e) {
+      console.warn('[WebRTC] createDataChannel failed', e);
+    }
   }
 
   private bindDataChannel(dc: RTCDataChannel) {
+    console.log(`[WebRTC] Binding data channel: ${dc.label} for peer ${this.peerId}`);
     if (dc.label === 'sts2_reliable') {
       this.reliableDc = dc;
     } else if (dc.label === 'sts2_unreliable') {
       this.unreliableDc = dc;
     }
 
-    dc.onopen = () => this.checkChannels();
-    dc.onclose = () => this.checkChannels();
-    dc.onerror = () => this.checkChannels();
+    dc.onopen = () => {
+      console.log(`[WebRTC] Data channel ${dc.label} OPEN for peer ${this.peerId}`);
+      this.checkChannels();
+    };
+    dc.onclose = () => {
+      console.log(`[WebRTC] Data channel ${dc.label} CLOSED for peer ${this.peerId}`);
+      this.checkChannels();
+    };
+    dc.onerror = e => {
+      console.warn(`[WebRTC] Data channel ${dc.label} ERROR`, e);
+      this.checkChannels();
+    };
     dc.onmessage = e => this.handleMessage(e.data);
   }
 
@@ -104,6 +121,8 @@ class PeerConnection {
     if (isNowConnected !== this.connected) {
       this.connected = isNowConnected;
       if (this.connected) {
+        console.log(`[WebRTC] SUCCESS: Full P2P connection established with player ${this.peerId}!`);
+        this.sendPingNow();
         this.startPingLoop();
       } else {
         this.stopPingLoop();
@@ -114,6 +133,7 @@ class PeerConnection {
 
   private markDisconnected() {
     if (this.connected) {
+      console.log(`[WebRTC] P2P disconnected from player ${this.peerId}`);
       this.connected = false;
       this.stopPingLoop();
       this.onStatusChange();
@@ -127,7 +147,9 @@ class PeerConnection {
       if (this.closed || !this.pc) return;
       await this.pc.setLocalDescription(offer);
       this.sendSignal(this.peerId, { offer });
-    } catch {}
+    } catch (e) {
+      console.warn('[WebRTC] createOffer failed', e);
+    }
   }
 
   async handleSignal(data: any) {
@@ -157,7 +179,9 @@ class PeerConnection {
           this.pendingCandidates.push(data.candidate);
         }
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[WebRTC] handleSignal error', e);
+    }
   }
 
   send(packet: { volatile?: boolean; bytes: number[]; seq?: number; sender?: number; to?: number }): boolean {
@@ -197,14 +221,18 @@ class PeerConnection {
     } catch {}
   }
 
+  private sendPingNow() {
+    if (this.reliableDc?.readyState === 'open') {
+      try {
+        this.reliableDc.send(JSON.stringify({ type: 'p2p_ping', t: performance.now() }));
+      } catch {}
+    }
+  }
+
   private startPingLoop() {
     this.stopPingLoop();
     this.pingTimer = setInterval(() => {
-      if (this.reliableDc?.readyState === 'open') {
-        try {
-          this.reliableDc.send(JSON.stringify({ type: 'p2p_ping', t: performance.now() }));
-        } catch {}
-      }
+      this.sendPingNow();
     }, 2_500);
   }
 
@@ -265,10 +293,14 @@ export class WebRtcMeshManager {
   }
 
   handleSignal(from: number, data: any) {
-    const peer = this.peers.get(from);
-    if (peer) {
-      void peer.handleSignal(data);
+    if (!this.myId || !this.sendSignal || !this.onReceive) return;
+    let peer = this.peers.get(from);
+    if (!peer) {
+      // 容错：若信令到达时尚未同步Peer列表，立即创建并绑定
+      peer = new PeerConnection(this.myId, from, this.sendSignal, this.onReceive, () => this.onStatusChange());
+      this.peers.set(from, peer);
     }
+    void peer.handleSignal(data);
   }
 
   /**
