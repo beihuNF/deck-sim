@@ -5,6 +5,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Added Steam Cloud save synchronization and cross-device backup.
 • Improved multiplayer lobby flow, reconnection stability, and room reload.
+• Fixed map doodle sync latency and teammate drawing cursor hotspot alignment.
 • Enhanced room invitations and guest play with custom nicknames.
 • Optimized network latency with APAC region hints and relay node support.
 
@@ -16,6 +17,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     zhs: `[gold][b]多人联机[/b][/gold]
 • 新增 Steam 云存档同步与跨设备进度漫游。
 • 优化多人联机大厅、断线重连体验与快速重载。
+• 修复联机地图涂鸦同步延迟、丢笔与队友画笔光标位置偏移的问题。
 • 优化房间邀请与游客模式，支持自定义昵称。
 • 优化联机机房路由，增加亚太就近调度与加速中继支持。
 

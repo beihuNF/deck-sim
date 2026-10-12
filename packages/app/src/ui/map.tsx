@@ -542,6 +542,7 @@ function onPointerDown(e: PointerEvent) {
   if (!S.inputDisabled && !actAnimRunning() && S.mode === 'none' && (e.button === 2 || e.button === 1)) {
     e.preventDefault();
     S.mode = e.button === 2 ? 'draw' : 'erase'; S.held = true;
+    coopDrawings?.setLocalDrawingMode(S.mode === 'draw' ? 1 : 2);
     updateCursor();
     drawings.begin(x, y);
     invalidate();
@@ -711,12 +712,22 @@ function paintLines(c: CanvasRenderingContext2D, lines: Line[], color: string) {
 /** NMapDrawingInput.StopDrawing. */
 function stopDrawing() {
   drawings.end();
-  if (S.mode !== 'none') { S.mode = 'none'; S.held = false; updateCursor(); invalidate(); }
+  if (S.mode !== 'none') {
+    S.mode = 'none';
+    S.held = false;
+    coopDrawings?.setLocalDrawingMode(0);
+    updateCursor();
+    invalidate();
+  }
 }
 function toggleMode(m: Mode) {
   const was = S.mode;
   stopDrawing();
-  if (was !== m) { S.mode = m; S.held = false; }
+  if (was !== m) {
+    S.mode = m;
+    S.held = false;
+    coopDrawings?.setLocalDrawingMode(m === 'draw' ? 1 : m === 'erase' ? 2 : 0);
+  }
   updateCursor();
   invalidate();
 }

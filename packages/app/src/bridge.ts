@@ -20,6 +20,7 @@ import { playCombatVfx, playItemThrow } from './render/cardfx';
 import { screenShake, screenRumble, screenShakeTrauma, hitStop } from './ui/screenshake';
 import { OrbManagerView } from './ui/orbs';
 import { setMap, openMap, closeMap, isMapVisible, setTravelEnabled, setDebugTravelEnabled, mapTraveling, initMarker, travelToMapCoord, spawnActBanner, initializeMap, refreshMapVotes, pingMapCoord } from './ui/map';
+import { getActiveCoopDrawings } from './ui/map-coop';
 import { view, fracX } from './view';
 
 const NRun = N('NRun');
@@ -1298,7 +1299,12 @@ NMapRoom.Create = (act: any, i: number) => {
 // ------------------------------------------------------------------ map
 /** NMapScreen for the rule layer and the room views: ui/map.tsx draws and runs it. */
 export class MapView extends NMapScreen {
-  Drawings = { GetSerializableMapDrawings: () => null, LoadDrawings() {}, ClearAllLines() {} };
+  Drawings = {
+    GetSerializableMapDrawings: () => null,
+    LoadDrawings() {},
+    ClearAllLines() {},
+    GetDrawingMode: (playerId: number) => getActiveCoopDrawings()?.getDrawingMode(playerId) ?? 0,
+  };
   Initialize() {}
   SetMap(map: any, seed = 0, clearDrawings = false) { setMap(map, seed, clearDrawings); }
   Open(fromTopBar = false) { openMap(fromTopBar); return this; }

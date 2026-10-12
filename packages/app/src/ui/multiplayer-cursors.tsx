@@ -6,6 +6,7 @@ import { G, $, list, localPlayer } from '../game';
 import { ui } from '../store';
 import { peerInputRoot } from '../input/peer-input';
 import { imageUrl } from '../assets';
+import { getActiveCoopDrawings } from './map-coop';
 
 interface CursorState {
   prevX: number;
@@ -72,6 +73,16 @@ function TeammateCursor({ player, sync, localId }: { player: any; sync: any; loc
   const [renderState, setRenderState] = useState<CursorState>(stateRef.current);
 
   useEffect(() => {
+    const getMode = () => {
+      try {
+        const coopMode = getActiveCoopDrawings()?.getDrawingMode(player.NetId);
+        if (coopMode != null && coopMode !== 0) return coopMode;
+        return ($.ext('MegaCrit.Sts2.Core.Nodes.NRun') as any).Instance?.GlobalUi?.MapScreen?.Drawings?.GetDrawingMode?.(player.NetId) ?? (coopMode ?? 0);
+      } catch {
+        return getActiveCoopDrawings()?.getDrawingMode(player.NetId) ?? 0;
+      }
+    };
+
     const onStateChanged = (senderId: any) => {
       if (senderId !== player.NetId) return;
       try {
@@ -79,10 +90,7 @@ function TeammateCursor({ player, sync, localId }: { player: any; sync: any; loc
         const isDown = !!sync.GetMouseDown(player.NetId);
         const localScreen = sync.GetScreenType(localId);
         const remoteScreen = sync.GetScreenType(player.NetId);
-        let drawingMode = 0;
-        try {
-          drawingMode = ($.ext('MegaCrit.Sts2.Core.Nodes.NRun') as any).Instance?.GlobalUi?.MapScreen?.Drawings?.GetDrawingMode?.(player.NetId) ?? 0;
-        } catch {}
+        const drawingMode = getMode();
 
         const now = performance.now();
         const s = stateRef.current;
@@ -100,6 +108,18 @@ function TeammateCursor({ player, sync, localId }: { player: any; sync: any; loc
 
     sync.StateChanged = $.dcombine(sync.StateChanged, onStateChanged);
 
+    const coop = getActiveCoopDrawings();
+    const prevHandler = coop?.onModeChanged;
+    if (coop) {
+      coop.onModeChanged = (pId: number, mode: number) => {
+        prevHandler?.(pId, mode);
+        if (pId === player.NetId) {
+          stateRef.current.drawingMode = mode;
+          setRenderState({ ...stateRef.current });
+        }
+      };
+    }
+
     // 启动 60fps 平滑插值动画
     const stopFrame = $.onFrame(() => {
       const s = stateRef.current;
@@ -114,23 +134,32 @@ function TeammateCursor({ player, sync, localId }: { player: any; sync: any; loc
 
     return () => {
       sync.StateChanged = $.dremove(sync.StateChanged, onStateChanged);
+      if (coop && coop.onModeChanged) {
+        coop.onModeChanged = prevHandler;
+      }
       stopFrame();
     };
   }, [player.NetId, sync, localId]);
 
   if (!renderState.visible) return null;
 
-  // 根据当前动作选择原版光标材质
+  // 根据当前动作选择原版光标材质（原图 64x64，当前显示 32x32，热点按 0.5 换算）
   let texturePath = 'images/packed/common_ui/cursor_default.webp';
   let hotX = 0, hotY = 0;
   if (renderState.drawingMode === 1) { // Drawing (quill)
-    texturePath = renderState.isDown ? 'images/packed/common_ui/cursor_default.webp' : 'images/packed/common_ui/cursor_quill_tilted.webp';
-    hotX = 2; hotY = 28;
+    // 原版 NRemoteMouseCursor: Drawing 模式下，按下为直立画笔，未按下为倾斜画笔；热点为 (2, 56)
+    texturePath = renderState.isDown ? 'images/packed/common_ui/cursor_quill.webp' : 'images/packed/common_ui/cursor_quill_tilted.webp';
+    hotX = 1; hotY = 28;
   } else if (renderState.drawingMode === 2) { // Erasing
+    // 原版 NRemoteMouseCursor: Erasing 模式下，按下为直立橡皮擦，未按下为倾斜橡皮擦；热点为 (24, 58)
     texturePath = renderState.isDown ? 'images/packed/common_ui/cursor_eraser.webp' : 'images/packed/common_ui/cursor_eraser_tilted.webp';
     hotX = 12; hotY = 29;
   } else if (renderState.isDown) {
     texturePath = 'images/packed/common_ui/cursor_tilted.webp';
+    hotX = 0; hotY = 0;
+  } else {
+    texturePath = 'images/packed/common_ui/cursor_default.webp';
+    hotX = 0; hotY = 0;
   }
 
   const cursorUrl = imageUrl(texturePath) ?? '';
