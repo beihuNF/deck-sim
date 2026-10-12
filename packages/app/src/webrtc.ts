@@ -32,6 +32,7 @@ class PeerConnection {
   ping = 0;
 
   private pingTimer: any = null;
+  private fallbackTimer: any = null;
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private closed = false;
 
@@ -56,7 +57,14 @@ class PeerConnection {
 
     this.pc.onicecandidate = e => {
       if (e.candidate && !this.closed) {
-        this.sendSignal(this.peerId, { candidate: e.candidate.toJSON() });
+        console.log(`[WebRTC] ICE candidate ready for player ${this.peerId}:`, e.candidate.candidate);
+        this.sendSignal(this.peerId, {
+          candidate: {
+            candidate: e.candidate.candidate,
+            sdpMid: e.candidate.sdpMid,
+            sdpMLineIndex: e.candidate.sdpMLineIndex,
+          },
+        });
       }
     };
 
@@ -70,14 +78,30 @@ class PeerConnection {
       }
     };
 
-    // 较小 ID 发起 Offer，较大 ID 等待接收 Offer（防止两端 Glare 冲突）
+    this.pc.oniceconnectionstatechange = () => {
+      console.log(`[WebRTC] Peer ${this.peerId} ICE state: ${this.pc?.iceConnectionState}`);
+      if (this.pc?.iceConnectionState === 'connected' || this.pc?.iceConnectionState === 'completed') {
+        this.checkChannels();
+      }
+    };
+
+    // 默认较小 ID 主动发起 Offer；较大 ID 等待接收 Offer
     if (this.myId < this.peerId) {
       this.setupOffererChannels();
       void this.createOffer();
     } else {
       this.pc.ondatachannel = e => {
+        console.log(`[WebRTC] Received data channel: ${e.channel.label} from player ${this.peerId}`);
         this.bindDataChannel(e.channel);
       };
+      // 容错机制：若 3 秒内未收到较小 ID 的 Offer，自动发起连接避免死锁
+      this.fallbackTimer = setTimeout(() => {
+        if (!this.connected && !this.closed && this.pc && !this.reliableDc) {
+          console.log(`[WebRTC] No offer received from player ${this.peerId} after 3s, initiating offer as fallback...`);
+          this.setupOffererChannels();
+          void this.createOffer();
+        }
+      }, 3000);
     }
   }
 
@@ -121,6 +145,10 @@ class PeerConnection {
     if (isNowConnected !== this.connected) {
       this.connected = isNowConnected;
       if (this.connected) {
+        if (this.fallbackTimer) {
+          clearTimeout(this.fallbackTimer);
+          this.fallbackTimer = null;
+        }
         console.log(`[WebRTC] SUCCESS: Full P2P connection established with player ${this.peerId}!`);
         this.sendPingNow();
         this.startPingLoop();
@@ -143,10 +171,17 @@ class PeerConnection {
   private async createOffer() {
     if (!this.pc || this.closed) return;
     try {
+      console.log(`[WebRTC] Creating offer for player ${this.peerId}...`);
       const offer = await this.pc.createOffer();
       if (this.closed || !this.pc) return;
       await this.pc.setLocalDescription(offer);
-      this.sendSignal(this.peerId, { offer });
+      console.log(`[WebRTC] Sending offer to player ${this.peerId}`);
+      this.sendSignal(this.peerId, {
+        offer: {
+          type: offer.type,
+          sdp: offer.sdp,
+        },
+      });
     } catch (e) {
       console.warn('[WebRTC] createOffer failed', e);
     }
@@ -155,7 +190,12 @@ class PeerConnection {
   async handleSignal(data: any) {
     if (!this.pc || this.closed) return;
     try {
-      if (data.offer && this.myId > this.peerId) {
+      if (data.offer) {
+        console.log(`[WebRTC] Received offer from player ${this.peerId}`);
+        if (this.fallbackTimer) {
+          clearTimeout(this.fallbackTimer);
+          this.fallbackTimer = null;
+        }
         await this.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
         for (const c of this.pendingCandidates) {
           try { await this.pc.addIceCandidate(c); } catch {}
@@ -164,14 +204,22 @@ class PeerConnection {
         const answer = await this.pc.createAnswer();
         if (this.closed || !this.pc) return;
         await this.pc.setLocalDescription(answer);
-        this.sendSignal(this.peerId, { answer });
-      } else if (data.answer && this.myId < this.peerId) {
+        console.log(`[WebRTC] Sending answer to player ${this.peerId}`);
+        this.sendSignal(this.peerId, {
+          answer: {
+            type: answer.type,
+            sdp: answer.sdp,
+          },
+        });
+      } else if (data.answer) {
+        console.log(`[WebRTC] Received answer from player ${this.peerId}`);
         await this.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         for (const c of this.pendingCandidates) {
           try { await this.pc.addIceCandidate(c); } catch {}
         }
         this.pendingCandidates = [];
       } else if (data.candidate) {
+        console.log(`[WebRTC] Received ICE candidate from player ${this.peerId}`);
         const candidate = new RTCIceCandidate(data.candidate);
         if (this.pc.remoteDescription) {
           await this.pc.addIceCandidate(candidate);
@@ -245,6 +293,10 @@ class PeerConnection {
 
   destroy() {
     this.closed = true;
+    if (this.fallbackTimer) {
+      clearTimeout(this.fallbackTimer);
+      this.fallbackTimer = null;
+    }
     this.stopPingLoop();
     try { this.reliableDc?.close(); } catch {}
     try { this.unreliableDc?.close(); } catch {}
@@ -297,6 +349,7 @@ export class WebRtcMeshManager {
     let peer = this.peers.get(from);
     if (!peer) {
       // 容错：若信令到达时尚未同步Peer列表，立即创建并绑定
+      console.log(`[WebRTC] Auto-creating peer connection for incoming signal from player ${from}`);
       peer = new PeerConnection(this.myId, from, this.sendSignal, this.onReceive, () => this.onStatusChange());
       this.peers.set(from, peer);
     }

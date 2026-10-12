@@ -316,10 +316,15 @@ export class WebRoom extends DurableObject<Env> {
     if (msg.type === 'signal') {
       if (!Number.isInteger(msg.to) || !this.room.players.some(p => p.id === msg.to)) return;
       const payload = JSON.stringify({ type: 'signal', from: id, data: msg.data });
-      for (const other of this.ctx.getWebSockets()) {
-        try {
-          if (other !== ws && other.deserializeAttachment()?.id === msg.to) other.send(payload);
-        } catch {}
+      const targets = this.ctx.getWebSockets(String(msg.to));
+      if (targets.length > 0) {
+        for (const t of targets) try { t.send(payload); } catch {}
+      } else {
+        for (const other of this.ctx.getWebSockets()) {
+          try {
+            if (other !== ws && other.deserializeAttachment()?.id === msg.to) other.send(payload);
+          } catch {}
+        }
       }
       return;
     }
