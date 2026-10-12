@@ -2,10 +2,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const ICE_SERVERS: RTCIceServer[] = [
+  // 1. 自建国内高可用 BGP TURN / STUN 节点（深圳机房，极速中继打洞保底）
+  {
+    urls: [
+      'stun:120.24.232.60:3478',
+      'turn:120.24.232.60:3478?transport=udp',
+      'turn:120.24.232.60:3478?transport=tcp',
+    ],
+    username: 'sts2',
+    credential: 'coop2026pass',
+  },
+  // 2. 国内公共优质 STUN 节点辅助打洞
+  { urls: ['stun:stun.qq.com:3478', 'stun:stun.miwifi.com:3478'] },
+  // 3. 海外与全网保底 STUN
   { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.cloudflare.com:53'] },
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
-  { urls: ['stun:stun.qq.com:3478', 'stun:stun.miwifi.com:3478'] },
-  { urls: 'stun:stun.syncthing.net:3478' },
 ];
 
 export interface P2PPeerStatus {
