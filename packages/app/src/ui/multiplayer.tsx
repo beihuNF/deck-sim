@@ -216,16 +216,16 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* 邀请代码与复制按钮（复制包含房间号与直达参数链接的完整文本） */}
+      {/* 邀请代码与复制按钮（复制直达房间纯链接） */}
       <div
         class="invite-code-btn"
-        onClick={() => copyText(buildRoomInviteShareText(mp.code), 'link')}
+        onClick={() => copyText(buildRoomInviteUrl(mp.code), 'link')}
         onPointerEnter={() => playOneShot('event:/sfx/ui/clicks/ui_hover')}
-        title={tr('点击复制邀请信息与房间号', 'Click to copy invite info and room code')}
+        title={tr('点击复制邀请链接', 'Click to copy invite link')}
       >
         <img class="icb-bg" src={imageUrl('images/ui/reward_screen/reward_item_button.png') ?? ''} />
         <span class="icb-label">
-          {copied === 'link' ? tr('已复制邀请信息！', 'Invite Copied!') : `${m('INVITE')} · ${mp.code}`}
+          {copied === 'link' ? tr('已复制邀请链接！', 'Link Copied!') : `${m('INVITE')} · ${mp.code}`}
         </span>
       </div>
 
