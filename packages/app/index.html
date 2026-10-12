@@ -48,6 +48,20 @@
           };
         }
 
+        // Ensure secure context (HTTPS) for production domains to avoid crippled Web APIs
+        if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && !/^192\.168\./.test(location.hostname) && !/^10\./.test(location.hostname)) {
+          location.replace(location.href.replace(/^http:/, 'https:'));
+          return;
+        }
+
+        // Support ?debug query param to dynamically load Eruda mobile console
+        if (new URLSearchParams(location.search).has('debug')) {
+          var ds = document.createElement('script');
+          ds.src = 'https://cdn.jsdelivr.net/npm/eruda';
+          ds.onload = function () { window.eruda && window.eruda.init(); };
+          document.head.appendChild(ds);
+        }
+
         var ready = false, failed = false, failedSrc, panel, reloadTimer;
         var retryKey = 'sts2web.boot-retry';
         var lang = new URLSearchParams(location.search).get('lang');
@@ -138,6 +152,16 @@
             if (event.filename) msg += ' (' + event.filename + ':' + event.lineno + ')';
             lastBootError = msg;
             console.error('Boot error:', msg);
+            try {
+              var banner = document.getElementById('boot-err-banner');
+              if (!banner && !ready && document.body) {
+                banner = document.createElement('div');
+                banner.id = 'boot-err-banner';
+                banner.style.cssText = 'position:fixed;bottom:12px;left:12px;right:12px;background:rgba(220,38,38,0.9);color:#fff;padding:8px 12px;font-size:12px;border-radius:6px;z-index:999999;word-break:break-all;font-family:monospace;box-shadow:0 4px 12px rgba(0,0,0,0.5);';
+                document.body.appendChild(banner);
+              }
+              if (banner) banner.textContent = 'Startup error: ' + msg;
+            } catch (_) {}
           }
         }, true);
         window.addEventListener('sts2:boot-ready', function () {
