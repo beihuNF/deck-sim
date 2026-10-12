@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { frameByName, frameStyle, imageUrl } from '../assets';
 import { playOneShot } from '../audio';
 import { loc } from '../i18n';
-import { tint } from '../filters';
+import { tint, hsvFilter } from '../filters';
 import { invalidate } from '../store';
 import { RichText } from './richtext';
 import { actionHint, getInputDevice, actionHintTitle } from '../input/hints';
@@ -154,6 +154,101 @@ export function UnreadyButton({ enabled: on, onClick, style }: { enabled: boolea
       <div class="gb-image" style={fit('ui_atlas', 'confirm_button', -53, -13, 267, 150)} />
       <div class="gb-icon" style={{ ...fit('compressed', 'back_button_x', 35, 15, 80, 80), filter: tint(1, 0.35, 0.35) }} />
       {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint('cancel').replace('[img ', '[img size=48 ')} /></span>}
+    </div>
+  );
+}
+
+/** 原版材质通用按钮（复用 reward_skip_button 游戏素材与原版交互音效与动效） */
+export function GameTextureButton({
+  text,
+  onClick,
+  disabled,
+  hsv = [0.55, 1.2, 0.9],
+  outline = 'rgb(20, 50, 70)',
+  width = 160,
+  height = 44,
+  style,
+}: {
+  text: string;
+  onClick: () => void;
+  disabled?: boolean;
+  hsv?: number[];
+  outline?: string;
+  width?: number;
+  height?: number;
+  style?: any;
+}) {
+  const [st, setSt] = useState<'' | 'hover' | 'press'>('');
+  const k = st === 'hover' ? 1.05 : st === 'press' ? 0.95 : 1;
+  const EXPO = 'cubic-bezier(0.16, 1, 0.3, 1)';
+  const t = st === 'hover' ? '.05s linear' : st === 'press' ? `.25s ${EXPO}` : `.5s ${EXPO}`;
+
+  return (
+    <div
+      class={`game-texture-btn${disabled ? ' disabled' : ''}`}
+      style={{
+        position: 'relative',
+        width: `${width}px`,
+        height: `${height}px`,
+        scale: String(k),
+        transition: `scale ${t}`,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        pointerEvents: disabled ? 'none' : undefined,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        userSelect: 'none',
+        ...style,
+      }}
+      onPointerEnter={() => {
+        if (!disabled) {
+          setSt('hover');
+          playOneShot('event:/sfx/ui/clicks/ui_hover');
+        }
+      }}
+      onPointerLeave={() => setSt('')}
+      onPointerDown={(e) => {
+        if (!disabled && e.button === 0) {
+          setSt('press');
+          playOneShot('event:/sfx/ui/clicks/ui_click');
+        }
+      }}
+      onPointerUp={(e) => {
+        if (!disabled && e.button === 0 && st === 'press') {
+          setSt('hover');
+          onClick();
+        }
+      }}
+    >
+      <img
+        src={imageUrl('images/ui/reward_screen/reward_skip_button.png') ?? ''}
+        alt=""
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'fill',
+          filter: hsvFilter(hsv[0], hsv[1], hsv[2]),
+          pointerEvents: 'none',
+        }}
+      />
+      <span
+        style={{
+          position: 'relative',
+          fontFamily: 'Kreon, var(--font-body)',
+          fontWeight: 700,
+          fontSize: '16px',
+          color: '#FFF6E2',
+          letterSpacing: '0.5px',
+          textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+          WebkitTextStroke: `1px ${outline}`,
+          pointerEvents: 'none',
+        }}
+      >
+        {text}
+      </span>
     </div>
   );
 }

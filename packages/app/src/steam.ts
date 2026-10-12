@@ -1,4 +1,5 @@
 import { invalidate } from './store';
+import { fetchCloudSaveMeta, checkCloudSaveSync, cloudSave } from './cloud-save';
 
 export const steam = { profile: null as { steamId: string; name: string; avatar: string } | null, loading: false, error: false };
 
@@ -9,6 +10,9 @@ export async function loadSteamProfile() {
     if (!response.ok) throw new Error('profile');
     steam.profile = (await response.json()).profile;
     steam.error = false;
+    if (steam.profile) {
+      void fetchCloudSaveMeta();
+    }
   } catch {
     steam.error = true;
   }
@@ -62,7 +66,10 @@ export function loginSteam(onSuccess?: () => void) {
     if (e.data?.type === 'sts2_steam_login_done') {
       cleanup();
       void loadSteamProfile().then(() => {
-        if (steam.profile) onSuccess?.();
+        if (steam.profile) {
+          void checkCloudSaveSync({ interactive: true });
+          onSuccess?.();
+        }
       });
     }
   };
@@ -74,7 +81,10 @@ export function loginSteam(onSuccess?: () => void) {
       if (popup?.closed) {
         cleanup();
         void loadSteamProfile().then(() => {
-          if (steam.profile) onSuccess?.();
+          if (steam.profile) {
+            void checkCloudSaveSync({ interactive: true });
+            onSuccess?.();
+          }
         });
       }
     }, 1000);
@@ -88,6 +98,7 @@ export async function logoutSteam() {
   const response = await fetch('/api/auth/logout', { method: 'POST' });
   if (response.ok) {
     steam.profile = null;
+    cloudSave.meta = null;
     invalidate();
   }
 }

@@ -3,12 +3,14 @@ import { appText, loc } from './i18n';
 import { ui, invalidate } from './store';
 import { confirmPopup } from './ui/modal';
 import { reportEvent, flushAnalytics } from './analytics';
+import { triggerAutoCloudBackup } from './cloud-save';
 
 /** Save metadata without replacing the run's room-entry checkpoint. */
 export function saveMetadata() {
   if ($.vfs.restored) return;
   const sm = G.SaveManager.Instance;
   for (const save of ['SaveSettings', 'SavePrefsFile', 'SaveProgressFile', 'SaveProfile']) sm[save]();
+  triggerAutoCloudBackup();
 }
 const notice = (key: string) => { ui.toast = appText(key); invalidate(); };
 let busy = false;

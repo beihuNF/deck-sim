@@ -23,6 +23,8 @@ import { NScrollbar, wheelDrag } from './scrollbar';
 import { confirmPopup } from './modal';
 import { openCredits } from './profile';
 import { openFeedback } from './feedback';
+import { steam } from '../steam';
+import { uploadCloudSave, restoreCloudSaveFromCloud } from '../cloud-save';
 import { view, fit } from '../view';
 import {
   ACTION_LIST,
@@ -138,6 +140,27 @@ function generalRows(inRun: boolean): Row[] {
     ...unlock,
     { kind: 'button', label: appText('exportSaves'), text: appText('exportButton'), hsv: [0.12, 1.4, 1], outline: 'rgb(25, 37, 74)', onClick: () => void exportSaves() },
     ...(!inRun ? [{ kind: 'button' as const, label: appText('restoreSaves'), text: appText('restoreButton'), hsv: [0.12, 1.4, 1], outline: 'rgb(25, 37, 74)', onClick: importSaves }] : []),
+    ...(steam.profile ? [
+      { kind: 'button' as const, label: appText('cloudSaveTitle'), text: appText('cloudSaveUpload'), hsv: [0.55, 1.2, 0.9], outline: 'rgb(20, 50, 70)', onClick: () => void uploadCloudSave(true) },
+      ...(!inRun ? [{
+        kind: 'button' as const,
+        label: appText('cloudSaveTitle'),
+        text: appText('cloudSaveRestore'),
+        hsv: [0.55, 1.2, 0.9],
+        outline: 'rgb(20, 50, 70)',
+        onClick: () => {
+          void (async () => {
+            const yes = await confirmPopup({
+              header: appText('cloudSaveTitle'),
+              body: appText('cloudSaveRestoreConfirmBody'),
+              yes: loc('main_menu_ui', 'GENERIC_POPUP.confirm'),
+              no: loc('main_menu_ui', 'GENERIC_POPUP.cancel'),
+            });
+            if (yes) void restoreCloudSaveFromCloud(true);
+          })();
+        },
+      }] : []),
+    ] : []),
     { kind: 'button', label: appText('protectStorage'), text: appText('protectButton'), hsv: [0.12, 1.4, 1], outline: 'rgb(25, 37, 74)', onClick: () => void protectStorage() },
     { ...RESET, label: s('RESET_DEFAULT'), text: s('RESET_SETTINGS_BUTTON'), onClick: () => void confirmReset('RESET_GAMEPLAY_CONFIRMATION.body', resetGeneral) },
   ];

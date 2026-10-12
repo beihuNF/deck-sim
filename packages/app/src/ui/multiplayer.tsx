@@ -8,19 +8,20 @@ import {
   readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode, parseRoomInvitation, multiplayerPlayerName, retryMultiplayer,
   buildRoomInviteUrl, renameMultiplayer,
 } from '../multiplayer';
-import { BackButton, ConfirmButton, UnreadyButton } from './buttons';
+import { BackButton, ConfirmButton, UnreadyButton, GameTextureButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
 import { CharacterSelectButton, InfoPanel, AscensionPanel } from './charselect';
 import { DailyRun, CustomRun } from './modes';
 import { PopupButton } from './modal';
-import { loc } from '../i18n';
+import { loc, appText } from '../i18n';
 import { imageUrl, frameByName, frameStyle } from '../assets';
 import { playOneShot } from '../audio';
 import { tint } from '../filters';
 import { charSelectBg } from '../render/scene';
 import { transitionView } from './transition';
-import './multiplayer.css';
 import { steam, loadSteamProfile, loginSteam, logoutSteam, getGuestName, setGuestName, hasSetGuestName, effectivePlayerName } from '../steam';
+import { cloudSave, uploadCloudSave, restoreCloudSaveFromCloud, fetchCloudSaveMeta, formatCloudSaveTime } from '../cloud-save';
+import { confirmPopup } from './modal';
 
 const m = (k: string) => loc('main_menu_ui', k);
 function RoomDialogBackground() {
@@ -56,6 +57,12 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [accountHover, setAccountHover] = useState(false);
+
+  useEffect(() => {
+    if (showAccountDialog && steam.profile) {
+      void fetchCloudSaveMeta();
+    }
+  }, [showAccountDialog]);
 
   const charList = characters();
   const me = mp.players.find(p => p.id === mp.id);
@@ -365,9 +372,53 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
             <p class="mp-dialog-desc">
               {steam.profile
-                ? tr('当前已连接 Steam。在多人联机房间与游戏中，其他玩家将看到你的 Steam 昵称与头像。你的单人游戏存档不受任何影响，仍安全保存在本地。', 'Connected with Steam. Other players will see your verified Steam name and avatar in multiplayer sessions. Your singleplayer saves remain completely intact.')
+                ? tr('当前已连接 Steam。在多人联机房间与游戏中，其他玩家将看到你的 Steam 昵称与头像。支持跨设备云存档漫游同步。', 'Connected with Steam. Other players will see your verified Steam profile in multiplayer sessions. Cross-device Steam Cloud save synchronization is enabled.')
                 : tr('当前以游客身份联机。你可以直接修改下方游客昵称，或使用 Steam 网页登录展示真实 Steam 昵称与头像。单人游戏存档不受任何影响，仍安全保存在本地。', 'Currently playing as a guest. You can customize your guest nickname below, or sign in with Steam to show your verified profile.')}
             </p>
+
+            {steam.profile && (
+              <div class="mp-cloud-save-section">
+                <div class="mp-cloud-save-header">
+                  <span class="mp-cloud-save-title">☁ {tr('Steam 云存档', 'Steam Cloud Save')}</span>
+                  <span class="mp-cloud-save-status">
+                    {cloudSave.uploading
+                      ? tr('正在备份...', 'Uploading...')
+                      : cloudSave.restoring
+                        ? tr('正在恢复...', 'Restoring...')
+                        : cloudSave.meta?.exists
+                          ? tr('云端已就绪', 'Ready')
+                          : tr('尚未备份', 'Not Backed Up')}
+                  </span>
+                </div>
+                <div class="mp-cloud-save-time">
+                  {cloudSave.meta?.updatedAt
+                    ? `${tr('上次云端备份：', 'Last Backup: ')}${formatCloudSaveTime(cloudSave.meta.updatedAt)} (${cloudSave.meta.fileCount ?? 0} ${tr('个文件', 'files')})`
+                    : tr('当前账号在云端暂无备份，点击右侧立即备份本地进度。', 'No cloud backup yet. Click below to backup your current local saves.')}
+                </div>
+                <div class="mp-cloud-save-actions">
+                  <GameTextureButton
+                    text={tr('备份至云端', 'Upload')}
+                    disabled={cloudSave.uploading || cloudSave.restoring}
+                    onClick={() => void uploadCloudSave(true)}
+                  />
+                  <GameTextureButton
+                    text={tr('从云端恢复', 'Restore')}
+                    disabled={cloudSave.uploading || cloudSave.restoring || !cloudSave.meta?.exists}
+                    onClick={async () => {
+                      const yes = await confirmPopup({
+                        header: tr('恢复云存档', 'Restore Cloud Save'),
+                        body: appText('cloudSaveRestoreConfirmBody'),
+                        yes: loc('main_menu_ui', 'GENERIC_POPUP.confirm'),
+                        no: loc('main_menu_ui', 'GENERIC_POPUP.cancel'),
+                      });
+                      if (yes) {
+                        void restoreCloudSaveFromCloud(true);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {!steam.profile && (
               <div class="mp-dialog-input-wrap" style={{ margin: '12px 0 20px 0' }}>

@@ -3,6 +3,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
+• Added Steam Cloud save synchronization: signed-in Steam players can now seamlessly back up and sync save progress across devices and browsers, with manual backup and restore options in Settings and Account screens.
 • Fixed mobile room creation failures, Steam login dismissal, and guest connection errors.
 • Improved reconnection reliability: instant wake-up when returning from background/sleep and authentic in-game teammate waiting overlay.
 • Added dedicated top-right Steam profile badge and real-time network latency (Ping) display in the lobby.
@@ -18,6 +19,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Gameplay[/b][/gold]
 • Fixed random character ascension selection, properly respecting preferred ascension levels.`,
     zhs: `[gold][b]多人联机[/b][/gold]
+• 接入 Steam 云存档漫游服务：登录 Steam 账号即可跨设备/换浏览器自动备份与同步存档进度，设置与账号面板支持手动备份与从云端恢复。
 • 修复移动端创建房间失败、Steam 登录闪退及游客连接异常的问题。
 • 优化多人断线重连体验：切后台或锁屏回游戏即时唤醒，新增局内等待队友重连的原生提示。
 • 多人大厅右上角新增独立 Steam 账号徽章与网络延迟（Ping）状态显示。

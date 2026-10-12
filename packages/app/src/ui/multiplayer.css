@@ -647,6 +647,45 @@
   text-align: center;
 }
 
+/* Steam 云存档面板（100% 对齐原版九宫格面板与游戏排版） */
+.mp-cloud-save-section {
+  margin: 10px 0 16px 0;
+  padding: 12px 18px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 2px solid #5a4b3c;
+  border-radius: 8px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+  text-align: left;
+}
+.mp-cloud-save-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.mp-cloud-save-title {
+  font-family: Kreon, var(--font-body);
+  font-size: 19px;
+  font-weight: 700;
+  color: #efc851;
+  letter-spacing: 0.5px;
+}
+.mp-cloud-save-status {
+  font-size: 15px;
+  color: #87ceeb;
+}
+.mp-cloud-save-time {
+  font-size: 15px;
+  color: #fff6e2;
+  opacity: 0.85;
+  margin-bottom: 12px;
+}
+.mp-cloud-save-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-start;
+}
+
 /* 铭牌改名小图标 */
 .rlp-edit-name-btn {
   margin-left: 6px;

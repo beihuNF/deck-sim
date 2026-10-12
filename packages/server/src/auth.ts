@@ -272,6 +272,74 @@ export async function authFetch(req: Request, env: AuthEnv) {
     headers.append('Set-Cookie', cookie(req, 'sts2-openid', '', 0));
     return new Response(null, { status: 302, headers });
   }
+  if (path === '/api/auth/cloud-save') {
+    const profile = await steamIdentity(req, env);
+    if (!profile) return authJson({ error: 'unauthorized' }, 401);
+    const saveObj = env.AUTH.get(env.AUTH.idFromName('cloud-save:' + profile.steamId));
+    if (req.method === 'GET') {
+      const metaOnly = url.searchParams.get('meta') === '1';
+      const res = await saveObj.fetch(new Request('https://auth/cloud-save/get', { method: 'POST', body: '{}' }));
+      if (!res.ok) return authJson({ error: 'storage_error' }, 500);
+      const data = await res.json<any>();
+      if (!data || !data.exists) return authJson({ exists: false });
+      if (metaOnly) {
+        return authJson({
+          exists: true,
+          updatedAt: data.updatedAt,
+          fileCount: data.fileCount,
+          playtime: data.playtime,
+          byteLength: data.byteLength,
+        });
+      }
+      return authJson(data);
+    }
+    if (req.method === 'POST') {
+      const origin = req.headers.get('Origin');
+      const fetchSite = req.headers.get('Sec-Fetch-Site');
+      if (fetchSite === 'cross-site') return authJson({ error: 'origin' }, 403);
+      if (origin && origin !== url.origin) {
+        const isLocal = (h: string) => h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.');
+        try {
+          const oUrl = new URL(origin);
+          if (!isLocal(url.hostname) || !isLocal(oUrl.hostname)) return authJson({ error: 'origin' }, 403);
+        } catch {
+          return authJson({ error: 'origin' }, 403);
+        }
+      }
+      const payload = await req.json<any>();
+      if (!payload || typeof payload.backup !== 'string') return authJson({ error: 'invalid_payload' }, 400);
+      if (payload.backup.length > 10 * 1024 * 1024) return authJson({ error: 'payload_too_large' }, 413);
+      let parsed: any;
+      try {
+        parsed = JSON.parse(payload.backup);
+      } catch {
+        return authJson({ error: 'invalid_json' }, 400);
+      }
+      if (parsed?.format !== 'sts2-web-backup' || !Array.isArray(parsed?.files)) {
+        return authJson({ error: 'invalid_backup_format' }, 400);
+      }
+      const updatedAt = Date.now();
+      const record = {
+        exists: true,
+        updatedAt,
+        backup: payload.backup,
+        fileCount: parsed.files.length,
+        playtime: typeof payload.playtime === 'number' ? payload.playtime : 0,
+        byteLength: payload.backup.length,
+      };
+      const res = await saveObj.fetch(new Request('https://auth/cloud-save/put', {
+        method: 'POST',
+        body: JSON.stringify(record),
+      }));
+      if (!res.ok) return authJson({ error: 'save_failed' }, 500);
+      return authJson({ ok: true, updatedAt, fileCount: record.fileCount, byteLength: record.byteLength });
+    }
+    if (req.method === 'DELETE') {
+      const res = await saveObj.fetch(new Request('https://auth/cloud-save/delete', { method: 'POST', body: '{}' }));
+      return authJson({ ok: res.ok });
+    }
+    return authJson({ error: 'method_not_allowed' }, 405);
+  }
   return authJson({ error: 'route' }, 404);
 }
 
@@ -279,6 +347,18 @@ export async function authFetch(req: Request, env: AuthEnv) {
 export class SteamAuth extends DurableObject<AuthEnv> {
   async fetch(req: Request) {
     const body = await req.json<any>(), action = new URL(req.url).pathname;
+    if (action === '/cloud-save/get') {
+      const save = await this.ctx.storage.get<any>('cloud_save');
+      return authJson(save ?? { exists: false });
+    }
+    if (action === '/cloud-save/put') {
+      await this.ctx.storage.put('cloud_save', body);
+      return authJson({ ok: true, updatedAt: body.updatedAt });
+    }
+    if (action === '/cloud-save/delete') {
+      await this.ctx.storage.delete('cloud_save');
+      return authJson({ ok: true });
+    }
     const token = body.token ?? body.state;
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return authJson({ error: 'token' }, 403);
     const key = (action === '/begin' || action === '/consume' ? 'nonce:' : 'session:') + token;
