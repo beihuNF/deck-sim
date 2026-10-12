@@ -25,6 +25,9 @@ export function getRelayHost(): string {
     if (q && q !== stored) safe(() => localStorage.setItem('sts2_relay', q), null);
     return relay.startsWith('http') ? relay.replace(/\/+$/, '') : `${location.protocol}//${relay.replace(/\/+$/, '')}`;
   }
+  if (location.hostname === 'sts2.136521.xyz') {
+    return 'https://fast.136521.xyz';
+  }
   return location.origin;
 }
 const API = '/api/multiplayer/rooms';

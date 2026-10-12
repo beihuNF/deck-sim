@@ -27,6 +27,7 @@ export function sameOrigin(req: Request): boolean {
     try {
       const originUrl = new URL(origin);
       if (isPrivateHost(url.hostname) && isPrivateHost(originUrl.hostname)) return true;
+      if (url.hostname.endsWith('.136521.xyz') && originUrl.hostname.endsWith('.136521.xyz')) return true;
     } catch {}
     return false;
   }
