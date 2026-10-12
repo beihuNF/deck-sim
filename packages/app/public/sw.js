@@ -59,7 +59,9 @@ self.addEventListener('fetch', (e) => {
       if (res.ok) cache.put(req, res.clone());
       return res;
     } catch {
-      return (await cache.match(req, { ignoreSearch: true })) ?? Response.error();
+      return (await cache.match(req, { ignoreSearch: true }))
+        ?? (req.mode === 'navigate' ? (await cache.match('./')) : undefined)
+        ?? Response.error();
     }
   })());
 });

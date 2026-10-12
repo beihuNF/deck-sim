@@ -6,7 +6,7 @@ import { safe } from './comp-shared';
 import {
   multiplayer as mp, mpText as tr, connectMultiplayer, selectMultiplayerCharacter,
   readyMultiplayer, configureMultiplayer, leaveMultiplayer, kickMultiplayerPlayer, multiplayerError, invitedRoomCode, parseRoomInvitation, multiplayerPlayerName, retryMultiplayer,
-  buildRoomInviteUrl, renameMultiplayer,
+  buildRoomInviteUrl, buildRoomInviteShareText, renameMultiplayer,
 } from '../multiplayer';
 import { BackButton, ConfirmButton, UnreadyButton, GameTextureButton } from './buttons';
 import { SubmenuButton, characters, epochRevealed } from './menu';
@@ -215,16 +215,16 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* 邀请代码与复制按钮（保证域名后紧随斜杠 /，彻底防止手机聊天软件截断） */}
+      {/* 邀请代码与复制按钮（复制包含房间号与直达参数链接的完整文本） */}
       <div
         class="invite-code-btn"
-        onClick={() => copyText(buildRoomInviteUrl(mp.code), 'link')}
+        onClick={() => copyText(buildRoomInviteShareText(mp.code), 'link')}
         onPointerEnter={() => playOneShot('event:/sfx/ui/clicks/ui_hover')}
-        title={tr('点击复制邀请链接与房间号', 'Click to copy invite link and room code')}
+        title={tr('点击复制邀请信息与房间号', 'Click to copy invite info and room code')}
       >
         <img class="icb-bg" src={imageUrl('images/ui/reward_screen/reward_item_button.png') ?? ''} />
         <span class="icb-label">
-          {copied === 'link' ? tr('已复制邀请链接！', 'Link Copied!') : `${m('INVITE')} · ${mp.code}`}
+          {copied === 'link' ? tr('已复制邀请信息！', 'Invite Copied!') : `${m('INVITE')} · ${mp.code}`}
         </span>
       </div>
 

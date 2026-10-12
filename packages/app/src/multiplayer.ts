@@ -65,7 +65,19 @@ export function parseRoomInvitation(text: string): string | null {
 
 export function buildRoomInviteUrl(code: string): string {
   const base = location.origin.replace(/\/?$/, '');
-  return `${base}/r/${code.toUpperCase()}`;
+  // 采用直接参数格式，避免触发 Worker 302 重定向，利于 Service Worker 缓存秒开
+  return `${base}/?room=${code.toUpperCase()}`;
+}
+
+export function buildRoomInviteShareText(code: string): string {
+  const c = code.toUpperCase();
+  const url = buildRoomInviteUrl(c);
+  const isZh = (typeof document !== 'undefined' && document.documentElement.lang.startsWith('zh'))
+    || (typeof localStorage !== 'undefined' && localStorage.getItem('sts2_lang')?.startsWith('zh'));
+  if (isZh) {
+    return `《杀戮尖塔2》联机房间号：${c} （直接在游戏内输入加入，或点击链接直达：${url} ）`;
+  }
+  return `Slay the Spire 2 Room: ${c} (Join in game or via link: ${url} )`;
 }
 let socket: WebSocket | null = null;
 let net: any = null;
