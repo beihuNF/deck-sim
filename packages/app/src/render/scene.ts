@@ -28,13 +28,26 @@ let index: Promise<string[]> | null = null;
 export function loadScene(path: string): Promise<SceneData | null> {
   const rel = path.replace(/^res:\/\//, '').replace(/\.tscn$/, '');
   let p = cache.get(rel);
-  if (!p) cache.set(rel, (p = fetch(`${A}scenes/${rel}.json`).then((r) => (r.ok ? r.json() : null)).then((s: SceneData | null) => {
-    // The original sandworm uses thousands of GPU particles; the web renderer simulates them on the CPU.
-    if (s && (rel === 'scenes/backgrounds/the_insatiable_boss/the_insatiable_boss_background' || rel === 'scenes/creature_visuals/the_insatiable')) {
-      for (const it of s.items) if (it.k === 'particles') it.amount = Math.min(it.amount, 32);
-    }
-    return s;
-  }).catch(() => null)));
+  if (!p) {
+    p = fetch(`${A}scenes/${rel}.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: SceneData | null) => {
+        if (!s) {
+          cache.delete(rel);
+          return null;
+        }
+        // The original sandworm uses thousands of GPU particles; the web renderer simulates them on the CPU.
+        if (rel === 'scenes/backgrounds/the_insatiable_boss/the_insatiable_boss_background' || rel === 'scenes/creature_visuals/the_insatiable') {
+          for (const it of s.items) if (it.k === 'particles') it.amount = Math.min(it.amount, 32);
+        }
+        return s;
+      })
+      .catch(() => {
+        cache.delete(rel);
+        return null;
+      });
+    cache.set(rel, p);
+  }
   return p;
 }
 /** Converted scene paths (for DirAccess listings of res://scenes/...). */
@@ -185,19 +198,27 @@ function spineItem(it: any, onSpine?: (sp: Spine) => void): Container {
   if (!p) {
     Assets.add({ alias: key + ':skel', ...skelSrc(it.spine.skel) });
     Assets.add({ alias: key + ':atlas', src: A + it.spine.atlas });
-    spineLoads.set(key, (p = Assets.load([key + ':skel', key + ':atlas']).then(() => true).catch(() => false)));
+    spineLoads.set(key, (p = Assets.load([key + ':skel', key + ':atlas']).then(() => true).catch((err) => {
+      console.warn('Spine load failed for', key, err);
+      spineLoads.delete(key);
+      return false;
+    })));
   }
   p.then((ok) => {
     if (!ok || holder.destroyed) return;
-    const sp = Spine.from({ skeleton: key + ':skel', atlas: key + ':atlas', scale: 1 });
-    try { if (it.skin && sp.skeleton.data.findSkin(it.skin)) sp.skeleton.setSkinByName(it.skin); } catch { /* default skin */ }
-    const names = sp.skeleton.data.animations.map((a: any) => a.name);
-    const anim = names.includes(it.anim) ? it.anim : names.find((n: string) => /idle|loop/i.test(n)) ?? names[0];
-    if (anim) sp.state.setAnimation(0, anim, true);
-    if (it.color) sp.alpha = it.color[3];
-    if (it.mats || it.slotMats) void slotMats(sp).install(it); // SpineSprite / SpineSlotNode materials (render/slotmats)
-    holder.addChild(sp);
-    onSpine?.(sp);
+    try {
+      const sp = Spine.from({ skeleton: key + ':skel', atlas: key + ':atlas', scale: 1 });
+      try { if (it.skin && sp.skeleton.data.findSkin(it.skin)) sp.skeleton.setSkinByName(it.skin); } catch { /* default skin */ }
+      const names = sp.skeleton.data.animations.map((a: any) => a.name);
+      const anim = names.includes(it.anim) ? it.anim : names.find((n: string) => /idle|loop/i.test(n)) ?? names[0];
+      if (anim) sp.state.setAnimation(0, anim, true);
+      if (it.color) sp.alpha = it.color[3];
+      if (it.mats || it.slotMats) void slotMats(sp).install(it); // SpineSprite / SpineSlotNode materials (render/slotmats)
+      holder.addChild(sp);
+      onSpine?.(sp);
+    } catch (err) {
+      console.warn('Spine instantiation failed for', key, err);
+    }
   });
   return holder;
 }
@@ -735,7 +756,11 @@ const menu = { root: null as Container | null, bg: null as Container | null, log
  * NCharacterSelectScreen's AnimatedBg above (see charSelectBg).
  */
 export async function mainMenuBackdrop(): Promise<Container | null> {
-  const s = await loadScene('scenes/backgrounds/main_menu_bg.tscn');
+  let s = await loadScene('scenes/backgrounds/main_menu_bg.tscn');
+  if (!s) {
+    console.warn('Primary main menu bg failed, falling back to alt bg');
+    s = await loadScene('scenes/backgrounds/main_menu_bg_alt.tscn');
+  }
   if (!s) return null;
   const root = new Container(), bg = new Container();
   const logoPath = 'BgContainer/Control/Logo';
@@ -746,9 +771,16 @@ export async function mainMenuBackdrop(): Promise<Container | null> {
   logo.setFromMatrix(rootMatrix(s, 1920, 1080));
   bg.addChild(main, logo);
   const dim = new Graphics().rect(-330, -90, 2580, 1260).fill(0x000000); // any viewport (view.ts)
+  dim.alpha = 0; // 显式初始化为完全透明，防止滤镜异常或初始状态导致纯黑遮罩覆盖背景
   const cs = new Container();
   root.addChild(bg, dim, cs);
-  Object.assign(menu, { root, bg, logo, dim, cs, blur: new BlurFilter({ strength: 0, quality: 3 }) });
+  let blur: BlurFilter | null = null;
+  try {
+    blur = new BlurFilter({ strength: 0, quality: 3 });
+  } catch (err) {
+    console.warn('BlurFilter not supported in this browser:', err);
+  }
+  Object.assign(menu, { root, bg, logo, dim, cs, blur });
   setMenuBlur(menuBlurK);
   setLogoAlpha(logoA);
   return root;
@@ -758,9 +790,15 @@ let menuBlurK = 0, logoA = 1;
 export function setMenuBlur(k: number) {
   menuBlurK = k;
   if (!menu.bg || menu.bg.destroyed) return;
-  menu.dim!.alpha = 0.7 * k;
-  menu.blur!.strength = 8 * k;
-  menu.bg.filters = k > 0 ? [menu.blur!] : [];
+  if (menu.dim && !menu.dim.destroyed) menu.dim.alpha = 0.7 * k;
+  if (menu.blur) {
+    menu.blur.strength = 8 * k;
+    try {
+      menu.bg.filters = k > 0 ? [menu.blur] : [];
+    } catch {
+      menu.bg.filters = [];
+    }
+  }
 }
 export function setLogoAlpha(a: number) { logoA = a; if (menu.logo && !menu.logo.destroyed) menu.logo.alpha = a; }
 

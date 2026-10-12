@@ -57,16 +57,29 @@ export function getApp() {
       // WebGL fixes antialiasing when the context is created, so SettingsSave.Msaa applies from the next load.
       soft = softwareGL();
       const msaa = Number(G.SaveManager.Instance?.SettingsSave?.Msaa ?? 2) > 0;
-      await a.init({
-        preference: 'webgl',
-        powerPreference: 'high-performance',
-        width: W,
-        height: H,
-        backgroundAlpha: 0,
-        antialias: msaa && !soft && !mobileRendering,
-        autoDensity: true,
-        resolution: soft ? 0.5 : renderResolution(),
-      });
+      try {
+        await a.init({
+          preference: 'webgl',
+          powerPreference: 'high-performance',
+          width: W,
+          height: H,
+          backgroundAlpha: 0,
+          antialias: msaa && !soft && !mobileRendering,
+          autoDensity: true,
+          resolution: soft ? 0.5 : renderResolution(),
+        });
+      } catch (err) {
+        console.warn('Initial Pixi WebGL init failed, retrying with safe fallback options:', err);
+        await a.init({
+          preference: 'webgl',
+          width: W,
+          height: H,
+          backgroundAlpha: 0,
+          antialias: false,
+          autoDensity: true,
+          resolution: 1,
+        });
+      }
       app = fullView(a);
 
       const gl = (a.renderer as any).gl as WebGL2RenderingContext | undefined;

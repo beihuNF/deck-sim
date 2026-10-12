@@ -21,6 +21,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Enhanced cross-browser compatibility: fixed mobile portrait viewport flipping and loading stalls on certain mobile browsers.
 • Cleaned up intrusive shortcut hover tooltips on confirm/cancel/back/peek buttons, restoring original clean hover aesthetics.
 • Seamless tab lock & crash protection: introduced retry backoff and cross-tab BroadcastChannel negotiation to eliminate false-positive "game open in another tab" errors on page reload, alongside an in-place "Force Launch" recovery option.
+• Fixed main menu background black screen on certain browsers: resolved dim overlay opacity bugs, added BlurFilter crash protection, evicted failed scene fetches from cache, and implemented automatic scene & gradient backdrop fallbacks.
 
 [gold][b]Gameplay[/b][/gold]
 • Fixed random character ascension selection, properly respecting preferred ascension levels.`,
@@ -43,6 +44,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 优化多浏览器兼容性：修复手机竖屏时画面异常翻转的问题，修复部分移动端浏览器卡在加载界面的问题。
 • 清理确认、返回、取消与手牌偷看等通用按钮上多余的悬停快捷键黑框提示，对齐原版干净清爽的交互体验。
 • 优化跨标签页存档锁与协同策略：引入退避重试与 BroadcastChannel 协同协商，彻底解决单标签页刷新/重启时误报“已在另一个标签页打开”的问题，并提供无需全屏重载的原地“强制在此页面启动”接管选项。
+• 修复部分浏览器下主界面背景显示一片黑的问题：修复遮罩层不透明度初始异常、加入 BlurFilter 滤镜异常安全容错、修复场景失败缓存重试机制，并增加主菜单备用背景与主题夜空渐变底层兜底。
 
 [gold][b]游戏机制[/b][/gold]
 • 修复选择随机角色时默认进阶难度异常的问题，正常保存玩家设定的偏好进阶。`,

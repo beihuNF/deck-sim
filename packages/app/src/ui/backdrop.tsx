@@ -8,19 +8,32 @@ export function Backdrop({ build, id }: { build: () => Promise<Container | null>
   useEffect(() => {
     const root = new Container();
     let dead = false;
-    getApp().then((a) => {
-      if (dead) return;
-      a.stage.removeChildren();
-      a.stage.addChild(root);
-      host.current?.appendChild(a.canvas);
-    });
-    build().then((c) => { if (c) dead ? c.destroy({ children: true }) : root.addChild(c); }).catch((e) => console.warn('backdrop', id, e));
+    getApp()
+      .then((a) => {
+        if (dead) return;
+        a.stage.removeChildren();
+        a.stage.addChild(root);
+        if (host.current && a.canvas.parentElement !== host.current) {
+          host.current.appendChild(a.canvas);
+        }
+      })
+      .catch((err) => {
+        console.warn('Backdrop getApp failed for id:', id, err);
+      });
+    build()
+      .then((c) => {
+        if (c) {
+          if (dead) c.destroy({ children: true });
+          else root.addChild(c);
+        }
+      })
+      .catch((e) => console.warn('backdrop build failed', id, e));
     return () => {
       dead = true;
       root.parent?.removeChild(root);
       root.destroy({ children: true });
-      getApp().then((a) => { if (a.canvas.parentElement === host.current) a.canvas.remove(); });
+      getApp().then((a) => { if (a.canvas.parentElement === host.current) a.canvas.remove(); }).catch(() => {});
     };
   }, [id]);
-  return <div class="stage-host" ref={host} />;
+  return <div class="stage-host" ref={host} data-backdrop={id} />;
 }
