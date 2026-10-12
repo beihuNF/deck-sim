@@ -3,80 +3,35 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Fixed guest player WebSocket handshake being rejected (403) by correcting Steam ID identity validation for unauthenticated guest profiles.
-• Fixed mobile multiplayer room creation showing "Connection lost or synchronization failed" error by enhancing same-origin verification to support Origin-less mobile requests, LAN IP debugging, and WebSocket handshakes, and increased room creation payload limit to 512KB.
-• Fixed mobile Steam login instantly closing/flashing by transitioning touch and mobile devices to full-page authentication redirects with automatic lobby recovery, and guarded desktop popup dismissal on verified profiles.
-• Restored co-op run save & resume functionality (1:1 aligned with original NMultiplayerLoadGameScreen, supporting resuming from save and discarding co-op runs).
-• Added guest nickname system and in-lobby name editing with real-time room broadcast.
-• Improved room invite link formatting with clean path-based short URLs (/r/CODE) to prevent link truncations on mobile messaging apps, and added one-tap clipboard room code auto-fill.
-• Fixed unexpected "room full or already started" error during reconnection by preserving started run player slots and backing up session tokens in local storage.
-• Aligned multiplayer lobby 1:1 with original character select screen (restored ReadyAndWaitingPanel nine-patch banner with thinky dots, red X UnreadyButton, and clean floating player nameplates).
-• Added quick room reload (SL) for hosts to restart the current room or combat seamlessly, with button text aligned with singleplayer.
-• Added independent remote teammate mouse cursors with smooth interpolation, drawing quills, eraser tools, and player tags.
-• Restored event split vote wheel animation with tick sounds, teammate bouncing, and golden confirmation flashes.
-• Fixed unexpected black screen fade when canceling or exiting multiplayer lobbies.
-• Resolved Steam avatar resolution, added proxy acceleration, and refined profile sync.
-• Restored co-op audio effects for map pings, split route votes, and combat pings.
-• Added page lifecycle wake-up handlers (listening to visibilitychange and online events) to instantly reconnect when switching back from mobile background or sleep.
-• Implemented smoothed round-trip ping tracking aligned with original NetQualityTracker specification, displaying real-time latency indicators in the lobby.
-• Aligned waiting state 1:1 with authentic NCombatRoom %WaitingForOtherPlayers overlay (using fuzzy nine-patch banner and MULTIPLAYER_WAITING entry).
-• Linked accidental page reloads with local multiplayer saves, offering seamless recovery guidance via the authentic NMultiplayerLoadGameScreen.
+• Fixed mobile room creation failures, Steam login dismissal, and guest connection errors.
+• Improved reconnection reliability: instant wake-up when returning from background/sleep and authentic in-game teammate waiting overlay.
+• Added dedicated top-right Steam profile badge and real-time network latency (Ping) display in the lobby.
+• Restored co-op run save & resume functionality from the main menu.
+• Streamlined room invite links with one-tap clipboard auto-fill, and added custom guest nicknames.
+• Added quick room reload (SL) for hosts to restart the current room or combat.
 
 [gold][b]Visuals & Audio[/b][/gold]
-• Fixed cursor WebP textures resolving to 404 under stylesheet subpaths by converting cursor URLs to absolute site paths.
-• Fixed main menu background scene preload path resolving to 404 during boot.
-• Restored missing status icons (HP, Gold, Floor) in the multiplayer save recovery panel using authentic atlas frames.
-• Expanded audio fallback dictionary (SYN) to support full native playback for pause menus, map open/close/selection/erasing, and merchant voice effects.
-• Fixed campfire sleep option icon mapping to accurately display original option_heal texture across all conditions.
-• Aligned boot screen 1:1 with original NLogoAnimation (timing, logo drop, background color transition, and removed non-original hint texts).
-• Integrated original hand-drawn cursor textures across the game and gamepad virtual cursor.
-• Restored deck view close sound and fallback audio for opening act chests.
-• Simulated rolling boulder sequence with impacts, screen shakes, and progressive damage timing.
+• Restored the original top-left Profile Switcher button, cleanly separating it from Steam login.
+• Fixed cursor textures and background preload assets.
+• Restored authentic gamepad reticle highlights and missing audio effects across menus and maps.
 
 [gold][b]Gameplay[/b][/gold]
-• Aligned random character ascension selection with original StartRunLobby: fixed random character defaulting to ascension 10, properly respecting and saving preferred ascension level.
-• Restored original top-left Profile Switcher button across the main menu and submenus, completely decoupling it from Steam account overlays. Steam account status is now cleanly hosted in an independent top-right badge in the multiplayer lobby.
-
-[gold][b]Controls[/b][/gold]
-• Aligned controller selection indicator with the original game's golden reticle corners and subtle highlights.`,
+• Fixed random character ascension selection, properly respecting preferred ascension levels.`,
     zhs: `[gold][b]多人联机[/b][/gold]
-• 修复游客身份创建多人房间时 WebSocket 握手失败被拒（403）的严重缺陷：修正套接字连接时对游客空 Steam ID 的校验逻辑。
-• 修复移动端创建多人房间显示“连接中断或同步失败”的问题：完善同源安全校验机制，支持移动端无 Origin 同源请求、局域网真机调试及 WebSocket 握手协议，并放宽建房请求体上限至 512KB。
-• 修复移动端点击“登录 Steam”弹窗闪退的问题：移动端与触控设备全面采用整页跳转认证流，登录后自动重定向返回多人大厅；桌面端增加登录状态校验，避免关闭窗口时误关账号设置界面。
-• 恢复主菜单及各级大厅左上角为纯正原版切换存档按钮（显示存档编号与红底剑图标，点击切换 Profile），不受 Steam 账号登录影响。
-• 多人联机身份与 Steam 账号管理移至大厅右上角独立徽章，互不干扰且操作更直观。
-• 完整还原多人存档恢复与断点续玩机制（1:1 对齐原版 NMultiplayerLoadGameScreen 读档大厅，支持主菜单继续联机或放弃存档）。
-• 新增游客自定义昵称系统与大厅铭牌实时改名广播，联机辨识更清晰。
-• 优化移动端邀请链接格式为纯路径短链接（/r/房间码），彻底解决手机聊天软件截断域名后缀的问题，并支持加入房间时自动读取剪贴板智能填码。
-• 修复重连时错误提示“房间已满或已开始”的问题：开局后永久保留玩家席位避免超时剔除，并支持本地持久化会话凭证恢复。
-• 多人准备大厅 1:1 对齐原版角色选择界面：还原原版 ReadyAndWaitingPanel 毛边九宫格等待面板、UnreadyButton 取消就绪红叉按钮与纯净悬浮铭牌。
-• 新增多人对局房主快速重开 (SL) 功能，按钮文案完全对齐单人统一为“快速SL”。
-• 新增独立远程队友鼠标光标，支持平滑插值移动、地图羽毛笔/橡皮擦显示及队友标签。
-• 还原多人事件分票摇奖轮盘动画、音效、头像弹跳及获胜金光闪烁。
-• 修复多人菜单与房间大厅点击取消/退出时黑屏的问题，恢复原版即时返回。
-• 修复 Steam 头像获取问题，提供边缘节点加速代理并支持自动更新补全。
-• 补齐多人地图催促、分路投票及局内快捷 Ping 提示音效。
-• 针对移动端切后台与息屏场景，接入页面生命周期即时唤醒（监听 visibilitychange 与 online 事件，切回前台瞬间秒级重连）。
-• 遵循原版 NetQualityTracker 规范，实现平滑往返延迟（Ping）测算并在大厅实时展示网络延迟状态。
-• 1:1 对齐原版 NCombatRoom %WaitingForOtherPlayers 局内等待队友重连原生遮罩（复用毛边九宫格与 MULTIPLAYER_WAITING 词条）。
-• 局内意外刷新页面时智能联动本地多人存档，引导通过原版多人读档大厅（NMultiplayerLoadGameScreen）无缝恢复对局。
+• 修复移动端创建房间失败、Steam 登录闪退及游客连接异常的问题。
+• 优化多人断线重连体验：切后台或锁屏回游戏即时唤醒，新增局内等待队友重连的原生提示。
+• 多人大厅右上角新增独立 Steam 账号徽章与网络延迟（Ping）状态显示。
+• 还原多人对局断点续玩机制，支持主菜单继续联机或放弃存档。
+• 优化邀请链接格式与自动识别，新增游客自定义昵称与大厅改名功能。
+• 房主支持“快速SL”重新载入当前战斗或房间。
 
-[gold][b]视听表现[/b][/gold]
-• 修复鼠标指针贴图在生产环境下解析为 /js/assets/... 导致 404 的问题：CSS 变量统一转换为绝对路径。
-• 修复开屏资源预加载时主菜单背景场景文件名路径错误导致 404 的问题。
-• 修复多人读档大厅信息面板中生命、金币与层数图标展示，使用原版 ui_atlas 精灵规范渲染。
-• 扩充音频同义词回退表（SYN），全面恢复原版暂停菜单开闭、地图开启/关闭/选点/擦除及反转商人等音效的精准播放。
-• 修复营火休息（Rest/Heal）选项图标映射，确保各种选项 ID 下均 1:1 展示原版 option_heal 图标。
-• 开屏启动动画 1:1 对齐原版 NLogoAnimation（还原落差时序、背景过渡与音效，移除多余非原版文字提示）。
-• 全局及手柄虚拟光标接入原版石刻尖角指针与按压倾斜贴图。
-• 补齐牌组浏览关闭音效与宝箱房间开启音效回退保障。
-• 还原巨石翻滚（Rolling Boulder）逐个撞击目标受击伤害时序与震屏音效。
+[gold][b]视听与体验[/b][/gold]
+• 恢复主菜单左上角原版切换存档按钮，解绑第三方账号覆盖。
+• 修复部分鼠标光标贴图与背景加载异常问题。
+• 还原原版手柄瞄准框高亮视觉，全面补齐地图与菜单交互音效。
 
 [gold][b]游戏机制[/b][/gold]
-• 随机角色进阶难度对齐原版 StartRunLobby：修复选随机角色时无脑默认进阶 10 难度的错误，正常记忆并保存玩家设定的偏好进阶。
-
-[gold][b]操作[/b][/gold]
-• 对齐原版手柄选中视觉效果，采用原作金箔折角瞄准框与金色光晕高亮。`,
+• 修复选择随机角色时默认进阶难度异常的问题，正常保存玩家设定的偏好进阶。`,
   },
   {
     date: '2026_10_11',
