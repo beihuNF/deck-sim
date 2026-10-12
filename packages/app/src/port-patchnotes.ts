@@ -4,6 +4,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Optimized co-op networking for lower latency and smoother gameplay.
+• Refined multiplayer save loading and room creation flow.
 • Added Steam Cloud save synchronization and backup.
 • Supported resuming interrupted multiplayer runs from save.
 • Improved room invitations and player nickname displays.
@@ -14,6 +15,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Fixed several known bugs and improved stability.`,
     zhs: `[gold][b]多人联机[/b][/gold]
 • 优化多人联机网络，大幅降低联机延迟与卡顿。
+• 优化多人读档与建房流程，提升稳定性。
 • 新增 Steam 云存档同步与进度备份。
 • 支持断线恢复与继续未完成的多人游戏对局。
 • 优化房间邀请与玩家昵称展示。

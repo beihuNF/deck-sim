@@ -1,6 +1,7 @@
 // Multiplayer menus and lobby using original game assets and layouts.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'preact/hooks';
+import { ui, invalidate } from '../store';
 import { G, $, list } from '../game';
 import { safe } from './comp-shared';
 import {
@@ -171,9 +172,11 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
   const handleLoadMultiplayer = async () => {
     try {
-      const res = G.SaveManager.Instance.LoadAndCanonicalizeMultiplayerRunSave(0);
-      if (!res.Success || !res.SaveData) {
+      const res = G.SaveManager.Instance.LoadAndCanonicalizeMultiplayerRunSave(1);
+      if (!res?.Success || !res.SaveData) {
         console.error('Failed to load multiplayer save', res);
+        ui.toast = tr('未能成功读取多人存档', 'Failed to read multiplayer save');
+        invalidate();
         return;
       }
       const save = res.SaveData;
@@ -556,61 +559,22 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
       {/* 1. 多人主菜单（SubmenuButtons 原版卡片） */}
       {mp.phase === 'idle' && view === 'menu' && (
         <div class="sp-submenu">
-          {!hasMpSave ? (
-            <>
-              <SubmenuButton
-                x={585}
-                keyPrefix="HOST"
-                icon="submenu_host"
-                hsv={[0, 0.8, 0.8]}
-                enabled
-                onClick={() => setView('host')}
-              />
-              <SubmenuButton
-                x={1005}
-                keyPrefix="JOIN"
-                icon="submenu_join"
-                hsv={[0.24, 1.0, 0.7]}
-                enabled
-                onClick={() => setView('join')}
-              />
-            </>
-          ) : (
-            <>
-              <SubmenuButton
-                x={195}
-                keyPrefix="MP_LOAD"
-                icon="submenu_load"
-                hsv={[0.48, 0.8, 0.7]}
-                enabled
-                onClick={() => void handleLoadMultiplayer()}
-              />
-              <SubmenuButton
-                x={595}
-                keyPrefix="HOST"
-                icon="submenu_host"
-                hsv={[0, 0.8, 0.8]}
-                enabled
-                onClick={() => setView('host')}
-              />
-              <SubmenuButton
-                x={995}
-                keyPrefix="MP_ABANDON"
-                icon="submenu_abandon"
-                hsv={[0.93, 1.2, 0.65]}
-                enabled
-                onClick={() => setMpAbandonConfirm(true)}
-              />
-              <SubmenuButton
-                x={1395}
-                keyPrefix="JOIN"
-                icon="submenu_join"
-                hsv={[0.24, 1.0, 0.7]}
-                enabled
-                onClick={() => setView('join')}
-              />
-            </>
-          )}
+          <SubmenuButton
+            x={585}
+            keyPrefix="HOST"
+            icon="submenu_host"
+            hsv={[0, 0.8, 0.8]}
+            enabled
+            onClick={() => setView('host')}
+          />
+          <SubmenuButton
+            x={1005}
+            keyPrefix="JOIN"
+            icon="submenu_join"
+            hsv={[0.24, 1.0, 0.7]}
+            enabled
+            onClick={() => setView('join')}
+          />
           <BackButton enabled onClick={exit} />
         </div>
       )}

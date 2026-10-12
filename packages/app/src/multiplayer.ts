@@ -474,6 +474,14 @@ if (typeof document !== 'undefined') {
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('online', onWakeUp);
+  // 对局中防误刷保护：提醒玩家保留页面等待自动重连，避免内存释放导致断联
+  window.addEventListener('beforeunload', (e) => {
+    if (multiplayer.phase === 'playing' || multiplayer.phase === 'starting' || multiplayer.phase === 'reconnecting') {
+      e.preventDefault();
+      e.returnValue = '多人对局正在进行中，网络异常时请保留页面等待自动恢复。刷新页面将释放战斗内存。';
+      return e.returnValue;
+    }
+  });
 }
 function onWakeUp() {
   if (multiplayer.phase === 'reconnecting') {
