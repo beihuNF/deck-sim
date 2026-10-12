@@ -164,7 +164,7 @@ export function GameTextureButton({
   onClick,
   disabled,
   hsv = [0.55, 1.2, 0.9],
-  outline = 'rgb(20, 50, 70)',
+  color = '#FFF2CC',
   width = 160,
   height = 44,
   style,
@@ -173,13 +173,13 @@ export function GameTextureButton({
   onClick: () => void;
   disabled?: boolean;
   hsv?: number[];
-  outline?: string;
+  color?: string;
   width?: number;
   height?: number;
   style?: any;
 }) {
   const [st, setSt] = useState<'' | 'hover' | 'press'>('');
-  const k = st === 'hover' ? 1.05 : st === 'press' ? 0.95 : 1;
+  const k = st === 'hover' ? 1.04 : st === 'press' ? 0.96 : 1;
   const EXPO = 'cubic-bezier(0.16, 1, 0.3, 1)';
   const t = st === 'hover' ? '.05s linear' : st === 'press' ? `.25s ${EXPO}` : `.5s ${EXPO}`;
 
@@ -192,8 +192,8 @@ export function GameTextureButton({
         height: `${height}px`,
         scale: String(k),
         transition: `scale ${t}`,
-        cursor: disabled ? 'not-allowed' : 'var(--game-cursor-default, auto)',
-        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
         pointerEvents: disabled ? 'none' : undefined,
         display: 'inline-flex',
         alignItems: 'center',
@@ -230,8 +230,9 @@ export function GameTextureButton({
           width: '100%',
           height: '100%',
           objectFit: 'fill',
-          filter: hsvFilter(hsv[0], hsv[1], hsv[2]),
+          filter: `${hsvFilter(hsv[0], hsv[1], hsv[2])} ${st === 'hover' ? 'brightness(1.15)' : ''}`,
           pointerEvents: 'none',
+          transition: 'filter 0.15s ease',
         }}
       />
       <span
@@ -239,12 +240,12 @@ export function GameTextureButton({
           position: 'relative',
           fontFamily: 'Kreon, var(--font-body)',
           fontWeight: 700,
-          fontSize: '16px',
-          color: '#FFF6E2',
-          letterSpacing: '0.5px',
-          textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-          WebkitTextStroke: `1px ${outline}`,
+          fontSize: '17px',
+          color: st === 'hover' ? '#FFFFFF' : color,
+          letterSpacing: '0.8px',
+          textShadow: '0 2px 4px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.85)',
           pointerEvents: 'none',
+          transition: 'color 0.15s ease',
         }}
       >
         {text}

@@ -288,7 +288,12 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                   {isSlotMe && tr('(你)', '(You)')}
                 </div>
                 <div class="rlp-char-title">
-                  {loc('characters', `${player.character}.title`)}
+                  <img
+                    class="rlp-char-icon-mini"
+                    src={imageUrl(`images/ui/top_panel/character_icon_${pChar}.png`) ?? ''}
+                    alt=""
+                  />
+                  <span>{loc('characters', `${player.character}.title`)}</span>
                 </div>
               </div>
 
@@ -346,139 +351,6 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               </span>
             )}
           </div>
-        </div>
-      )}
-
-      {/* 原版九宫格 Steam 账号管理弹窗 */}
-      {showAccountDialog && (
-        <div class="mp-join-modal-backstop" onClick={() => setShowAccountDialog(false)}>
-          <div class="mp-join-dialog mp-account-dialog" onClick={e => e.stopPropagation()}>
-            <RoomDialogBackground />
-            <h2 class="mp-dialog-title">{tr('Steam 账号', 'Steam Account')}</h2>
-
-            <div class="mp-account-card">
-              <img
-                class="mp-account-avatar"
-                src={steam.profile?.avatar || imageUrl('images/ui/mods/steam_logo.png') || ''}
-                alt=""
-                referrerPolicy="no-referrer"
-              />
-              <div class="mp-account-info">
-                <div class="mp-account-name">{steam.profile?.name || tr('游客身份', 'Guest')}</div>
-                <div class="mp-account-sub">
-                  {steam.profile ? tr('Steam 账号已验证', 'Verified Steam Account') : tr('未登录 · 游客模式', 'Not Signed In · Guest')}
-                </div>
-              </div>
-            </div>
-
-            <p class="mp-dialog-desc">
-              {steam.profile
-                ? tr('当前已连接 Steam。在多人联机房间与游戏中，其他玩家将看到你的 Steam 昵称与头像。支持跨设备云存档漫游同步。', 'Connected with Steam. Other players will see your verified Steam profile in multiplayer sessions. Cross-device Steam Cloud save synchronization is enabled.')
-                : tr('当前以游客身份联机。你可以直接修改下方游客昵称，或使用 Steam 网页登录展示真实 Steam 昵称与头像。单人游戏存档不受任何影响，仍安全保存在本地。', 'Currently playing as a guest. You can customize your guest nickname below, or sign in with Steam to show your verified profile.')}
-            </p>
-
-            {steam.profile && (
-              <div class="mp-cloud-save-section">
-                <div class="mp-cloud-save-header">
-                  <span class="mp-cloud-save-title">☁ {tr('Steam 云存档', 'Steam Cloud Save')}</span>
-                  <span class="mp-cloud-save-status">
-                    {cloudSave.uploading
-                      ? tr('正在备份...', 'Uploading...')
-                      : cloudSave.restoring
-                        ? tr('正在恢复...', 'Restoring...')
-                        : cloudSave.meta?.exists
-                          ? tr('云端已就绪', 'Ready')
-                          : tr('尚未备份', 'Not Backed Up')}
-                  </span>
-                </div>
-                <div class="mp-cloud-save-time">
-                  {cloudSave.meta?.updatedAt
-                    ? `${tr('上次云端备份：', 'Last Backup: ')}${formatCloudSaveTime(cloudSave.meta.updatedAt)} (${cloudSave.meta.fileCount ?? 0} ${tr('个文件', 'files')})`
-                    : tr('当前账号在云端暂无备份，点击右侧立即备份本地进度。', 'No cloud backup yet. Click below to backup your current local saves.')}
-                </div>
-                <div class="mp-cloud-save-actions">
-                  <GameTextureButton
-                    text={tr('备份至云端', 'Upload')}
-                    disabled={cloudSave.uploading || cloudSave.restoring}
-                    onClick={() => void uploadCloudSave(true)}
-                  />
-                  <GameTextureButton
-                    text={tr('从云端恢复', 'Restore')}
-                    disabled={cloudSave.uploading || cloudSave.restoring || !cloudSave.meta?.exists}
-                    onClick={async () => {
-                      const yes = await confirmPopup({
-                        header: tr('恢复云存档', 'Restore Cloud Save'),
-                        body: appText('cloudSaveRestoreConfirmBody'),
-                        yes: loc('main_menu_ui', 'GENERIC_POPUP.confirm'),
-                        no: loc('main_menu_ui', 'GENERIC_POPUP.cancel'),
-                      });
-                      if (yes) {
-                        void restoreCloudSaveFromCloud(true);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {!steam.profile && (
-              <div class="mp-dialog-input-wrap" style={{ margin: '12px 0 20px 0' }}>
-                <div style={{ color: '#fff6e2', fontSize: '18px', marginBottom: '6px', textAlign: 'left', fontWeight: 'bold' }}>
-                  {tr('自定义游客昵称：', 'Custom Guest Nickname:')}
-                </div>
-                <input
-                  type="text"
-                  class="mp-dialog-input"
-                  maxLength={20}
-                  value={guestNameInput}
-                  placeholder={getGuestName()}
-                  onInput={e => setGuestNameInput(e.currentTarget.value)}
-                />
-              </div>
-            )}
-
-            {steam.error && (
-              <p class="mp-account-error" role="alert">
-                {tr('账号服务暂时不可用，请稍后再试。', 'Account service temporarily unavailable, please try again later.')}
-              </p>
-            )}
-
-            <div class="mp-dialog-buttons">
-              {steam.profile ? (
-                <>
-                  <PopupButton
-                    yes={false}
-                    text={tr('退出登录', 'Sign Out')}
-                    onClick={() => { void logoutSteam(); setShowAccountDialog(false); }}
-                  />
-                  <PopupButton
-                    yes={true}
-                    text={tr('完成', 'Done')}
-                    onClick={() => setShowAccountDialog(false)}
-                  />
-                </>
-              ) : (
-                <>
-                  <PopupButton
-                    yes={false}
-                    text={tr('保存昵称', 'Save Name')}
-                    onClick={() => {
-                      if (guestNameInput.trim()) {
-                        renameMultiplayer(guestNameInput.trim());
-                      }
-                      setShowAccountDialog(false);
-                    }}
-                  />
-                  <PopupButton
-                    yes={true}
-                    text={tr('登录 Steam', 'Sign In Steam')}
-                    onClick={() => loginSteam(() => setShowAccountDialog(false))}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-          <BackButton enabled onClick={() => setShowAccountDialog(false)} />
         </div>
       )}
 
@@ -1069,6 +941,138 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               onClick={() => readyMultiplayer(false)}
             />
           )}
+        </div>
+      )}
+      {/* 原版九宫格 Steam 账号管理弹窗（置于最顶层，确保高于所有模式与子弹窗） */}
+      {showAccountDialog && (
+        <div class="mp-join-modal-backstop mp-account-modal-backstop" onClick={() => setShowAccountDialog(false)}>
+          <div class="mp-join-dialog mp-account-dialog" onClick={e => e.stopPropagation()}>
+            <RoomDialogBackground />
+            <h2 class="mp-dialog-title">{tr('Steam 账号', 'Steam Account')}</h2>
+
+            <div class="mp-account-card">
+              <img
+                class="mp-account-avatar"
+                src={steam.profile?.avatar || imageUrl('images/ui/mods/steam_logo.png') || ''}
+                alt=""
+                referrerPolicy="no-referrer"
+              />
+              <div class="mp-account-info">
+                <div class="mp-account-name">{steam.profile?.name || tr('游客身份', 'Guest')}</div>
+                <div class="mp-account-sub">
+                  {steam.profile ? tr('Steam 账号已验证', 'Verified Steam Account') : tr('未登录 · 游客模式', 'Not Signed In · Guest')}
+                </div>
+              </div>
+            </div>
+
+            <p class="mp-dialog-desc">
+              {steam.profile
+                ? tr('当前已连接 Steam。在多人联机房间与游戏中，其他玩家将看到你的 Steam 昵称与头像。支持跨设备云存档漫游同步。', 'Connected with Steam. Other players will see your verified Steam profile in multiplayer sessions. Cross-device Steam Cloud save synchronization is enabled.')
+                : tr('当前以游客身份联机。你可以直接修改下方游客昵称，或使用 Steam 网页登录展示真实 Steam 昵称与头像。单人游戏存档不受任何影响，仍安全保存在本地。', 'Currently playing as a guest. You can customize your guest nickname below, or sign in with Steam to show your verified profile.')}
+            </p>
+
+            {steam.profile && (
+              <div class="mp-cloud-save-section">
+                <div class="mp-cloud-save-header">
+                  <span class="mp-cloud-save-title">☁ {tr('Steam 云存档', 'Steam Cloud Save')}</span>
+                  <span class="mp-cloud-save-status">
+                    {cloudSave.uploading
+                      ? tr('正在备份...', 'Uploading...')
+                      : cloudSave.restoring
+                        ? tr('正在恢复...', 'Restoring...')
+                        : cloudSave.meta?.exists
+                          ? tr('云端已就绪', 'Ready')
+                          : tr('尚未备份', 'Not Backed Up')}
+                  </span>
+                </div>
+                <div class="mp-cloud-save-time">
+                  {cloudSave.meta?.updatedAt
+                    ? `${tr('上次云端备份：', 'Last Backup: ')}${formatCloudSaveTime(cloudSave.meta.updatedAt)} (${cloudSave.meta.fileCount ?? 0} ${tr('个文件', 'files')})`
+                    : tr('当前账号在云端暂无备份，点击右侧立即备份本地进度。', 'No cloud backup yet. Click below to backup your current local saves.')}
+                </div>
+                <div class="mp-cloud-save-actions">
+                  <GameTextureButton
+                    text={tr('备份至云端', 'Upload')}
+                    disabled={cloudSave.uploading || cloudSave.restoring}
+                    onClick={() => void uploadCloudSave(true)}
+                  />
+                  <GameTextureButton
+                    text={tr('从云端恢复', 'Restore')}
+                    disabled={cloudSave.uploading || cloudSave.restoring || !cloudSave.meta?.exists}
+                    onClick={async () => {
+                      const yes = await confirmPopup({
+                        header: tr('恢复云存档', 'Restore Cloud Save'),
+                        body: appText('cloudSaveRestoreConfirmBody'),
+                        yes: loc('main_menu_ui', 'GENERIC_POPUP.confirm'),
+                        no: loc('main_menu_ui', 'GENERIC_POPUP.cancel'),
+                      });
+                      if (yes) {
+                        void restoreCloudSaveFromCloud(true);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {!steam.profile && (
+              <div class="mp-dialog-input-wrap" style={{ margin: '12px 0 20px 0' }}>
+                <div style={{ color: '#fff6e2', fontSize: '18px', marginBottom: '6px', textAlign: 'left', fontWeight: 'bold' }}>
+                  {tr('自定义游客昵称：', 'Custom Guest Nickname:')}
+                </div>
+                <input
+                  type="text"
+                  class="mp-dialog-input"
+                  maxLength={20}
+                  value={guestNameInput}
+                  placeholder={getGuestName()}
+                  onInput={e => setGuestNameInput(e.currentTarget.value)}
+                />
+              </div>
+            )}
+
+            {steam.error && (
+              <p class="mp-account-error" role="alert">
+                {tr('账号服务暂时不可用，请稍后再试。', 'Account service temporarily unavailable, please try again later.')}
+              </p>
+            )}
+
+            <div class="mp-dialog-buttons">
+              {steam.profile ? (
+                <>
+                  <PopupButton
+                    yes={false}
+                    text={tr('退出登录', 'Sign Out')}
+                    onClick={() => { void logoutSteam(); setShowAccountDialog(false); }}
+                  />
+                  <PopupButton
+                    yes={true}
+                    text={tr('完成', 'Done')}
+                    onClick={() => setShowAccountDialog(false)}
+                  />
+                </>
+              ) : (
+                <>
+                  <PopupButton
+                    yes={false}
+                    text={tr('保存昵称', 'Save Name')}
+                    onClick={() => {
+                      if (guestNameInput.trim()) {
+                        renameMultiplayer(guestNameInput.trim());
+                      }
+                      setShowAccountDialog(false);
+                    }}
+                  />
+                  <PopupButton
+                    yes={true}
+                    text={tr('登录 Steam', 'Sign In Steam')}
+                    onClick={() => loginSteam(() => setShowAccountDialog(false))}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+          <BackButton enabled onClick={() => setShowAccountDialog(false)} />
         </div>
       )}
     </div>
