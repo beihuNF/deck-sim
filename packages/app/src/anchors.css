@@ -34,10 +34,9 @@
 .transition-gradient { height: calc(2400px + 2 * var(--oy)); }
 
 /* ---- main menu (main_menu.tscn) */
-/* ChangeProfileButton: L,T */
-:is(.mm-profile, .mp-profile-btn) { margin-left: calc(-1 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
-/* ReleaseInfo, PatchNotesButton, patch_notes_screen.tscn PatchNotesToggle: R,T */
-:is(.mm-release, .pn-button, .pn-toggle) { margin-left: var(--ox); margin-top: calc(-1 * var(--oy)); }
+:is(.mm-profile) { margin-left: calc(-1 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
+/* ReleaseInfo, PatchNotesButton, mp-steam-badge: R,T */
+:is(.mm-release, .pn-button, .pn-toggle, .mp-steam-badge) { margin-left: var(--ox); margin-top: calc(-1 * var(--oy)); }
 /* the port's own corners */
 .mm-github { margin-left: calc(-1 * var(--ox)); margin-top: var(--oy); }
 .mm-notice { margin-left: var(--ox); margin-top: var(--oy); }

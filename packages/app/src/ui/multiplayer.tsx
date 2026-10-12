@@ -311,10 +311,10 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
   return (
     <div class="mp-screen-container">
-      {/* 原版风格 Steam 档案身份按钮：复用 NOpenProfileScreenButton 规范 */}
+      {/* 多人游戏 Steam 账号 / 联机身份徽章（独立置于右上角，不遮挡左上角原版存档切换） */}
       {mp.phase === 'idle' && view === 'menu' && (
         <div
-          class={'mp-profile-btn' + (accountHover ? ' hover' : '')}
+          class={'mp-steam-badge' + (accountHover ? ' hover' : '')}
           data-ctl
           onPointerEnter={() => { setAccountHover(true); playOneShot('event:/sfx/ui/clicks/ui_hover'); }}
           onPointerLeave={() => setAccountHover(false)}
@@ -322,16 +322,16 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           onPointerUp={e => { if (e.button === 0) setShowAccountDialog(true); }}
         >
           <img
-            class="mpp-icon"
+            class="mps-icon"
             src={steam.profile?.avatar || imageUrl('images/ui/mods/steam_logo.png') || ''}
             alt=""
             referrerPolicy="no-referrer"
           />
-          <div class="mpp-title">
+          <div class="mps-title">
             {steam.profile?.name || tr('游客身份', 'Guest')}
           </div>
-          <div class="mpp-desc">
-            {steam.profile ? tr('已连接 Steam', 'Steam Connected') : tr('点击登录 Steam', 'Click to Sign In')}
+          <div class="mps-desc">
+            {steam.profile ? tr('已连接 Steam', 'Steam Connected') : tr('点击管理身份', 'Manage Account')}
           </div>
         </div>
       )}

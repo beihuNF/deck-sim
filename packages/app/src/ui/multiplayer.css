@@ -542,24 +542,33 @@
 .daily-coop .icb-label { font-size: 20px; }
 .daily-coop .remote-solo-label { order: -1; color: var(--cream); font-size: 28px; }
 
-/* 原版多人主菜单身份按钮：复用 NOpenProfileScreenButton 视觉与定位规范 */
-.mp-profile-btn {
+/* 多人主菜单 Steam / 联机身份徽章：独立置于右上角，与左上角原版 Profile 互不干扰 */
+.mp-steam-badge {
   position: absolute;
-  left: 18px;
+  right: 24px;
   top: 16px;
-  width: 260px;
   height: 64px;
-  transform-origin: 86px 32px;
-  transition: scale .3s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0 20px 0 68px;
+  background: rgba(18, 16, 26, 0.78);
+  border: 1px solid rgba(239, 200, 81, 0.4);
+  border-radius: 32px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+  transform-origin: right center;
+  transition: scale .3s cubic-bezier(0.16, 1, 0.3, 1), border-color .2s;
   cursor: pointer;
   z-index: 20;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-.mp-profile-btn.hover {
-  scale: 1.02;
+.mp-steam-badge.hover {
+  scale: 1.03;
+  border-color: rgba(239, 200, 81, 0.95);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.85), 0 0 12px rgba(239, 200, 81, 0.3);
   transition: none;
 }
-.mpp-icon {
+.mps-icon {
   position: absolute;
   left: 8px;
   top: 8px;
@@ -571,40 +580,25 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
   pointer-events: none;
 }
-.mpp-title {
-  position: absolute;
-  left: 68px;
-  top: 5px;
-  max-width: 190px;
-  height: 35px;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font: 700 24px var(--font, 'Kreon', serif);
-  letter-spacing: 1px;
+.mps-title {
+  font: 700 20px var(--font, 'Kreon', serif);
+  letter-spacing: 0.5px;
   color: var(--gold, #efc851);
-  -webkit-text-stroke: 6px rgba(0, 0, 0, .25);
+  -webkit-text-stroke: 4px rgba(0, 0, 0, .25);
   paint-order: stroke fill;
   pointer-events: none;
-}
-.mpp-desc {
-  position: absolute;
-  left: 68px;
-  top: 33px;
-  max-width: 190px;
-  height: 27px;
-  display: flex;
-  align-items: center;
   white-space: nowrap;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
-  font: 400 18px var(--font, 'Kreon', serif);
-  letter-spacing: 1px;
+}
+.mps-desc {
+  font: 400 15px var(--font, 'Kreon', serif);
+  letter-spacing: 0.5px;
   color: #87CEEB;
-  text-shadow: 3px 2px 0 rgba(0, 0, 0, .25);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, .3);
   pointer-events: none;
+  white-space: nowrap;
 }
 
 /* 原版九宫格 Steam 账号弹窗内容 */

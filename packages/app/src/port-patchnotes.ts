@@ -31,6 +31,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 
 [gold][b]Gameplay[/b][/gold]
 • Aligned random character ascension selection with original StartRunLobby: fixed random character defaulting to ascension 10, properly respecting and saving preferred ascension level.
+• Restored original top-left Profile Switcher button across the main menu and submenus, completely decoupling it from Steam account overlays. Steam account status is now cleanly hosted in an independent top-right badge in the multiplayer lobby.
 
 [gold][b]Controls[/b][/gold]
 • Aligned controller selection indicator with the original game's golden reticle corners and subtle highlights.`,
@@ -38,6 +39,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 修复游客身份创建多人房间时 WebSocket 握手失败被拒（403）的严重缺陷：修正套接字连接时对游客空 Steam ID 的校验逻辑。
 • 修复移动端创建多人房间显示“连接中断或同步失败”的问题：完善同源安全校验机制，支持移动端无 Origin 同源请求、局域网真机调试及 WebSocket 握手协议，并放宽建房请求体上限至 512KB。
 • 修复移动端点击“登录 Steam”弹窗闪退的问题：移动端与触控设备全面采用整页跳转认证流，登录后自动重定向返回多人大厅；桌面端增加登录状态校验，避免关闭窗口时误关账号设置界面。
+• 恢复主菜单及各级大厅左上角为纯正原版切换存档按钮（显示存档编号与红底剑图标，点击切换 Profile），不受 Steam 账号登录影响。
+• 多人联机身份与 Steam 账号管理移至大厅右上角独立徽章，互不干扰且操作更直观。
 • 完整还原多人存档恢复与断点续玩机制（1:1 对齐原版 NMultiplayerLoadGameScreen 读档大厅，支持主菜单继续联机或放弃存档）。
 • 新增游客自定义昵称系统与大厅铭牌实时改名广播，联机辨识更清晰。
 • 优化移动端邀请链接格式为纯路径短链接（/r/房间码），彻底解决手机聊天软件截断域名后缀的问题，并支持加入房间时自动读取剪贴板智能填码。
