@@ -35,7 +35,7 @@ out vec2 vUV; out vec4 vColor; out vec4 vCustom; out vec2 vPos;
 uniform mat3 uProjectionMatrix; uniform mat3 uWorldTransformMatrix; uniform mat3 uTransformMatrix;
 void main() {
   mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
-  gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+  gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0) + (aCustom + aColor + vec4(aUV, 0.0, 0.0)) * 0.0;
   vUV = aUV; vColor = aColor; vCustom = aCustom; vPos = aPosition;
 }`;
 const PRELUDE = `#version 300 es
@@ -141,7 +141,7 @@ void main() {
   COLOR = _gd_tex(TEXTURE, TEXTURE_frame, TEXTURE_rep, UV) * COLOR;
   ${frag ? '_gd_fragment();' : ''}
   vec4 c = ${premul ? 'COLOR' : 'vec4(COLOR.rgb * COLOR.a, COLOR.a)'};
-  fragColor = c * uColor;
+  fragColor = c * uColor + vCustom * 0.0;
 }`;
   const blend = /blend_add/.test(mode) ? 'add' : /blend_sub/.test(mode) ? 'subtract' : /blend_mul/.test(mode) ? 'multiply' : 'normal';
   return { fragment, blend, premul, uniforms, usesTime: /\bTIME\b/.test(s), screen, screenUV };
