@@ -92,8 +92,12 @@ describe('web multiplayer packets', () => {
     v.remove('user://mp-test/current_run.save');
     await v.flush();
     expect(v.exists('user://mp-test/current_run.save')).toBe(false);
-    expect(v.ephemeral).toBe(true);
     await expect(v.restore([])).rejects.toThrow('during multiplayer');
+    await v.writeSave('user://mp-test/current_run_mp.save', 'coop_save_content');
+    await v.flush();
+    await v.endEphemeralSession();
+    expect(v.ephemeral).toBe(false);
+    expect(v.read('user://mp-test/current_run_mp.save')).toBe('coop_save_content');
   });
   it('starts two characters with stable identities and round trips their room-entry sync data', async () => {
     const unlock = G.serializeWebUnlockState(characterUnlocks());

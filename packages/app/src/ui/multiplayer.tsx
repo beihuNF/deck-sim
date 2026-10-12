@@ -52,6 +52,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
   const [editingMyName, setEditingMyName] = useState(false);
   const [nameInputVal, setNameInputVal] = useState('');
   const [mpAbandonConfirm, setMpAbandonConfirm] = useState(false);
+  const [overwriteConfirm, setOverwriteConfirm] = useState<null | ('standard' | 'daily' | 'custom')>(null);
   const [mpSaveTick, setMpSaveTick] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
   const [, setKickGen] = useState(0);
@@ -470,6 +471,40 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
+      {/* 开启新游戏覆盖未完成多人存档确认弹窗 */}
+      {overwriteConfirm && (
+        <div class="mp-join-modal-backstop" onClick={() => setOverwriteConfirm(null)}>
+          <div class="mp-join-dialog" onClick={e => e.stopPropagation()}>
+            <RoomDialogBackground />
+            <h2 class="mp-dialog-title">{tr('覆盖多人存档？', 'Overwrite Co-op Save?')}</h2>
+            <p class="mp-dialog-desc">
+              {tr(
+                '检测到未完成的多人游戏存档。开启新游戏将放弃并覆盖当前存档，确定要继续吗？',
+                'An active multiplayer run save was found. Starting a new run will abandon and overwrite it. Are you sure you want to proceed?'
+              )}
+            </p>
+            <div class="mp-dialog-buttons">
+              <PopupButton
+                yes={false}
+                text={loc('main_menu_ui', 'GENERIC_POPUP.cancel')}
+                onClick={() => setOverwriteConfirm(null)}
+              />
+              <PopupButton
+                yes={true}
+                text={loc('main_menu_ui', 'GENERIC_POPUP.confirm')}
+                onClick={async () => {
+                  const mode = overwriteConfirm;
+                  setOverwriteConfirm(null);
+                  await handleAbandonMultiplayer();
+                  void startConnect(undefined, mode);
+                }}
+              />
+            </div>
+          </div>
+          <BackButton enabled onClick={() => setOverwriteConfirm(null)} />
+        </div>
+      )}
+
       {/* 悬浮铭牌快捷修改昵称弹窗 */}
       {editingMyName && (
         <div class="mp-join-modal-backstop" onClick={() => setEditingMyName(false)}>
@@ -543,7 +578,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           ) : (
             <>
               <SubmenuButton
-                x={395}
+                x={195}
                 keyPrefix="MP_LOAD"
                 icon="submenu_load"
                 hsv={[0.48, 0.8, 0.7]}
@@ -551,7 +586,15 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 onClick={() => void handleLoadMultiplayer()}
               />
               <SubmenuButton
-                x={795}
+                x={595}
+                keyPrefix="HOST"
+                icon="submenu_host"
+                hsv={[0, 0.8, 0.8]}
+                enabled
+                onClick={() => setView('host')}
+              />
+              <SubmenuButton
+                x={995}
                 keyPrefix="MP_ABANDON"
                 icon="submenu_abandon"
                 hsv={[0.93, 1.2, 0.65]}
@@ -559,7 +602,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                 onClick={() => setMpAbandonConfirm(true)}
               />
               <SubmenuButton
-                x={1195}
+                x={1395}
                 keyPrefix="JOIN"
                 icon="submenu_join"
                 hsv={[0.24, 1.0, 0.7]}
@@ -575,13 +618,45 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
       {/* 2. 房主模式选择子菜单（SubmenuButtons 原版卡片） */}
       {mp.phase === 'idle' && view === 'host' && (
         <div class="sp-submenu">
+          {hasMpSave && (
+            <div class="mp-host-save-banner">
+              <div class="mp-hsb-info">
+                <span class="mp-hsb-tag">{tr('未完成的多人游戏存档', 'Active Co-op Save')}</span>
+                <span class="mp-hsb-desc">{m('MP_LOAD.description')}</span>
+              </div>
+              <div class="mp-hsb-actions">
+                <button
+                  type="button"
+                  class="mp-hsb-btn mp-hsb-btn-load"
+                  onClick={() => void handleLoadMultiplayer()}
+                >
+                  <img class="mp-hsb-icon" src={imageUrl('images/ui/main_menu/submenu_load.png') ?? ''} />
+                  <span>{m('MP_LOAD.title')}</span>
+                </button>
+                <button
+                  type="button"
+                  class="mp-hsb-btn mp-hsb-btn-abandon"
+                  onClick={() => setMpAbandonConfirm(true)}
+                >
+                  <img class="mp-hsb-icon" src={imageUrl('images/ui/main_menu/submenu_abandon.png') ?? ''} />
+                  <span>{m('MP_ABANDON.title')}</span>
+                </button>
+              </div>
+            </div>
+          )}
           <SubmenuButton
             x={395}
             keyPrefix="STANDARD_MP"
             icon="submenu_standard"
             hsv={[0, 0.8, 0.8]}
             enabled
-            onClick={() => void startConnect(undefined, 'standard')}
+            onClick={() => {
+              if (hasMpSave) {
+                setOverwriteConfirm('standard');
+              } else {
+                void startConnect(undefined, 'standard');
+              }
+            }}
           />
           <SubmenuButton
             x={795}
@@ -589,7 +664,13 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             icon="submenu_daily"
             hsv={[0.48, 0.8, 0.7]}
             enabled={daily}
-            onClick={() => void startConnect(undefined, 'daily')}
+            onClick={() => {
+              if (hasMpSave) {
+                setOverwriteConfirm('daily');
+              } else {
+                void startConnect(undefined, 'daily');
+              }
+            }}
           />
           <SubmenuButton
             x={1195}
@@ -597,7 +678,13 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             icon="submenu_custom"
             hsv={[0.93, 1.2, 0.65]}
             enabled={custom}
-            onClick={() => void startConnect(undefined, 'custom')}
+            onClick={() => {
+              if (hasMpSave) {
+                setOverwriteConfirm('custom');
+              } else {
+                void startConnect(undefined, 'custom');
+              }
+            }}
           />
           <BackButton enabled onClick={() => setView('menu')} />
         </div>

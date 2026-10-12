@@ -1025,3 +1025,106 @@
   color: #c7d5e0;
 }
 
+/* 房主模式选择子菜单中的未完成多人存档横幅 */
+.mp-host-save-banner {
+  position: absolute;
+  left: 395px;
+  top: 52px;
+  width: 1130px;
+  height: 96px;
+  box-sizing: border-box;
+  background: linear-gradient(90deg, rgba(20, 24, 34, 0.94) 0%, rgba(32, 28, 42, 0.94) 100%);
+  border: 1.5px solid rgba(220, 185, 120, 0.55);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+}
+
+.mp-hsb-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 650px;
+}
+
+.mp-hsb-tag {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffde70;
+  text-transform: uppercase;
+}
+
+.mp-hsb-desc {
+  font-size: 15px;
+  color: #c7d5e0;
+  line-height: 1.3;
+}
+
+.mp-hsb-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.mp-hsb-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 20px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mp-hsb-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.15);
+}
+
+.mp-hsb-btn:active {
+  transform: translateY(1px);
+  filter: brightness(0.95);
+}
+
+.mp-hsb-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.mp-hsb-btn-load {
+  background: linear-gradient(180deg, #2a5a54 0%, #173834 100%);
+  border: 1.5px solid #57bfad;
+  color: #e6fffa;
+  box-shadow: 0 4px 12px rgba(87, 191, 173, 0.25);
+}
+
+.mp-hsb-btn-load:hover {
+  box-shadow: 0 6px 16px rgba(87, 191, 173, 0.45);
+}
+
+.mp-hsb-btn-abandon {
+  background: linear-gradient(180deg, #442525 0%, #2b1414 100%);
+  border: 1.5px solid #b85050;
+  color: #ffe6e6;
+  box-shadow: 0 4px 12px rgba(184, 80, 80, 0.25);
+}
+
+.mp-hsb-btn-abandon:hover {
+  box-shadow: 0 6px 16px rgba(184, 80, 80, 0.45);
+}
+
+

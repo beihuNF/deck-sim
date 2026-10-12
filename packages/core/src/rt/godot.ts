@@ -292,8 +292,8 @@ function writeFiles(changes: PendingWrite['changes']): Promise<void> {
   if (sessionFiles) {
     const edits = changes(sessionFiles);
     apply(sessionFiles, edits);
-    // 多人游戏存盘持久化：将 multiplayer_run.save 及其备份文件同步落盘到 IndexedDB/localStorage，确保重载后可断点续玩
-    const mpChanges = edits.filter(([p]) => p.includes('multiplayer_run.save'));
+    // 多人游戏存盘持久化：将 current_run_mp.save 及其备份文件同步落盘到 IndexedDB/localStorage，确保退出后可断点续玩
+    const mpChanges = edits.filter(([p]) => p.includes('current_run_mp.save') || p.includes('multiplayer_run.save'));
     if (mpChanges.length) {
       if (db) {
         let ok!: () => void, fail!: (e: unknown) => void;
@@ -311,6 +311,7 @@ function writeFiles(changes: PendingWrite['changes']): Promise<void> {
             else storage.setItem(LS_PREFIX + p, s);
           } catch {}
         }
+        apply(mem, mpChanges);
       } else {
         apply(mem, mpChanges);
       }
@@ -348,6 +349,17 @@ export const vfs = {
     if (restored || sessionFiles) throw new Error('Cannot start temporary save session');
     await this.flush();
     sessionFiles = !db && storage ? new Map(lsKeys().map(k => [k.slice(LS_PREFIX.length), storage.getItem(k)!])) : new Map(mem);
+  },
+  async endEphemeralSession() {
+    if (!sessionFiles) return;
+    await this.flush();
+    for (const [p, s] of sessionFiles) {
+      if (p.includes('current_run_mp.save') || p.includes('multiplayer_run.save')) {
+        if (s === null) mem.delete(p);
+        else mem.set(p, s);
+      }
+    }
+    sessionFiles = null;
   },
   read(p: string): string | null { return sessionFiles ? sessionFiles.get(p) ?? null : !db && storage ? storage.getItem(LS_PREFIX + p) : mem.get(p) ?? null; },
   write(p: string, s: string) { void writeFiles(() => [[p, s]]); },

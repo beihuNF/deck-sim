@@ -1,6 +1,6 @@
 import { G, $, GAME_VERSION, list, setWebPlayerNameResolver } from './game';
 import { ui, invalidate } from './store';
-import { startCoopRun, loadSavedCoopRun, quickReloadCoopRun } from './flow';
+import { startCoopRun, loadSavedCoopRun, quickReloadCoopRun, toMenu } from './flow';
 import { loc } from './i18n';
 import { effectivePlayerName, setGuestName } from './steam';
 import { webrtc } from './webrtc';
@@ -186,22 +186,27 @@ function failed(error: string) {
   socket?.close(); socket = null;
   changed();
 }
-export function leaveMultiplayer() {
+export async function leaveMultiplayer() {
   attemptId++;
   if (retryTimer) clearTimeout(retryTimer); retryTimer = null;
   const code = multiplayer.code;
-  // Explicitly leaving an invitation must not rejoin it on the reload used to exit an ephemeral run.
+  // 明确离开邀请房间时清除 URL 中的 room 参数，避免再次进入
   if (new URLSearchParams(location.search).has('room')) {
     const url = new URL(location.href); url.searchParams.delete('room');
     history.replaceState(history.state, '', url.href);
   }
   if (code) clearSession(code);
   try { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'leave' })); } catch {}
-  if ($.vfs.ephemeral) { socket?.close(); location.reload(); return; }
   if (timer) clearInterval(timer); timer = null;
   webrtc.stop();
+  multiplayer.isP2P = false;
+  multiplayer.p2pPing = 0;
+  socket?.close(); socket = null;
   Object.assign(multiplayer, { phase: 'idle', code: '', id: 0, mode: 'standard', maxPlayers: 4, maxAscension: 0, settings: { ascension: 0, seed: '', modifiers: [], dailyDate: '' }, players: [], waiting: false, error: '', saveJson: undefined, loadInfo: undefined, ping: 0, colo: '', isP2P: false, p2pPing: 0 });
   changed();
+  if ($.vfs.ephemeral) {
+    await toMenu();
+  }
 }
 function send(msg: unknown) {
   if (socket?.readyState !== WebSocket.OPEN) throw new Error('disconnected');

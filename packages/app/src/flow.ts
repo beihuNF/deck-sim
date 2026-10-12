@@ -219,9 +219,13 @@ export function abandonRun() { G.abandonSavedRun(); invalidate(); }
 /** NGame.ReturnToMainMenu: fade to black, clean up the run, load the main menu (which fades itself in). */
 export async function toMenu() {
   if ($.vfs.ephemeral) {
-    try { await $.vfs.flush(); } catch (e) { console.warn('Failed to flush VFS on exit', e); }
-    location.reload();
-    return;
+    try {
+      await G.SaveManager.Instance.CurrentRunSaveTask;
+      await $.vfs.flush();
+      await $.vfs.endEphemeralSession?.();
+    } catch (e) {
+      console.warn('Failed to end ephemeral session on exit', e);
+    }
   }
   await transitionView.FadeOut();
   try { G.RunManager.Instance.CleanUp(true); } catch (e) { console.warn(e); }
@@ -230,6 +234,7 @@ export async function toMenu() {
   ui.room = null;
   ui.overlays = [];
   ui.gameOver = null;
+  ui.pauseOpen = false;
   resetMap();
   ui.live = false;
   ui.menuStack = [];
