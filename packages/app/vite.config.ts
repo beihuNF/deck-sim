@@ -30,7 +30,7 @@ export default defineConfig(({ command }) => ({
     proxy: { '/api/auth': { target: 'http://127.0.0.1:8787' }, '/api/multiplayer': { target: 'http://127.0.0.1:8787', ws: true } } },
   // Bundle goes to js/ so it never mixes with the game's assets/ tree (copied from public/).
   build: {
-    target: 'es2022', chunkSizeWarningLimit: 20000, sourcemap: false, assetsDir: 'js',
+    target: 'es2020', chunkSizeWarningLimit: 20000, sourcemap: false, assetsDir: 'js',
     // Skeletons (src/assets.ts skelSrc) are emitted as .bin: the CDN in front caches by extension and .skel is not on its list.
     assetsInlineLimit: (file) => (file.endsWith('.skel') ? false : undefined),
     rollupOptions: { output: { assetFileNames: (a) => `js/[name]-[hash]${a.names[0]?.endsWith('.skel') ? '.bin' : '[extname]'}` } },

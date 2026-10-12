@@ -12,7 +12,7 @@ import { imageUrl } from '../assets';
 import { loc, appText } from '../i18n';
 import { BackButton } from './buttons';
 import { SettingsButton } from './settings';
-import browser, { type BrowserDetailInfo } from 'browser-tool';
+import type { BrowserDetailInfo } from 'browser-tool';
 
 const s = (k: string) => loc('settings_ui', k);
 const SURVEY_URL = 'https://app.tianji.dev/open/workspace/cmv45lubl27755xc7mytpfzcm/survey/cmv45se5t2ash5xc74929ds2n/submit';
@@ -32,28 +32,34 @@ function close() { open = false; draft.closedAt = Date.now(); invalidate(); }
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 
 /**
- * 使用 mumuy/browser 智能识别用户所处浏览器、系统与硬件环境
+ * 使用 mumuy/browser 智能识别用户所处浏览器、系统与硬件环境（异步懒加载）
  */
 async function collectBrowserDiagnostics(): Promise<BrowserDetailInfo> {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-  const parsed = safe(() => browser.parse(ua), {});
+  try {
+    const mod = await import('browser-tool');
+    const browser = (mod as any).default ?? mod;
+    const parsed = safe(() => browser.parse(ua), {} as any);
 
-  // 在真实浏览器环境尝试获取 GPU、屏幕刷新率、内存等高级特征（带 500ms 超时保护防阻断）
-  if (typeof window !== 'undefined' && typeof requestAnimationFrame !== 'undefined') {
-    try {
-      const advanced = await Promise.race([
-        browser.getInfo(['browser', 'system', 'device', 'gpu', 'network', 'screen', 'language', 'timezone']),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 500)),
-      ]);
-      if (advanced) {
-        return { ...parsed, ...advanced };
+    // 在真实浏览器环境尝试获取 GPU、屏幕刷新率、内存等高级特征（带 500ms 超时保护防阻断）
+    if (typeof window !== 'undefined' && typeof requestAnimationFrame !== 'undefined') {
+      try {
+        const advanced = await Promise.race([
+          browser.getInfo(['browser', 'system', 'device', 'gpu', 'network', 'screen', 'language', 'timezone']),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 500)),
+        ]);
+        if (advanced) {
+          return { ...parsed, ...advanced };
+        }
+      } catch {
+        // 降级使用基础 UA 结构化解析
       }
-    } catch {
-      // 降级使用基础 UA 结构化解析
     }
-  }
 
-  return parsed;
+    return parsed;
+  } catch {
+    return {} as any;
+  }
 }
 
 /**

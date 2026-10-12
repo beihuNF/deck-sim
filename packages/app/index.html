@@ -12,6 +12,42 @@
     <!-- Keep this guard inline and outside the module bundle: it must work even when the game script cannot load. -->
     <script>
       (function () {
+        // Polyfills for older mobile webviews / engines (e.g. Android System WebView < 93, Quark U4)
+        if (typeof Object.hasOwn !== 'function') {
+          Object.hasOwn = function (o, p) {
+            if (o === null || o === undefined) throw new TypeError('Cannot convert undefined or null to object');
+            return Object.prototype.hasOwnProperty.call(Object(o), p);
+          };
+        }
+        if (typeof Array.prototype.at !== 'function') {
+          Array.prototype.at = function (n) {
+            var len = this.length >>> 0;
+            var k = Math.trunc(n) || 0;
+            if (k < 0) k += len;
+            if (k < 0 || k >= len) return undefined;
+            return this[k];
+          };
+        }
+        if (typeof String.prototype.at !== 'function') {
+          String.prototype.at = function (n) {
+            var str = String(this);
+            var len = str.length;
+            var k = Math.trunc(n) || 0;
+            if (k < 0) k += len;
+            if (k < 0 || k >= len) return undefined;
+            return str.charAt(k);
+          };
+        }
+        if (typeof String.prototype.replaceAll !== 'function') {
+          String.prototype.replaceAll = function (search, replacement) {
+            if (search instanceof RegExp) {
+              if (!search.global) throw new TypeError('String.prototype.replaceAll called with a non-global RegExp argument');
+              return this.replace(search, replacement);
+            }
+            return this.split(search).join(replacement);
+          };
+        }
+
         var ready = false, failed = false, failedSrc, panel, reloadTimer;
         var retryKey = 'sts2web.boot-retry';
         var lang = new URLSearchParams(location.search).get('lang');
@@ -76,22 +112,33 @@
           }
           if (document.body) draw(); else document.addEventListener('DOMContentLoaded', draw, { once: true });
         }
+        var lastBootError = '';
         var watchdog = setTimeout(function () {
-          show(zh ? '加载时间较长，可继续等待，或重新加载。' : 'Loading is taking longer than usual. You can wait or reload.');
+          var detail = lastBootError ? (zh ? '错误诊断: ' : 'Diagnostic: ') + lastBootError : '';
+          show(zh ? '加载时间较长，可继续等待，或重新加载。' : 'Loading is taking longer than usual. You can wait or reload.', detail);
         }, 45000);
         window.addEventListener('error', function (event) {
           var script = event.target;
-          if (ready || failed || !script || script.tagName !== 'SCRIPT' || script.type !== 'module') return;
-          failed = true;
-          failedSrc = script.src;
-          clearTimeout(watchdog);
-          var attempt = navigator.onLine === false ? 0 : nextRetry();
-          var message = attempt
-            ? (zh ? '游戏文件加载失败，正在重新加载' : 'Game files failed to load. Reloading') + ' (' + attempt + '/2)…'
-            : (zh ? '游戏文件加载失败，请稍后重试。' : 'Game files failed to load. Please try again.');
-          show(message, new URL(script.src, location.href).pathname);
-          // A fresh document resets the browser's failed module map, including failed imported chunks.
-          if (attempt) reloadTimer = setTimeout(function () { reloadAfterRefetch(script.src); }, attempt * 1500);
+          if (ready || failed) return;
+          if (script && script.tagName === 'SCRIPT' && script.type === 'module') {
+            failed = true;
+            failedSrc = script.src;
+            clearTimeout(watchdog);
+            var attempt = navigator.onLine === false ? 0 : nextRetry();
+            var message = attempt
+              ? (zh ? '游戏文件加载失败，正在重新加载' : 'Game files failed to load. Reloading') + ' (' + attempt + '/2)…'
+              : (zh ? '游戏文件加载失败，请稍后重试。' : 'Game files failed to load. Please try again.');
+            show(message, new URL(script.src, location.href).pathname);
+            // A fresh document resets the browser's failed module map, including failed imported chunks.
+            if (attempt) reloadTimer = setTimeout(function () { reloadAfterRefetch(script.src); }, attempt * 1500);
+            return;
+          }
+          if (event.message || event.error) {
+            var msg = event.message || String(event.error);
+            if (event.filename) msg += ' (' + event.filename + ':' + event.lineno + ')';
+            lastBootError = msg;
+            console.error('Boot error:', msg);
+          }
         }, true);
         window.addEventListener('sts2:boot-ready', function () {
           ready = true;

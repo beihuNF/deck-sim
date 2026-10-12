@@ -53,14 +53,31 @@ window.addEventListener('resize', () => { fit(); invalidate(); });
 // every client → stage conversion in the views (and Pixi's) stays as written.
 // ponytail: patches DOM prototypes; move to explicit stage-coordinate helpers if another transform is ever needed
 {
-  const P = MouseEvent.prototype;
-  const orig = (k: string) => Object.getOwnPropertyDescriptor(P, k)!.get as (this: MouseEvent) => number;
-  const cx = orig('clientX'), cy = orig('clientY'), mx = orig('movementX'), my = orig('movementY');
-  const def = (k: string, get: (this: MouseEvent) => number) => Object.defineProperty(P, k, { get, configurable: true, enumerable: true });
-  def('clientX', function () { return turned ? cy.call(this) : cx.call(this); });
-  def('clientY', function () { return turned ? window.innerWidth - cx.call(this) : cy.call(this); });
-  def('movementX', function () { return turned ? my.call(this) : mx.call(this); });
-  def('movementY', function () { return turned ? -mx.call(this) : my.call(this); });
+  try {
+    const P = MouseEvent.prototype;
+    const findGetter = (key: string) => {
+      let cur: any = P;
+      while (cur && cur !== Object.prototype) {
+        const desc = Object.getOwnPropertyDescriptor(cur, key);
+        if (desc && typeof desc.get === 'function') return desc.get as (this: MouseEvent) => number;
+        cur = Object.getPrototypeOf(cur);
+      }
+      return null;
+    };
+    const cx = findGetter('clientX'), cy = findGetter('clientY');
+    const mx = findGetter('movementX'), my = findGetter('movementY');
+    const def = (k: string, get: (this: MouseEvent) => number) => {
+      try { Object.defineProperty(P, k, { get, configurable: true, enumerable: true }); } catch (_) {}
+    };
+    if (cx) def('clientX', function () { return turned ? (cy ? cy.call(this) : this.clientY) : cx.call(this); });
+    if (cy) def('clientY', function () { return turned ? window.innerWidth - (cx ? cx.call(this) : this.clientX) : cy.call(this); });
+    if (mx && my) {
+      def('movementX', function () { return turned ? my.call(this) : mx.call(this); });
+      def('movementY', function () { return turned ? -mx.call(this) : my.call(this); });
+    }
+  } catch (err) {
+    console.warn('Failed to patch MouseEvent coordinates for orientation:', err);
+  }
   const rect = Element.prototype.getBoundingClientRect;
   // Some WebKit versions omit CSS zoom from DOM rects, but pointer coordinates still use viewport pixels.
   // Detect the behavior rather than the browser: newer WebKit and other engines already include zoom.
