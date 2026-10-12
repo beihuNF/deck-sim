@@ -13,6 +13,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Restored co-op run save & resume functionality from the main menu.
 • Streamlined room invite links with one-tap clipboard auto-fill, and added custom guest nicknames.
 • Added quick room reload (SL) for hosts to restart the current room or combat.
+• Added friendly network guidance and accelerator recommendations for Steam Community login across restricted regions.
 
 [gold][b]Visuals & Audio[/b][/gold]
 • Restored the original top-left Profile Switcher button, cleanly separating it from Steam login.
@@ -37,6 +38,7 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 还原多人对局断点续玩机制，支持主菜单继续联机或放弃存档。
 • 优化邀请链接格式与自动识别，新增游客自定义昵称与大厅改名功能。
 • 房主支持“快速SL”重新载入当前战斗或房间。
+• 账号弹窗新增国内直连 Steam 社区受限的网络指引与加速器推荐，同时明确提示游客模式免登录联机与本地存档不受任何影响。
 
 [gold][b]视听与体验[/b][/gold]
 • 恢复主菜单左上角原版切换存档按钮，解绑第三方账号覆盖。

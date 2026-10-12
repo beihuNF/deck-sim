@@ -101,7 +101,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           const text = await navigator.clipboard?.readText();
           const code = parseRoomInvitation(text ?? '');
           if (code) setJoinCode(code);
-        } catch {}
+        } catch { }
       })();
     }
   }, [view]);
@@ -271,7 +271,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               {/* 铭牌与角色名 */}
               <div class="rlp-nameplate">
                 <div class="rlp-player-name">
-                  {isSlotHost ? tr('[房主] ', '[Host] ') : ''}{multiplayerPlayerName(slotId)} 
+                  {isSlotHost ? tr('[房主] ', '[Host] ') : ''}{multiplayerPlayerName(slotId)}
                   {isSlotMe && (
                     <span
                       class="rlp-edit-name-btn"
@@ -666,7 +666,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
                           setJoinCode(code);
                           playOneShot('event:/sfx/ui/clicks/ui_click');
                         }
-                      } catch {}
+                      } catch { }
                     }}
                   >
                     {tr('📋 粘贴', '📋 Paste')}
@@ -798,7 +798,7 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
               level={mp.loadInfo?.ascension ?? 0}
               max={mp.loadInfo?.ascension ?? 0}
               readOnly={true}
-              onChange={() => {}}
+              onChange={() => { }}
             />
           </div>
 
@@ -985,19 +985,33 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
             )}
 
             {!steam.profile && (
-              <div class="mp-dialog-input-wrap" style={{ margin: '12px 0 20px 0' }}>
-                <div style={{ color: '#fff6e2', fontSize: '18px', marginBottom: '6px', textAlign: 'left', fontWeight: 'bold' }}>
-                  {tr('自定义游客昵称：', 'Custom Guest Nickname:')}
+              <>
+                <div class="mp-dialog-input-wrap" style={{ margin: '12px 0 14px 0' }}>
+                  <div style={{ color: '#fff6e2', fontSize: '18px', marginBottom: '6px', textAlign: 'left', fontWeight: 'bold' }}>
+                    {tr('自定义游客昵称：', 'Custom Guest Nickname:')}
+                  </div>
+                  <input
+                    type="text"
+                    class="mp-dialog-input"
+                    maxLength={20}
+                    value={guestNameInput}
+                    placeholder={getGuestName()}
+                    onInput={e => setGuestNameInput(e.currentTarget.value)}
+                  />
                 </div>
-                <input
-                  type="text"
-                  class="mp-dialog-input"
-                  maxLength={20}
-                  value={guestNameInput}
-                  placeholder={getGuestName()}
-                  onInput={e => setGuestNameInput(e.currentTarget.value)}
-                />
-              </div>
+                <div class="mp-network-tip">
+                  <div class="mp-network-tip-header">
+                    <span class="mp-network-tip-icon">💡</span>
+                    <span class="mp-network-tip-title">{tr('国内网络提示', 'Network Notice')}</span>
+                  </div>
+                  <div class="mp-network-tip-text">
+                    {tr(
+                      '由于国内网络限制，直连 Steam 社区可能会出现打不开或连接超时的情况。若需登录，可开启网络加速器（如 Watt Toolkit、UU 等开启免费 Steam 社区加速）或代理。若无需展示 Steam 头像，可直接使用上方游客昵称免登录联机，联机与单人游戏功能 100% 完整，本地存档安全可靠！',
+                      'Accessing Steam Community may require a network accelerator (such as Watt Toolkit or VPN) in certain regions. If you prefer not to sign in, simply customize your nickname above to play multiplayer as a guest with full game functionality!'
+                    )}
+                  </div>
+                </div>
+              </>
             )}
 
             {steam.error && (
