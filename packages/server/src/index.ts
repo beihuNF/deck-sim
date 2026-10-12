@@ -12,13 +12,55 @@ interface Room {
 }
 const PREFIX = '/api/multiplayer/rooms';
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
-function sameOrigin(req: Request) {
-  const origin = req.headers.get('Origin');
-  if (!origin) return false;
+function isPrivateHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' ||
+    hostname.startsWith('192.168.') || hostname.startsWith('10.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname) || hostname.endsWith('.local');
+}
+
+export function sameOrigin(req: Request): boolean {
   const url = new URL(req.url);
-  if (origin === url.origin) return true;
-  // Vite's local API proxy forwards its original Origin.
-  return ['127.0.0.1', 'localhost'].includes(url.hostname) && /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin);
+  const origin = req.headers.get('Origin');
+
+  if (origin) {
+    if (origin === url.origin) return true;
+    try {
+      const originUrl = new URL(origin);
+      if (isPrivateHost(url.hostname) && isPrivateHost(originUrl.hostname)) return true;
+    } catch {}
+    return false;
+  }
+
+  // 现代浏览器跨站安全标头：若来自恶意跨站攻击，Sec-Fetch-Site 必定为 cross-site
+  const fetchSite = req.headers.get('Sec-Fetch-Site');
+  if (fetchSite === 'cross-site') return false;
+  if (fetchSite === 'same-origin' || fetchSite === 'same-site' || fetchSite === 'none') return true;
+
+  // 移动端/微信等 WebKit 内核在同源 fetch 时通常只携带 Referer
+  const referer = req.headers.get('Referer');
+  if (referer) {
+    try {
+      const refUrl = new URL(referer);
+      if (refUrl.origin === url.origin) return true;
+      if (isPrivateHost(url.hostname) && isPrivateHost(refUrl.hostname)) return true;
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  // WebSocket 升级握手在部分移动端浏览器上不发送 Origin，予以放行
+  if (req.headers.get('Upgrade')?.toLowerCase() === 'websocket') {
+    return true;
+  }
+
+  // 兜底：若没有任何跨域特征且 Host 标头匹配当前目标
+  const host = req.headers.get('Host');
+  if (host && (host === url.host || host === url.hostname)) {
+    return true;
+  }
+
+  return false;
 }
 export default {
   async fetch(req: Request, env: Env) {
@@ -51,7 +93,7 @@ export default {
       const code = crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
       const url = new URL(req.url); url.pathname = `${PREFIX}/${code}`;
       const body = await req.text();
-      if (body.length > 512) return json({ error: 'request' }, 413);
+      if (body.length > 512 * 1024) return json({ error: 'request' }, 413);
       return env.ROOMS.get(env.ROOMS.idFromName(code)).fetch(new Request(url, { method: 'POST', body, headers: { 'X-Create-Room': '1', ...profileHeaders } }));
     }
     const m = new RegExp(`^${PREFIX}/([A-F0-9]{12})(/socket)?$`).exec(path);

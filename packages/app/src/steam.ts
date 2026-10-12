@@ -17,19 +17,40 @@ export async function loadSteamProfile() {
 }
 
 /**
- * 弹出独立窗口进行 Steam 认证，登录成功后通过 postMessage 自动同步并关闭弹窗，
- * 避免整页跳转导致游戏重新加载和动画重播。
+ * Steam 登录认证：
+ * - 移动端/触屏设备：直接整页跳转到 Steam 官方认证页，登录后自动重定向回游戏并恢复多人大厅，避免移动浏览器拦截小弹窗及沙盒检测误闪退；
+ * - 桌面端：弹出居中小窗口，登录成功后通过 postMessage 自动同步并无缝关闭弹窗。
  */
 export function loginSteam(onSuccess?: () => void) {
+  const isMobile = typeof navigator !== 'undefined' && (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || (navigator.maxTouchPoints > 0 && (window.innerWidth < 1024 || window.innerHeight < 768))
+    || window.innerWidth <= 768
+  );
+
+  const returnUrl = new URL(location.href);
+  returnUrl.searchParams.set('menu', 'multiplayer');
+  const loginUrl = '/api/auth/steam/login?return=' + encodeURIComponent(returnUrl.pathname + returnUrl.search);
+
+  if (isMobile) {
+    location.assign(loginUrl);
+    return;
+  }
+
   const w = 820, h = 660;
   const left = Math.max(0, Math.floor((window.screen.width - w) / 2));
   const top = Math.max(0, Math.floor((window.screen.height - h) / 2));
 
-  const popup = window.open(
-    '/api/auth/steam/login?popup=1',
-    'sts2_steam_login',
-    `width=${w},height=${h},left=${left},top=${top},status=0,menubar=0,toolbar=0,location=1`
-  );
+  let popup: Window | null = null;
+  try {
+    popup = window.open(
+      '/api/auth/steam/login?popup=1',
+      'sts2_steam_login',
+      `width=${w},height=${h},left=${left},top=${top},status=0,menubar=0,toolbar=0,location=1`
+    );
+  } catch {
+    popup = null;
+  }
 
   let timer: any = null;
   const cleanup = () => {
@@ -40,24 +61,26 @@ export function loginSteam(onSuccess?: () => void) {
   const onMessage = (e: MessageEvent) => {
     if (e.data?.type === 'sts2_steam_login_done') {
       cleanup();
-      void loadSteamProfile().then(() => onSuccess?.());
+      void loadSteamProfile().then(() => {
+        if (steam.profile) onSuccess?.();
+      });
     }
   };
 
   window.addEventListener('message', onMessage);
 
-  if (popup) {
+  if (popup && !popup.closed) {
     timer = setInterval(() => {
-      if (popup.closed) {
+      if (popup?.closed) {
         cleanup();
-        void loadSteamProfile().then(() => onSuccess?.());
+        void loadSteamProfile().then(() => {
+          if (steam.profile) onSuccess?.();
+        });
       }
     }, 1000);
   } else {
-    // 弹窗被拦截时回退到整页跳转
-    const returnUrl = new URL(location.href);
-    returnUrl.searchParams.set('menu', 'multiplayer');
-    location.assign('/api/auth/steam/login?return=' + encodeURIComponent(returnUrl.pathname + returnUrl.search));
+    // 桌面端弹窗被浏览器拦截时回退到整页跳转
+    location.assign(loginUrl);
   }
 }
 

@@ -19,6 +19,7 @@ new Function('require', 'exports', 'module', compiled)((name: string) => {
   throw new Error(`Unexpected dependency ${name}`);
 }, module.exports, module);
 const WebRoom = module.exports.WebRoom;
+const sameOrigin = module.exports.sameOrigin;
 const unlock = JSON.stringify({ UnlockedEpochs: [], EncountersSeen: [], NumberOfRuns: 0 });
 async function roomWithPlayers(n = 3, protocol = 3) {
   const values = new Map(), sockets: any[] = [];
@@ -116,5 +117,54 @@ describe('running room reconnection', () => {
     expect(sockets[0].closed).toBe(true);
     await send(2, { type: 'packet', seq: 1, to: 0, bytes });
     expect(sockets[1].closed).toBe(true);
+  });
+});
+
+describe('sameOrigin security and mobile compatibility', () => {
+  it('allows same-origin with matching Origin header', () => {
+    const req = new Request('https://play.example.com/api/multiplayer/rooms', {
+      headers: { Origin: 'https://play.example.com' },
+    });
+    expect(sameOrigin(req)).toBe(true);
+  });
+
+  it('allows mobile requests without Origin but with Sec-Fetch-Site same-origin', () => {
+    const req = new Request('https://play.example.com/api/multiplayer/rooms', {
+      headers: { 'Sec-Fetch-Site': 'same-origin' },
+    });
+    expect(sameOrigin(req)).toBe(true);
+  });
+
+  it('allows mobile requests without Origin but with matching Referer', () => {
+    const req = new Request('https://play.example.com/api/multiplayer/rooms', {
+      headers: { Referer: 'https://play.example.com/r/ABCDEF123456' },
+    });
+    expect(sameOrigin(req)).toBe(true);
+  });
+
+  it('allows local and LAN IP debugging across private address spaces', () => {
+    const req = new Request('http://192.168.1.10:47173/api/multiplayer/rooms', {
+      headers: { Origin: 'http://192.168.1.10:47173' },
+    });
+    expect(sameOrigin(req)).toBe(true);
+  });
+
+  it('allows WebSocket upgrade requests without Origin from mobile browsers', () => {
+    const req = new Request('https://play.example.com/api/multiplayer/rooms/ABCDEF123456/socket', {
+      headers: { Upgrade: 'websocket', Host: 'play.example.com' },
+    });
+    expect(sameOrigin(req)).toBe(true);
+  });
+
+  it('rejects cross-site CSRF attacks with foreign Origin or Sec-Fetch-Site cross-site', () => {
+    const req1 = new Request('https://play.example.com/api/multiplayer/rooms', {
+      headers: { Origin: 'https://attacker.com' },
+    });
+    expect(sameOrigin(req1)).toBe(false);
+
+    const req2 = new Request('https://play.example.com/api/multiplayer/rooms', {
+      headers: { 'Sec-Fetch-Site': 'cross-site' },
+    });
+    expect(sameOrigin(req2)).toBe(false);
   });
 });

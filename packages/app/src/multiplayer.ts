@@ -230,7 +230,11 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
       ? { version, token: saved?.token, instance, protocol: 4, guestName }
       : { version, mode, maxPlayers: 4, instance, protocol: 4, guestName, saveJson: extra?.saveJson, loadInfo: extra?.loadInfo };
     const res = await fetch(code ? `${API}/${code.toUpperCase()}` : API, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15_000),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
     });
     const result = await res.json();
     if (attempt !== attemptId) return;
@@ -361,5 +365,6 @@ export function multiplayerError() {
   if (e === 'full') return mpText('房间已满或已开始。', 'The room is full or has already started.');
   if (e === 'room' || e === 'expired') return mpText('房间不存在或已过期。', 'Room not found or expired.');
   if (e === 'rate') return mpText('建房太频繁，请稍后再试。', 'Too many rooms created. Please try again later.');
+  if (e === 'origin') return mpText('跨源访问被拦截，请确保在当前网页域名下访问。', 'Cross-origin request blocked. Please access via the original site domain.');
   return mpText('连接中断或同步失败。请返回主菜单重新建房。', 'Connection lost or synchronization failed. Return to the menu and create a new room.');
 }

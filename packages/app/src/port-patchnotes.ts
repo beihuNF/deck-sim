@@ -3,6 +3,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
+• Fixed mobile multiplayer room creation showing "Connection lost or synchronization failed" error by enhancing same-origin verification to support Origin-less mobile requests, LAN IP debugging, and WebSocket handshakes, and increased room creation payload limit to 512KB.
+• Fixed mobile Steam login instantly closing/flashing by transitioning touch and mobile devices to full-page authentication redirects with automatic lobby recovery, and guarded desktop popup dismissal on verified profiles.
 • Restored co-op run save & resume functionality (1:1 aligned with original NMultiplayerLoadGameScreen, supporting resuming from save and discarding co-op runs).
 • Added guest nickname system and in-lobby name editing with real-time room broadcast.
 • Improved room invite link formatting with clean path-based short URLs (/r/CODE) to prevent link truncations on mobile messaging apps, and added one-tap clipboard room code auto-fill.
@@ -27,6 +29,8 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 [gold][b]Controls[/b][/gold]
 • Aligned controller selection indicator with the original game's golden reticle corners and subtle highlights.`,
     zhs: `[gold][b]多人联机[/b][/gold]
+• 修复移动端创建多人房间显示“连接中断或同步失败”的问题：完善同源安全校验机制，支持移动端无 Origin 同源请求、局域网真机调试及 WebSocket 握手协议，并放宽建房请求体上限至 512KB。
+• 修复移动端点击“登录 Steam”弹窗闪退的问题：移动端与触控设备全面采用整页跳转认证流，登录后自动重定向返回多人大厅；桌面端增加登录状态校验，避免关闭窗口时误关账号设置界面。
 • 完整还原多人存档恢复与断点续玩机制（1:1 对齐原版 NMultiplayerLoadGameScreen 读档大厅，支持主菜单继续联机或放弃存档）。
 • 新增游客自定义昵称系统与大厅铭牌实时改名广播，联机辨识更清晰。
 • 优化移动端邀请链接格式为纯路径短链接（/r/房间码），彻底解决手机聊天软件截断域名后缀的问题，并支持加入房间时自动读取剪贴板智能填码。

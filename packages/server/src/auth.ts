@@ -179,7 +179,18 @@ export async function authFetch(req: Request, env: AuthEnv) {
     return authJson({ profile });
   }
   if (path === '/api/auth/logout' && req.method === 'POST') {
-    if (req.headers.get('Origin') !== url.origin) return authJson({ error: 'origin' }, 403);
+    const origin = req.headers.get('Origin');
+    const fetchSite = req.headers.get('Sec-Fetch-Site');
+    if (fetchSite === 'cross-site') return authJson({ error: 'origin' }, 403);
+    if (origin && origin !== url.origin) {
+      const isLocal = (h: string) => h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.');
+      try {
+        const oUrl = new URL(origin);
+        if (!isLocal(url.hostname) || !isLocal(oUrl.hostname)) return authJson({ error: 'origin' }, 403);
+      } catch {
+        return authJson({ error: 'origin' }, 403);
+      }
+    }
     await store(env, 'logout', { token: readCookie(req, 'sts2-steam') });
     return new Response('{}', { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Set-Cookie': cookie(req, 'sts2-steam', '', 0) } });
   }
