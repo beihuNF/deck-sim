@@ -3,158 +3,82 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Added Steam Cloud save synchronization: signed-in Steam players can now seamlessly back up and sync save progress across devices and browsers, with manual backup and restore options in Settings and Account screens.
-• Fixed multiplayer lobby confirm/ready button visibility and restored proper screen positioning across various device aspect ratios.
-• Enhanced "Join Room" dialog layout with authentic nine-patch panel slicing, responsive input sizing, and a direct Steam sign-in option.
-• Kept Steam account profile badge consistently visible throughout multiplayer setup and lobby screens.
-• Fixed mobile room creation failures, Steam login dismissal, and guest connection errors.
-• Improved reconnection reliability: instant wake-up when returning from background/sleep and authentic in-game teammate waiting overlay.
-• Added dedicated top-right Steam profile badge and real-time network latency (Ping) display in the lobby.
-• Restored co-op run save & resume functionality from the main menu.
-• Streamlined room invite links with one-tap clipboard auto-fill, and added custom guest nicknames.
-• Added quick room reload (SL) for hosts to restart the current room or combat.
-• Added friendly network guidance and accelerator recommendations for Steam Community login across restricted regions.
+• Added Steam Cloud save synchronization and cross-device backup.
+• Improved multiplayer lobby flow, reconnection stability, and room reload.
+• Enhanced room invitations and guest play with custom nicknames.
 
-[gold][b]Visuals & Audio[/b][/gold]
-• Restored the original top-left Profile Switcher button, cleanly separating it from Steam login.
-• Smart in-game cursor scaling & authentic interaction: custom cursors now smoothly adapt to viewport dimensions with pixel-perfect hotspot alignment (eliminating oversized 64px pointers); globally preserved in-game cursors on option hover instead of reverting to native hand pointers, with authentic tilted press animations.
-• Restored authentic gamepad reticle highlights and missing audio effects across menus and maps.
-• Enhanced cross-browser compatibility: fixed mobile portrait viewport flipping and loading stalls on certain mobile browsers.
-• Cleaned up intrusive shortcut hover tooltips on confirm/cancel/back/peek buttons, restoring original clean hover aesthetics.
-• Seamless tab lock & crash protection: introduced retry backoff and cross-tab BroadcastChannel negotiation to eliminate false-positive "game open in another tab" errors on page reload, alongside an in-place "Force Launch" recovery option.
-• Fixed main menu background black screen on certain browsers: resolved dim overlay opacity bugs, added BlurFilter crash protection, evicted failed scene fetches from cache, and implemented automatic scene & gradient backdrop fallbacks.
-• Eliminated PixiJS warning regarding missing aCustom attribute in shaders, ensuring 100% attribute binding fidelity across Godot-transpiled WebGL2 shaders.
-
-[gold][b]Gameplay[/b][/gold]
-• Fixed random character ascension selection, properly respecting preferred ascension levels.`,
+[gold][b]Experience & Fixes[/b][/gold]
+• Refined custom cursor, controls, and audio effects.
+• Fixed display and loading issues on certain browsers.
+• Fixed several known bugs and improved stability.`,
     zhs: `[gold][b]多人联机[/b][/gold]
-• 接入 Steam 云存档漫游服务：登录 Steam 账号即可跨设备/换浏览器自动备份与同步存档进度，设置与账号面板支持手动备份与从云端恢复。
-• 修复多人大厅准备与返回按钮在移动端和不同宽高比下的显示异常，确保确认准备按钮始终可见。
-• 优化“加入房间”弹窗样式与九宫格切片，输入框自适应移动端屏幕，并在弹窗内直接提供 Steam 快捷登录入口。
-• Steam 账号登录徽章在多人模式全流程及大厅中保持常驻展示，支持随时查看与管理账号。
-• 修复移动端创建房间失败、Steam 登录闪退及游客连接异常的问题。
-• 优化多人断线重连体验：切后台或锁屏回游戏即时唤醒，新增局内等待队友重连的原生提示。
-• 多人大厅右上角新增独立 Steam 账号徽章与网络延迟（Ping）状态显示。
-• 还原多人对局断点续玩机制，支持主菜单继续联机或放弃存档。
-• 优化邀请链接格式与自动识别，新增游客自定义昵称与大厅改名功能。
-• 房主支持“快速SL”重新载入当前战斗或房间。
-• 账号弹窗新增国内直连 Steam 社区受限的网络指引与加速器推荐，同时明确提示游客模式免登录联机与本地存档不受任何影响。
+• 新增 Steam 云存档同步与跨设备进度漫游。
+• 优化多人联机大厅、断线重连体验与快速重载。
+• 优化房间邀请与游客模式，支持自定义昵称。
 
-[gold][b]视听与体验[/b][/gold]
-• 恢复主菜单左上角原版切换存档按钮，解绑第三方账号覆盖。
-• 原版鼠标指针智能自适应与交互还原：光标尺寸根据视口与屏幕比例平滑缩放，针尖热点精准对齐（告别过大的 64px 粗糙指针）；悬停选项与按钮时保持游戏原版指针，彻底消除突兀的系统手型回退，并还原按压时的原版倾斜反馈。
-• 还原原版手柄瞄准框高亮视觉，全面补齐地图与菜单交互音效。
-• 优化多浏览器兼容性：修复手机竖屏时画面异常翻转的问题，修复部分移动端浏览器卡在加载界面的问题。
-• 清理确认、返回、取消与手牌偷看等通用按钮上多余的悬停快捷键黑框提示，对齐原版干净清爽的交互体验。
-• 优化跨标签页存档锁与协同策略：引入退避重试与 BroadcastChannel 协同协商，彻底解决单标签页刷新/重启时误报“已在另一个标签页打开”的问题，并提供无需全屏重载的原地“强制在此页面启动”接管选项。
-• 修复部分浏览器下主界面背景显示一片黑的问题：修复遮罩层不透明度初始异常、加入 BlurFilter 滤镜异常安全容错、修复场景失败缓存重试机制，并增加主菜单备用背景与主题夜空渐变底层兜底。
-• 消除控制台有关 aCustom 属性未在着色器中声明的 PixiJS 警告，确保 Godot 转译的 WebGL2 几何属性与着色器完全匹配。
-
-[gold][b]游戏机制[/b][/gold]
-• 修复选择随机角色时默认进阶难度异常的问题，正常保存玩家设定的偏好进阶。`,
+[gold][b]体验与修复[/b][/gold]
+• 优化鼠标指针、按键与音效等操作细节。
+• 修复部分设备与浏览器下的画面显示和加载问题。
+• 解决了一些已知问题，优化体验。`,
   },
   {
     date: '2026_10_11',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Added Steam account sign-in support alongside guest play.
-• Improved co-op reconnection handling, state synchronization, and room invitation links.
-• Refined in-game co-op HUD, teammate previews, voting indicators, and daily challenge lobby.
+• Added Steam account sign-in support.
+• Improved state synchronization and reconnection reliability.
+• Refined teammate status, event voting, and daily challenge lobby.
 
-[gold][b]Controls[/b][/gold]
-• Enhanced gamepad navigation, snap targeting, card play flow, and input responsiveness across all screens.`,
+[gold][b]Controls & Fixes[/b][/gold]
+• Optimized controller targeting and navigation responsiveness.
+• Minor bug fixes and experience improvements.`,
     zhs: `[gold][b]多人联机[/b][/gold]
-• 新增 Steam 账号登录支持，同时保留游客联机。
-• 优化对局断线重连、房间邀请链接与多人数据同步稳定性。
-• 完善联机局内队伍状态、队友意图预览、事件投票与每日挑战大厅展示。
+• 支持 Steam 账号登录。
+• 优化多人状态同步与断线重连稳定性。
+• 优化队友预览、事件投票与每日挑战大厅展示。
 
-[gold][b]操作[/b][/gold]
-• 优化手柄按键吸附、指向性出牌与各界面的摇杆导航体验。`,
+[gold][b]操作与修复[/b][/gold]
+• 优化手柄按键吸附与界面导航体验。
+• 修复了一些已知问题，优化体验。`,
   },
   {
     date: '2026_10_10',
     eng: `[gold][b]Multiplayer[/b][/gold]
-• Introduced web multiplayer co-op supporting up to 4 players across Standard, Daily, and Custom modes.
-• Added room code invitations, lobby player management, shared ascension, and voting systems.
+• Introduced web co-op multiplayer supporting up to 4 players.
+• Added room invitations, shared ascension, and voting.
 
-[gold][b]Controls[/b][/gold]
-• Added comprehensive controller support with authentic button prompts and customizable keybindings.
-
-[gold][b]Quality of Life[/b][/gold]
-• Restored the original opening animation and audio, optimized loading performance, and added an in-game reload option.
-
-[gold][b]Community[/b][/gold]
-• Updated the QQ group QR code.`,
+[gold][b]Experience[/b][/gold]
+• Full controller support with customizable keybindings.
+• Restored opening animation and audio; optimized performance.
+• General UI refinements and community group update.`,
     zhs: `[gold][b]多人模式[/b][/gold]
-• 新增网页版多人联机功能，支持最多 4 人游玩标准、每日与自定义模式。
-• 支持房间代码与链接邀请、大厅玩家管理、共享进阶及局内投票等联机机制。
-
-[gold][b]操作[/b][/gold]
-• 完整接入手柄控制器支持，提供原作风格按键提示与自定义键位设置。
+• 全新支持网页版多人联机（支持最多 4 人组队）。
+• 支持房间代码邀请、组队进阶与投票机制。
 
 [gold][b]体验优化[/b][/gold]
-• 还原开场动画与音效，优化资源加载与流畅度，并新增重载当前房间功能。
-
-[gold][b]社区[/b][/gold]
-• 更新 QQ 群二维码。`,
+• 完整接入手柄控制器支持。
+• 还原开场动画与音效，优化加载性能。
+• 优化界面细节，更新玩家交流群。`,
   },
   {
     date: '2026_10_09',
-    eng: `[gold][b]Main menu[/b][/gold]
-• Temporarily hidden the notice about the game being taken offline soon.
-
-[gold][b]Game update[/b][/gold]
-• Updated rules and game assets to public-beta v0.111.0.
+    eng: `[gold][b]Game Update[/b][/gold]
+• Updated game rules and assets to public-beta v0.111.0.
 • Added Traditional Chinese and Indonesian localization.
 
 [gold][b]Combat & Display[/b][/gold]
-• Prevented accidental browser text selection and ghost image dragging during gameplay.
-• Fixed missing cursor images (404) when drawing or erasing on the map.
-• Fixed a localization formatting error when hovering over the Act Boss icon.
-• Fixed an issue where dragging the settings scrollbar downward would scroll upward.
-• Fixed the settings language dropdown scrolling the entire settings panel together.
-• Fixed black block artifacts on the corners of the settings toast notification.
-• Fixed a white screen that could cover the game after continuing a saved run or changing screens.
-• Fixed played or discarded cards remaining in the hand or on the table and blocking other cards.
-• Fixed dragging cards from icons in their text being canceled.
-• Fixed the Punch-Off event freezing the game at Instant speed.
-• Fixed Defect beam effects and Architect damage text on the victory screen.
-• Fixed a rendering error after Necrobinder's Doom kill animation.
-• Fixed ending extra player turns and displaying their turn numbers.
-• Fixed area potions being canceled instead of used from the potion belt.
-• Fixed the final killing card lingering in the center of the screen upon combat victory.
-
-[gold][b]Save compatibility[/b][/gold]
-• Preserved existing v0.98.3 runs, including retired cards, when loading and re-saving with the public-beta rules.
-• Existing Lasting Candy and Pumpkin Candle keep their original counters and effects.
-• Preserved the original Doormaker battle and its changing forms in existing runs.`,
-    zhs: `[gold][b]主菜单[/b][/gold]
-• 暂时隐藏游戏近期下线提示。
-
-[gold][b]游戏更新[/b][/gold]
+• Optimized card interaction, dragging, and combat flow.
+• Fixed UI display, settings scrolling, and event freezes.
+• Maintained seamless compatibility with previous saves.
+• Fixed several known bugs and improved stability.`,
+    zhs: `[gold][b]游戏更新[/b][/gold]
 • 游戏规则与资源更新至 public-beta v0.111.0。
-• 新增繁体中文和印度尼西亚语。
+• 新增繁体中文和印度尼西亚语支持。
 
 [gold][b]战斗与画面[/b][/gold]
-• 修复游戏内鼠标拖拽时可能误选中文本或拖出图片虚影的问题。
-• 修复地图绘画和擦除时鼠标光标图片加载失败（404）的问题。
-• 修复鼠标悬停在顶栏幕 Boss 图标上时的本地化文本格式化报错。
-• 修复设置界面中向下拖拽滚动条反而向上滚动的问题。
-• 修复设置中滚动语言下拉列表时带动整个面板一起滚动的问题。
-• 修复设置提示气泡（Toast）边缘出现黑色色块的问题。
-• 修复继续存档或切换界面后可能遮住游戏的白屏。
-• 修复打出或弃掉的卡牌仍残留在手牌或桌面上、遮挡其他卡牌的问题。
-• 修复从卡牌文字中的图标位置拖动时，出牌操作被取消的问题。
-• 修复选择“瞬间”速度时，拳击比赛事件卡住游戏的问题。
-• 修复故障机器人的光束特效及胜利结算的建筑师伤害文本。
-• 修复死灵契约师的灾厄击杀动画结束后可能出现的渲染错误。
-• 修复额外回合中结束回合可能失效及回合编号显示错误的问题。
-• 修复从药水栏使用范围药水时，操作被取消的问题。
-• 修复战斗胜利（打出最后一击斩杀）后打出的卡牌依然悬浮残留在屏幕正中央的问题。
-
-[gold][b]存档兼容[/b][/gold]
-• 升级 public-beta 规则后仍可继续、重新保存 v0.98.3 的旧对局，保留旧牌组中的已移除卡牌。
-• 旧存档中的持久糖果和南瓜蜡烛保留原来的计数与效果。
-• 保留旧对局中的门扉制造者战斗及其形态变化。`,
+• 优化出牌、拖拽与战斗结算流程。
+• 修复设置面板交互、界面显示与部分事件异常。
+• 完美兼容历史版本存档读取。
+• 解决了一些已知问题，优化体验。`,
   },
   {
     date: '2026_10_08',
