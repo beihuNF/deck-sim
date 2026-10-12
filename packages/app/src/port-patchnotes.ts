@@ -17,6 +17,10 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • Fixed unexpected black screen fade when canceling or exiting multiplayer lobbies.
 • Resolved Steam avatar resolution, added proxy acceleration, and refined profile sync.
 • Restored co-op audio effects for map pings, split route votes, and combat pings.
+• Added page lifecycle wake-up handlers (listening to visibilitychange and online events) to instantly reconnect when switching back from mobile background or sleep.
+• Implemented smoothed round-trip ping tracking aligned with original NetQualityTracker specification, displaying real-time latency indicators in the lobby.
+• Aligned waiting state 1:1 with authentic NCombatRoom %WaitingForOtherPlayers overlay (using fuzzy nine-patch banner and MULTIPLAYER_WAITING entry).
+• Linked accidental page reloads with local multiplayer saves, offering seamless recovery guidance via the authentic NMultiplayerLoadGameScreen.
 
 [gold][b]Visuals & Audio[/b][/gold]
 • Fixed cursor WebP textures resolving to 404 under stylesheet subpaths by converting cursor URLs to absolute site paths.
@@ -52,6 +56,10 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
 • 修复多人菜单与房间大厅点击取消/退出时黑屏的问题，恢复原版即时返回。
 • 修复 Steam 头像获取问题，提供边缘节点加速代理并支持自动更新补全。
 • 补齐多人地图催促、分路投票及局内快捷 Ping 提示音效。
+• 针对移动端切后台与息屏场景，接入页面生命周期即时唤醒（监听 visibilitychange 与 online 事件，切回前台瞬间秒级重连）。
+• 遵循原版 NetQualityTracker 规范，实现平滑往返延迟（Ping）测算并在大厅实时展示网络延迟状态。
+• 1:1 对齐原版 NCombatRoom %WaitingForOtherPlayers 局内等待队友重连原生遮罩（复用毛边九宫格与 MULTIPLAYER_WAITING 词条）。
+• 局内意外刷新页面时智能联动本地多人存档，引导通过原版多人读档大厅（NMultiplayerLoadGameScreen）无缝恢复对局。
 
 [gold][b]视听表现[/b][/gold]
 • 修复鼠标指针贴图在生产环境下解析为 /js/assets/... 导致 404 的问题：CSS 变量统一转换为绝对路径。

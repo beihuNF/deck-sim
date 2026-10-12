@@ -834,3 +834,60 @@
   opacity: 0.9;
 }
 
+/* 原版 NCombatRoom %WaitingForOtherPlayers 局内等待其他玩家遮罩 */
+.waiting-for-players-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 120;
+  pointer-events: auto;
+}
+.wfpo-banner {
+  position: relative;
+  width: 680px;
+  min-height: 120px;
+  padding: 24px 36px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.wfpo-bg {
+  position: absolute;
+  inset: 0;
+  border: 42px solid transparent;
+  border-image-slice: 42 fill;
+  filter: brightness(0) opacity(0.8);
+  pointer-events: none;
+}
+.wfpo-title {
+  position: relative;
+  font: 700 36px/1.2 'Kreon', var(--font);
+  color: #7FFF00;
+  -webkit-text-stroke: 4px #153500;
+  paint-order: stroke fill;
+  text-shadow: 0 0 16px rgba(127, 255, 0, 0.6);
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wfpo-sub {
+  position: relative;
+  font: 400 18px/1.4 'Kreon', var(--font);
+  color: #fff6e2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  letter-spacing: 1px;
+  text-align: center;
+}
+.wfpo-btn-wrap {
+  position: relative;
+  margin-top: 14px;
+}
+

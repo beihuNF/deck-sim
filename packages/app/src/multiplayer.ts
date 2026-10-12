@@ -9,10 +9,12 @@ export const multiplayer = {
   code: '', id: 0, mode: 'standard' as 'standard' | 'daily' | 'custom' | 'load', maxPlayers: 4, maxAscension: 0,
   settings: { ascension: 0, seed: '', modifiers: [] as string[], dailyDate: '' },
   waiting: false,
+  ping: 0,
   saveJson: undefined as string | undefined,
   loadInfo: undefined as any,
   players: [] as { id: number; character: string; ready: boolean; connected: boolean; profile?: { steamId: string; name: string; avatar: string } }[], error: '',
 };
+const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const API = '/api/multiplayer/rooms';
 const version = `${GAME_VERSION}/${__BUILD_ID__}/web-coop-4`;
 export function extractRoomCode(str: string): string | null {
@@ -53,6 +55,7 @@ let socket: WebSocket | null = null;
 let net: any = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let lastSeen = 0;
+let lastPingSent = 0;
 const instance = crypto.randomUUID();
 let received = 0, sent = 0;
 let outgoing: { type: 'packet'; seq: number; bytes: number[]; to: number }[] = [];
@@ -269,8 +272,11 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
     lastSeen = Date.now();
     timer = setInterval(() => {
       if (Date.now() - lastSeen > 20_000) disconnected();
-      else if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
-    }, 5_000);
+      else if (ws.readyState === WebSocket.OPEN) {
+        lastPingSent = performance.now();
+        ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 4_000);
     let initializedSelection = false;
     ws.onopen = () => {
       if (socket !== ws) return;
@@ -286,6 +292,14 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
           const bytes = new Uint8Array(e.data); net.receive(Array.from(bytes.slice(1)), bytes[0]); changed(); return;
         }
         const msg = JSON.parse(e.data);
+        if (msg.type === 'pong') {
+          if (lastPingSent > 0) {
+            const rtt = Math.max(1, Math.round(performance.now() - lastPingSent));
+            multiplayer.ping = multiplayer.ping ? Math.round(multiplayer.ping * 0.8 + rtt * 0.2) : rtt;
+            changed();
+          }
+          return;
+        }
         if (msg.type === 'volatile') { net.receive(msg.bytes, msg.sender); changed(); return; }
         if (msg.type === 'packet') {
           if (!Number.isSafeInteger(msg.seq) || msg.seq < 1) throw new Error('Invalid delivery');
@@ -361,10 +375,38 @@ export function multiplayerError() {
   if (e === 'divergence') return mpText('与队友的游戏状态不同步，联机已停止。请双方刷新页面后重新建房。', 'Game state diverged from your teammate. The session has stopped. Refresh both pages and create a new room.');
   if (e === 'version') return mpText('双方网页版本不同，请刷新后重新建房。', 'Different game builds. Refresh both browsers and create a new room.');
   if (e === 'account') return mpText('请使用原来的 Steam 账号登录后重连。', 'Sign in with the original Steam account to reconnect.');
-  if (e === 'reload') return mpText('运行中的重连需要保留原游戏页面。刷新已释放战斗状态，暂不能从新页面恢复。', 'Keep the original game page open to reconnect. A refreshed page cannot restore this running session yet.');
+  if (e === 'reload') {
+    const hasMpSave = safe(() => G.SaveManager?.Instance?.HasMultiplayerRunSave, false);
+    return hasMpSave
+      ? mpText('运行中的重连需要保留原游戏页面。已为你保留本地多人存档，请返回主菜单点击“继续多人游戏”恢复对局。', 'Running sessions require keeping the page open. Your co-op run has been saved locally; return to the main menu and select "Resume Co-op" to restore.')
+      : mpText('运行中的重连需要保留原游戏页面。刷新已释放战斗状态，暂不能从新页面恢复。', 'Keep the original game page open to reconnect. A refreshed page cannot restore this running session yet.');
+  }
   if (e === 'full') return mpText('房间已满或已开始。', 'The room is full or has already started.');
   if (e === 'room' || e === 'expired') return mpText('房间不存在或已过期。', 'Room not found or expired.');
   if (e === 'rate') return mpText('建房太频繁，请稍后再试。', 'Too many rooms created. Please try again later.');
   if (e === 'origin') return mpText('跨源访问被拦截，请确保在当前网页域名下访问。', 'Cross-origin request blocked. Please access via the original site domain.');
   return mpText('连接中断或同步失败。请返回主菜单重新建房。', 'Connection lost or synchronization failed. Return to the menu and create a new room.');
+}
+
+// 移动端切后台、锁屏恢复与网络连接状态即时唤醒
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') onWakeUp();
+  });
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', onWakeUp);
+}
+function onWakeUp() {
+  if (multiplayer.phase === 'reconnecting') {
+    retryMultiplayer();
+  } else if (multiplayer.phase === 'lobby' || multiplayer.phase === 'playing') {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      disconnected();
+    } else {
+      lastSeen = Date.now();
+      lastPingSent = performance.now();
+      try { socket.send(JSON.stringify({ type: 'ping' })); } catch {}
+    }
+  }
 }

@@ -332,6 +332,11 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           </div>
           <div class="mps-desc">
             {steam.profile ? tr('已连接 Steam', 'Steam Connected') : tr('点击管理身份', 'Manage Account')}
+            {mp.ping > 0 && (
+              <span style={{ marginLeft: '6px', color: mp.ping > 150 ? '#f1c40f' : '#85e89d', fontWeight: 'bold' }}>
+                • {mp.ping}ms
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -971,21 +976,51 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
 export function MultiplayerStatus() {
   if (mp.phase !== 'playing' && mp.phase !== 'starting' && mp.phase !== 'ended' && mp.phase !== 'reconnecting') return null;
+
+  // 1. 局内等待队友重连或同步（1:1 对齐原版 NCombatRoom %WaitingForOtherPlayers 规范）
+  if (mp.waiting && mp.phase === 'playing') {
+    return (
+      <div class="waiting-for-players-overlay">
+        <div class="wfpo-banner">
+          <div
+            class="wfpo-bg"
+            style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }}
+          />
+          <div class="wfpo-title">
+            {loc('gameplay_ui', 'MULTIPLAYER_WAITING')}
+            <span class="thinky-dots">
+              <span>.</span><span>.</span><span>.</span>
+            </span>
+          </div>
+          <div class="wfpo-sub">
+            {tr('对局已自动暂停，正在等待队友重新连接并同步数据', 'Run paused, waiting for teammates to reconnect and synchronize')}
+          </div>
+          <div class="wfpo-btn-wrap">
+            <PopupButton
+              yes={false}
+              text={tr('返回主菜单', 'Return to Menu')}
+              onClick={leaveMultiplayer}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. 本机断线重连或对局彻底结束
   return (
     <>
-      {(mp.phase === 'ended' || mp.phase === 'reconnecting' || mp.waiting) && (
+      {(mp.phase === 'ended' || mp.phase === 'reconnecting') && (
         <div class="mp-join-modal-backstop">
           <div class="mp-join-dialog">
             <RoomDialogBackground />
-            <h2 class="mp-dialog-title">{mp.phase === 'ended' ? tr('联机已中断', 'Co-op Session Ended') : tr('等待重新连接', 'Waiting for Reconnection')}</h2>
-            <p class="mp-dialog-desc">{mp.phase === 'ended' ? multiplayerError() : mp.phase === 'reconnecting'
-              ? tr('正在重新连接房间。请保留此页面，战斗和待选操作已保留。', 'Reconnecting to the room. Keep this page open; combat and pending choices are preserved.')
-              : tr('队友已掉线，正在等待其重连。请保留此页面。', 'A teammate disconnected. Waiting for them to reconnect; keep this page open.')}</p>
+            <h2 class="mp-dialog-title">{mp.phase === 'ended' ? tr('联机已中断', 'Co-op Session Ended') : tr('正在重新连接', 'Reconnecting to Room')}</h2>
+            <p class="mp-dialog-desc">{mp.phase === 'ended' ? multiplayerError() : tr('正在尝试重新连接房间服务器。请保留此页面，战斗与操作已安全暂存。', 'Reconnecting to room server. Keep this page open; combat and pending choices are safely preserved.')}</p>
             <p class="coop-note">
               {tr('现有单人存档未受任何影响，仍安全保存在本地。', 'Your singleplayer profile and saves remain completely intact.')}
             </p>
             <div class="mp-dialog-buttons" style={{ justifyContent: 'center' }}>
-              {mp.phase === 'reconnecting' && <PopupButton yes text={tr('重试连接', 'Retry Connection')} onClick={retryMultiplayer} />}
+              {mp.phase === 'reconnecting' && <PopupButton yes text={tr('立即重试', 'Retry Now')} onClick={retryMultiplayer} />}
               <PopupButton
                 yes={true}
                 text={tr('返回主菜单', 'Return to Menu')}
