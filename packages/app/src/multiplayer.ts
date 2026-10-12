@@ -166,6 +166,13 @@ function failed(error: string) {
   attemptId++;
   if (retryTimer) clearTimeout(retryTimer); retryTimer = null;
   multiplayer.error = error;
+  if (['reload', 'room', 'expired', 'full', 'version', 'kicked'].includes(error)) {
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('room')) {
+      const url = new URL(location.href);
+      url.searchParams.delete('room');
+      history.replaceState(history.state, '', url.href);
+    }
+  }
   if (multiplayer.phase === 'playing' || multiplayer.phase === 'starting' || multiplayer.phase === 'reconnecting') {
     multiplayer.phase = 'ended';
     net?.Disconnect();
@@ -279,7 +286,7 @@ export async function connectMultiplayer(code?: string, mode: 'standard' | 'dail
     const result = await res.json();
     if (attempt !== attemptId) return;
     if (!res.ok) {
-      if (code && ['room', 'expired', 'account'].includes(result.error)) clearSession(code);
+      if (code && ['room', 'expired', 'account', 'reload'].includes(result.error)) clearSession(code);
       if (reconnecting && res.status >= 500) throw new Error('network');
       if (reconnecting) { failed(result.error ?? 'network'); return; }
       throw new Error(result.error ?? 'network');
@@ -449,8 +456,8 @@ export function multiplayerError() {
   if (e === 'reload') {
     const hasMpSave = safe(() => G.SaveManager?.Instance?.HasMultiplayerRunSave, false);
     return hasMpSave
-      ? mpText('运行中的重连需要保留原游戏页面。已为你保留本地多人存档，请返回主菜单点击“继续多人游戏”恢复对局。', 'Running sessions require keeping the page open. Your co-op run has been saved locally; return to the main menu and select "Resume Co-op" to restore.')
-      : mpText('运行中的重连需要保留原游戏页面。刷新已释放战斗状态，暂不能从新页面恢复。', 'Keep the original game page open to reconnect. A refreshed page cannot restore this running session yet.');
+      ? mpText('对局中请勿刷新页面。已为你保留本地多人存档，请返回主菜单点击“继续多人游戏”恢复对局。', 'Do not refresh during a run. Your co-op save is kept locally; return to the main menu and select "Resume Co-op" to restore.')
+      : mpText('对局中请勿刷新页面（刷新会释放战斗内存）。如需继续，请由房主在主菜单继续存档并重新建房。', 'Do not refresh during a run (refresh resets active combat memory). To resume, have the host continue from save and recreate the room.');
   }
   if (e === 'full') return mpText('房间已满或已开始。', 'The room is full or has already started.');
   if (e === 'room' || e === 'expired') return mpText('房间不存在或已过期。', 'Room not found or expired.');
