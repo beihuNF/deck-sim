@@ -756,26 +756,6 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
           {/* 原版 RemotePlayerContainer（左上角玩家状态与邀请码） */}
           {remotePlayers}
 
-          {/* 原版 ReadyAndWaitingPanel：准备后且等待其他玩家时展示 */}
-          {me?.ready && (
-            <div class="ready-and-waiting-panel">
-              <div
-                class="raw-bg"
-                style={{
-                  borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})`,
-                }}
-              />
-              <div class="raw-text">
-                {allReady
-                  ? tr('全员已就绪，即将启程', 'All players ready, embarking')
-                  : tr('等待其他玩家...', 'Waiting for other players...')}
-                <span class="thinky-dots">
-                  <span>.</span><span>.</span><span>.</span>
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* 左下角原版返回按钮 */}
           <BackButton enabled onClick={exit} />
 
@@ -905,26 +885,6 @@ export function MultiplayerLobby({ onBack }: { onBack: () => void }) {
 
           {/* 原版 RemotePlayerContainer（左上角悬浮铭牌与邀请码） */}
           {remotePlayers}
-
-          {/* 原版 ReadyAndWaitingPanel：准备后且等待其他玩家时展示 */}
-          {me?.ready && (
-            <div class="ready-and-waiting-panel">
-              <div
-                class="raw-bg"
-                style={{
-                  borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})`,
-                }}
-              />
-              <div class="raw-text">
-                {allReady
-                  ? tr('全员已就绪，即将启程', 'All players ready, embarking')
-                  : tr('等待其他玩家...', 'Waiting for other players...')}
-                <span class="thinky-dots">
-                  <span>.</span><span>.</span><span>.</span>
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* 左下角原版返回按钮 */}
           <BackButton enabled onClick={exit} />

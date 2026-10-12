@@ -79,12 +79,6 @@ export function BootScreen() {
     return () => window.removeEventListener('keydown', onKey);
   }, [stage]);
 
-  const isZh = document.documentElement.dataset.lang === 'zhs';
-  const rawLoc = loc('main_menu_ui', 'LOADING_OVERLAY.label');
-  const loadingText = (!rawLoc || rawLoc.toUpperCase().includes('LOADING_OVERLAY'))
-    ? (isZh ? '正在加载...' : 'Loading...')
-    : rawLoc;
-
   return (
     <div
       class={`boot-screen ${stage === 'teal' ? 'boot-bg-teal' : ''}`}
@@ -102,11 +96,9 @@ export function BootScreen() {
         </div>
       )}
 
-      {/* 若 Logo 播放完毕或跳过时后台着色器/场景预热尚未完成，展示原版 NLoadingOverlay */}
+      {/* 若 Logo 播放完毕或跳过时后台着色器/场景预热尚未完成，保持静默纯黑过渡等待 */}
       {stage === 'overlay' && !st.ready && (
-        <div class="boot-original-loading-overlay">
-          <div class="boot-loading-text">{loadingText}</div>
-        </div>
+        <div class="boot-original-loading-overlay" />
       )}
     </div>
   );

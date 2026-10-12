@@ -107,29 +107,12 @@ html, body { margin: 0; height: 100%; background: #0b0d10; color: var(--cream); 
   pointer-events: none;
 }
 
-/* 原版 NLoadingOverlay (loading_overlay.tscn) 风格 */
+/* 原版 NLoadingOverlay (loading_overlay.tscn) 风格：纯黑静默遮罩 */
 .boot-original-loading-overlay {
   position: absolute;
   inset: 0;
   background: #000000;
   pointer-events: none;
-}
-.boot-loading-text {
-  position: absolute;
-  right: 48px;
-  bottom: 40px;
-  font: 700 48px/1.2 'Kreon', var(--font);
-  color: #7FFF00; /* 原版 Color(0.498, 1, 0, 1) */
-  -webkit-text-stroke: 4px #153500; /* 原版 font_outline_color */
-  paint-order: stroke fill;
-  text-shadow: 0 0 16px rgba(127, 255, 0, 0.4);
-  letter-spacing: 2px;
-  text-align: right;
-  animation: boot-loading-breathe 2s infinite ease-in-out;
-}
-@keyframes boot-loading-breathe {
-  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 4px rgba(127, 255, 0, 0.3)); }
-  50% { opacity: 1; filter: drop-shadow(0 0 14px rgba(127, 255, 0, 0.7)); }
 }
 .fatal { color: #f88; padding: 20px; white-space: pre-wrap; }
 button { font-family: var(--font); }

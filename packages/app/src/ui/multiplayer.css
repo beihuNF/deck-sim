@@ -459,49 +459,6 @@
   padding: 4px 0;
 }
 
-/* -------------------------------------------------- 原版 ReadyAndWaitingPanel (character_select_screen.tscn) */
-.ready-and-waiting-panel {
-  position: absolute;
-  left: 650px;
-  top: 884px;
-  width: 620px;
-  height: 100px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 25;
-}
-
-.raw-bg {
-  position: absolute;
-  inset: 0;
-  border: 42px solid transparent;
-  border-image-slice: 42 fill;
-  filter: brightness(0) opacity(0.65);
-  pointer-events: none;
-}
-
-.raw-text {
-  position: relative;
-  font: 700 32px/1 'Kreon', var(--font);
-  color: #7FFF00; /* 原版 Color(0.498, 1, 0, 1) */
-  -webkit-text-stroke: 4px #153500;
-  paint-order: stroke fill;
-  text-shadow: 0 0 16px rgba(127, 255, 0, 0.5);
-  letter-spacing: 2px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  animation: raw-breathe 2s infinite ease-in-out;
-}
-
-@keyframes raw-breathe {
-  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 4px rgba(127, 255, 0, 0.3)); }
-  50% { opacity: 1; filter: drop-shadow(0 0 14px rgba(127, 255, 0, 0.7)); }
-}
-
 .thinky-dots {
   display: inline-flex;
   gap: 3px;
