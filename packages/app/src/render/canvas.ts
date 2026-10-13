@@ -224,6 +224,8 @@ export async function prewarmShaders(
       if (res) compiled++;
     } catch {}
     onProgress?.(i + 1, CORE_SHADERS.length, name);
+    // 每次编译后让出事件循环，避免占用主线程造成界面微卡
+    await new Promise((r) => setTimeout(r, 20));
   }
   return { compiled, total: CORE_SHADERS.length };
 }

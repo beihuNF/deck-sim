@@ -254,25 +254,9 @@ async function boot() {
     document.documentElement.style.setProperty('--game-cursor-tilted', `url("${toAbs(tiltCursor)}") 0 0, auto`);
   }
 
-  // 着色器缓存预热 (Prewarm Shader Cache)
-  updateBootProgress({
-    progress: 35,
-    title: appText('bootPrewarmingShaders', lang),
-    detail: 'Compiling GPU Shaders…',
-  });
-
-  await prewarmShaders((cur, total, name) => {
-    const p = 35 + Math.round((cur / total) * 40);
-    updateBootProgress({
-      progress: p,
-      title: appText('bootPrewarmingShaders', lang),
-      detail: `${name} (${cur}/${total})`,
-    });
-  });
-
   // GPU 纹理与核心场景预热
   updateBootProgress({
-    progress: 80,
+    progress: 55,
     title: appText('bootPreloadingAssets', lang),
     detail: 'Menu Background & Scene Visuals',
   });
@@ -281,7 +265,7 @@ async function boot() {
 
   // 挂载存档并初始化规则层
   updateBootProgress({
-    progress: 90,
+    progress: 85,
     title: appText('bootMountingSave', lang),
     detail: 'Mounting IndexedDB Virtual File System…',
   });
@@ -344,6 +328,11 @@ async function boot() {
     if (qs.get('unlock') === 'all') unlockAll(true);
     if (qs.get('tutorials') === 'off') { G.SaveManager.Instance.SetFtuesEnabled(false); G.SaveManager.Instance.SettingsSave.SeenEaDisclaimer = true; }
     window.dispatchEvent(new Event('sts2:boot-ready'));
+    // 进入主菜单后在后台闲时预编译核心着色器，杜绝阻塞首屏启动
+    const idle = typeof window !== 'undefined' && (window as any).requestIdleCallback
+      ? (window as any).requestIdleCallback
+      : (cb: () => void) => setTimeout(cb, 1000);
+    idle(() => { void prewarmShaders(); });
     void loadSteamProfile().then(() => {
       if (steam.profile) void checkCloudSaveSync();
     });
