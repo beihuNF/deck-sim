@@ -14,9 +14,10 @@
     "not_found_handling": "none"
   },
   // Keep this origin stable: players' saves live in their browsers. Cloudflare manages DNS and TLS for the custom domain.
-  "routes": [
-    { "pattern": "sts2.136521.xyz", "custom_domain": true }
-  ],
+  // routes 暂时注释，将 sts2.136521.xyz 转移至 GitHub Pages 测试
+  // "routes": [
+  //   { "pattern": "sts2.136521.xyz", "custom_domain": true }
+  // ],
   "observability": {
     "enabled": true
   },

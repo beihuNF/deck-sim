@@ -1,19 +1,19 @@
 name: Deploy to Cloudflare
 
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - 'packages/**'
+#       - '!packages/core/test/**'
+#       - 'assets/**'
+#       - 'package.json'
+#       - 'pnpm-lock.yaml'
+#       - 'pnpm-workspace.yaml'
+#       - 'tsconfig.base.json'
+#       - 'wrangler.jsonc'
+#       - '.github/workflows/cloudflare.yml'
 on:
-  push:
-    branches: [main]
-    # what ends up in the build; a docs or tooling commit does not redeploy (each deploy makes players refetch the bundle)
-    paths:
-      - 'packages/**'
-      - '!packages/core/test/**'
-      - 'assets/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'tsconfig.base.json'
-      - 'wrangler.jsonc'
-      - '.github/workflows/cloudflare.yml'
   workflow_dispatch:
 
 permissions:

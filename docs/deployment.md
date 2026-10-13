@@ -69,3 +69,18 @@ pnpm exec wrangler secret put STEAM_WEB_API_KEY
 当前重连范围是**原页面仍运行时的网络恢复**。关闭、刷新页面会释放规则层与待选操作的执行状态，暂不能从新页面恢复运行中的战斗；入房会明确拒绝这种状态，避免按初始种子生成一份不同进度。大厅刷新仍能恢复原槽位；登录同一 Steam 账号也能恢复大厅身份。24 小时房间有效期、版本校验与原玩家身份验证继续生效。
 
 本地验证：先启动房间服务，再启动 `pnpm dev`；`CHROME=<路径> MODE=daily node tools/e2e/reconnect.mjs /tmp/reconnect` 检查每日挑战，`MODE=standard` 检查标准模式。浏览器测试使用独立配置，不触碰玩家现有存档。Steam 登录回调单元测试模拟提供方响应，真实账号授权需要玩家在 Steam 页面操作。
+
+## GitHub Pages
+
+GitHub Pages 提供单人游戏和 `/wiki/` 资料站的静态托管（暂不包含基于 Cloudflare Durable Objects 的多人房间服务）。
+
+### 部署步骤
+
+1. 在 GitHub 仓库设置：**Settings → Pages**：
+   - **Source** 选择 **GitHub Actions**。
+   - （可选）若使用自定义域名，在 **Custom domain** 填入你的域名（例如 `sts2.yourdomain.com`），并配置 DNS 记录（CNAME 指向 `<你的用户名>.github.io`）。
+2. 工作流文件位于 `.github/workflows/pages.yml`：
+   - 推送到 `main` 分支时自动构建并发布；
+   - 也可在 **Actions → Deploy to GitHub Pages → Run workflow** 手动触发；
+   - 若通过 Actions 手动触发，支持在输入框直接填入自定义域名以生成 `CNAME` 文件。
+3. 存档同样保存在浏览器 IndexedDB 中，绑定当前访问 Origin。使用稳定自定义域名可保证后续迁移服务商时玩家存档不丢失。

@@ -1,0 +1,78 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - '!packages/core/test/**'
+      - 'assets/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.base.json'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+    inputs:
+      custom_domain:
+        description: 'Custom domain (optional, e.g. game.example.com)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: |
+          npm install --global pnpm@11.22.0
+          pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Prepare GitHub Pages artifacts
+        run: |
+          # 禁用 Jekyll 处理，确保 _headers 等带下划线文件不被忽略，加快静态发布速度
+          touch packages/app/dist/.nojekyll
+
+          # 如果配置了自定义域名，写入 CNAME 文件
+          DOMAIN="${{ inputs.custom_domain || vars.CUSTOM_DOMAIN || 'sts2.136521.xyz' }}"
+          if [ -n "$DOMAIN" ]; then
+            echo "$DOMAIN" > packages/app/dist/CNAME
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/app/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
