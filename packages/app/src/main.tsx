@@ -38,7 +38,7 @@ import { FeedbackScreen, feedbackOpen } from './ui/feedback';
 import { topBarMapPressed } from './ui/map';
 import { fit, turned } from './view';
 import { getKeyboardBindings } from './input/hints';
-import { initGamepadLoop, VirtualCursor, GamepadToast, ControllerFocusHint, ControllerSelectionReticle } from './input/gamepad';
+import { initGamepadLoop, VirtualCursor, ControllerOverlay } from './input/gamepad';
 import { RemoteMouseCursors } from './ui/multiplayer-cursors';
 import { steam, loadSteamProfile } from './steam';
 import { checkCloudSaveSync } from './cloud-save';
@@ -195,9 +195,7 @@ function App() {
       <ModalLayer />
       <Tip />
       {ui.toast && <div class="toast" onClick={() => { ui.toast = ''; invalidate(); }}>{ui.toast}</div>}
-      <GamepadToast />
-      <ControllerSelectionReticle />
-      <ControllerFocusHint />
+      <ControllerOverlay />
       <DevConsole />
     </>
   );

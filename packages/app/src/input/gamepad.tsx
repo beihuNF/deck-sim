@@ -18,6 +18,7 @@ import { ftueActive } from '../ui/ftue';
 import { edge } from '../view';
 import { pingHotkey } from '../ui/combat-hud';
 import { syncControllerFocus } from './peer-input';
+import { logicalRect } from '../ui/tooltip';
 
 // Controller state
 let activeGamepadIndex: number | null = null;
@@ -77,7 +78,7 @@ function showGamepadToast(msg: string) {
   toastTimeout = setTimeout(() => {
     toastMessage = null;
     invalidate();
-  }, 2500);
+  }, 2000);
 }
 
 // Track mouse activity to disable virtual cursor
@@ -726,13 +727,33 @@ export function ControllerFocusHint() {
     const el = getInputDevice() === 'gamepad' ? document.querySelector<HTMLElement>('.input-focus') : null;
     const slider = el?.matches('.sts-bar'), width = slider ? 104 : 48;
     const hint = slider ? `${actionHint('handPrev')} ${actionHint('handNext')}` : actionHint('select');
-    const r = el?.getBoundingClientRect();
+    const lr = logicalRect(el);
     const popupButton = el?.matches('.vp-btn');
-    const next = r && hint && !el?.querySelector('.input-button-hint') ? { x: Math.max(0, Math.min(innerWidth - width - 4, popupButton ? r.right - 24 : r.right + 6)), y: Math.max(0, Math.min(innerHeight - 48, popupButton ? r.bottom - 24 : r.top + r.height / 2 - 24)), hint, width } : null;
+    const next = lr && hint && !el?.querySelector('.input-button-hint') ? {
+      x: Math.max(edge.l, Math.min(edge.r - width - 4, popupButton ? lr[0] + lr[2] - 24 : lr[0] + lr[2] + 6)),
+      y: Math.max(edge.t, Math.min(edge.b - 48, popupButton ? lr[1] + lr[3] - 24 : lr[1] + lr[3] / 2 - 24)),
+      hint,
+      width,
+    } : null;
     setAt(prev => prev?.x === next?.x && prev?.y === next?.y && prev?.hint === next?.hint ? prev : next);
     return true;
   }), []);
-  return at && <div class="controller-focus-hint" style={{ position: 'fixed', left: at.x, top: at.y, width: at.width, height: 48, pointerEvents: 'none', zIndex: 10000 }}><RichText text={at.hint.replaceAll('[img ', '[img size=48 ')} /></div>;
+  return at && (
+    <div
+      class="controller-focus-hint"
+      style={{
+        position: 'absolute',
+        left: `${at.x}px`,
+        top: `${at.y}px`,
+        width: `${at.width}px`,
+        height: '48px',
+        pointerEvents: 'none',
+        zIndex: 10000,
+      }}
+    >
+      <RichText text={at.hint.replaceAll('[img ', '[img size=48 ')} />
+    </div>
+  );
 }
 
 /** 对齐原版 NSelectionReticle 设计的四角金箔折角瞄准框：自适应紧贴手柄选中的目标 */
@@ -749,18 +770,22 @@ export function ControllerSelectionReticle() {
       if (target) setTarget(null);
       return true;
     }
-    const r = el.getBoundingClientRect();
-    if (r.width <= 0 || r.height <= 0 || r.right < 0 || r.left > innerWidth || r.bottom < 0 || r.top > innerHeight) {
+    const lr = logicalRect(el);
+    if (!lr || lr[2] <= 0 || lr[3] <= 0) {
+      if (target) setTarget(null);
+      return true;
+    }
+    if (lr[0] + lr[2] < edge.l || lr[0] > edge.r || lr[1] + lr[3] < edge.t || lr[1] > edge.b) {
       if (target) setTarget(null);
       return true;
     }
     const isMapNode = el.matches('.map-point, .mp');
     const pad = isMapNode ? 8 : 4;
     const next = {
-      x: r.left - pad,
-      y: r.top - pad,
-      w: r.width + pad * 2,
-      h: r.height + pad * 2,
+      x: lr[0] - pad,
+      y: lr[1] - pad,
+      w: lr[2] + pad * 2,
+      h: lr[3] + pad * 2,
     };
     setTarget(prev => {
       if (!prev) return next;
@@ -783,7 +808,7 @@ export function ControllerSelectionReticle() {
     <div
       class="controller-selection-reticle"
       style={{
-        position: 'fixed',
+        position: 'absolute',
         left: `${target.x}px`,
         top: `${target.y}px`,
         width: `${target.w}px`,
@@ -838,28 +863,44 @@ export function GamepadToast() {
     <div
       class="gamepad-toast"
       style={{
-        position: 'fixed',
-        top: '32px',
+        position: 'absolute',
+        top: '40px',
         left: '50%',
         transform: 'translateX(-50%)',
-        background: 'rgba(18, 22, 28, 0.95)',
+        background: 'rgba(18, 22, 28, 0.94)',
         border: '2px solid #efc851',
         borderRadius: '8px',
-        padding: '10px 24px',
+        padding: '8px 22px',
         color: '#fff6e2',
-        fontSize: '22px',
+        fontSize: '20px',
         fontFamily: 'var(--font)',
         fontWeight: 'bold',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.8)',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.85)',
         zIndex: 10000,
         pointerEvents: 'none',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
+        gap: '10px',
+        animation: 'gp-toast-fade 0.2s cubic-bezier(.16, 1, .3, 1)',
       }}
     >
-      <span style={{ color: '#efc851' }}>🎮</span>
+      <span style={{ color: '#efc851', fontSize: '22px' }}>🎮</span>
       <span>{toastMessage}</span>
+    </div>
+  );
+}
+
+/**
+ * Global controller UI layer, ensuring alignment with 1920x1080 stage and device rotation.
+ */
+export function ControllerOverlay() {
+  return (
+    <div class="viewport controller-viewport">
+      <div class="stage-root controller-root">
+        <GamepadToast />
+        <ControllerSelectionReticle />
+        <ControllerFocusHint />
+      </div>
     </div>
   );
 }

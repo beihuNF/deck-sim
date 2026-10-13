@@ -594,6 +594,13 @@ textarea,
    (L55 T43 R72 B21 on the original 320 × 96) drawn (W − 11) × (H − 3); shadow +8 / +8 black at 25 %. */
 .tips-viewport { pointer-events: none; z-index: 200; }
 .tips-root { --bg: transparent; pointer-events: none; clip-path: none; }
+.controller-viewport { pointer-events: none; z-index: 210; }
+.controller-root { --bg: transparent; pointer-events: none; clip-path: none; }
+
+@keyframes gp-toast-fade {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
 /* text tips: flowed into columns by flowTips(); a tip is 359 wide or as wide as its unwrapped title (the Title label
    never wraps, the Description wraps at the width it is given) */
 .hover-tips { position: absolute; left: 0; top: 0; }

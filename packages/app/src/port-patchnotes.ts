@@ -4,9 +4,11 @@ export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
     date: '2026_10_14',
     eng: `[gold][b]Experience & Fixes[/b][/gold]
 • Optimized game startup loading speed and reduced waiting time.
+• Refined mobile controller support, fixing layout and display alignment issues on mobile browsers.
 • Fixed several known bugs and improved stability.`,
     zhs: `[gold][b]体验与修复[/b][/gold]
 • 优化游戏开屏启动速度，大幅减少进入等待时间。
+• 优化移动端手柄支持，修复手机浏览器下手柄提示与聚焦框错位问题。
 • 修复了一些已知问题，优化体验。`,
   },
   {
