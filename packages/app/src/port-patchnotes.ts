@@ -1,6 +1,15 @@
 /** Web port updates, newest first. Add both languages here; original game notes remain in assets/patch_notes. */
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
+    date: '2026_10_14',
+    eng: `[gold][b]Experience & Fixes[/b][/gold]
+• Optimized game startup loading speed and reduced waiting time.
+• Fixed several known bugs and improved stability.`,
+    zhs: `[gold][b]体验与修复[/b][/gold]
+• 优化游戏开屏启动速度，大幅减少进入等待时间。
+• 修复了一些已知问题，优化体验。`,
+  },
+  {
     date: '2026_10_12',
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Optimized co-op networking for lower latency and smoother gameplay.
