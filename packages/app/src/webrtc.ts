@@ -1,17 +1,21 @@
 // WebRTC DataChannel P2P transport with STUN hole punching and dual-stack fallback.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+const customTurnUrls = import.meta.env.VITE_TURN_URLS
+  ? String(import.meta.env.VITE_TURN_URLS).split(',').map((s: string) => s.trim()).filter(Boolean)
+  : [];
+const customTurnUser = import.meta.env.VITE_TURN_USERNAME ? String(import.meta.env.VITE_TURN_USERNAME) : '';
+const customTurnCred = import.meta.env.VITE_TURN_CREDENTIAL ? String(import.meta.env.VITE_TURN_CREDENTIAL) : '';
+
 const ICE_SERVERS: RTCIceServer[] = [
-  // 1. 自建国内高可用 BGP TURN / STUN 节点（深圳机房，极速中继打洞保底）
-  {
-    urls: [
-      'stun:120.24.232.60:3478',
-      'turn:120.24.232.60:3478?transport=udp',
-      'turn:120.24.232.60:3478?transport=tcp',
-    ],
-    username: 'sts2',
-    credential: 'coop2026pass',
-  },
+  // 1. 自建国内高可用 BGP TURN / STUN 节点（通过环境变量注入，防止在公开仓库泄露密钥）
+  ...(customTurnUrls.length && customTurnUser && customTurnCred
+    ? [{
+        urls: customTurnUrls,
+        username: customTurnUser,
+        credential: customTurnCred,
+      }]
+    : []),
   // 2. 国内公共优质 STUN 节点辅助打洞
   { urls: ['stun:stun.qq.com:3478', 'stun:stun.miwifi.com:3478'] },
   // 3. 海外与全网保底 STUN

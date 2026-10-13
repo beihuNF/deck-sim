@@ -55,6 +55,10 @@ jobs:
           pnpm install --frozen-lockfile
 
       - name: Build
+        env:
+          VITE_TURN_URLS: ${{ secrets.TURN_URLS }}
+          VITE_TURN_USERNAME: ${{ secrets.TURN_USERNAME }}
+          VITE_TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
         run: pnpm build
 
       - name: Prepare GitHub Pages artifacts
