@@ -2,11 +2,17 @@
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_10_14',
-    eng: `[gold][b]Experience & Fixes[/b][/gold]
+    eng: `[gold][b]Multiplayer[/b][/gold]
+• Upgraded multiplayer networking to dedicated high-speed relay nodes, significantly improving room creation stability and connection speed.
+
+[gold][b]Experience & Fixes[/b][/gold]
 • Optimized game startup loading speed and reduced waiting time.
 • Refined mobile controller support, fixing layout and display alignment issues on mobile browsers.
 • Fixed several known bugs and improved stability.`,
-    zhs: `[gold][b]体验与修复[/b][/gold]
+    zhs: `[gold][b]多人联机[/b][/gold]
+• 升级多人联机至专属高速中继节点，大幅提升建房成功率与连接稳定性。
+
+[gold][b]体验与修复[/b][/gold]
 • 优化游戏开屏启动速度，大幅减少进入等待时间。
 • 优化移动端手柄支持，修复手机浏览器下手柄提示与聚焦框错位问题。
 • 修复了一些已知问题，优化体验。`,

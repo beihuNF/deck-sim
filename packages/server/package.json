@@ -2,6 +2,16 @@
   "name": "@sts2/server",
   "private": true,
   "type": "module",
-  "scripts": { "check": "tsc -p . --noEmit" },
-  "devDependencies": { "typescript": "^5.9.0" }
+  "scripts": {
+    "check": "tsc -p . --noEmit",
+    "start": "node dist/standalone.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.14",
+    "typescript": "^5.9.0"
+  }
 }

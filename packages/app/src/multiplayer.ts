@@ -20,6 +20,8 @@ export const multiplayer = {
 };
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 
+const defaultRelay = (import.meta.env.VITE_MULTIPLAYER_RELAY as string | undefined)?.trim() || 'https://120.24.232.60';
+
 export function getRelayHost(): string {
   const q = new URLSearchParams(location.search).get('relay');
   const stored = safe(() => localStorage.getItem('sts2_relay'), null);
@@ -28,7 +30,10 @@ export function getRelayHost(): string {
     if (q && q !== stored) safe(() => localStorage.setItem('sts2_relay', q), null);
     return relay.startsWith('http') ? relay.replace(/\/+$/, '') : `${location.protocol}//${relay.replace(/\/+$/, '')}`;
   }
-  return location.origin;
+  if (defaultRelay && (location.hostname.endsWith('github.io') || location.hostname === 'sts2.136521.xyz')) {
+    return defaultRelay;
+  }
+  return defaultRelay || location.origin;
 }
 const API = '/api/multiplayer/rooms';
 export const getApiUrl = (sub = '') => `${getRelayHost()}${API}${sub}`;

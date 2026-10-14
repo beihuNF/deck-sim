@@ -59,6 +59,7 @@ jobs:
           VITE_TURN_URLS: ${{ secrets.TURN_URLS }}
           VITE_TURN_USERNAME: ${{ secrets.TURN_USERNAME }}
           VITE_TURN_CREDENTIAL: ${{ secrets.TURN_CREDENTIAL }}
+          VITE_MULTIPLAYER_RELAY: 'https://120.24.232.60'
         run: pnpm build
 
       - name: Prepare GitHub Pages artifacts
