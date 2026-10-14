@@ -146,6 +146,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Auth profile endpoint
+  if (path === '/api/auth/me') {
+    sendJson(res, { profile: null });
+    return;
+  }
+
   // Invite redirect (/r/CODE or /room/CODE)
   const inviteMatch = /^\/(?:r|room)\/([A-F0-9]{12})\/?$/i.exec(path);
   if (inviteMatch) {
