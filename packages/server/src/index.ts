@@ -500,10 +500,13 @@ wss.on('connection', (ws: WebSocket, req) => {
   ws.on('message', async (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
     if (!room) return;
 
+    console.log(`[WS RECV] Room ${code}, Player ${id}: isBinary=${isBinary}, typeof=${typeof data}, isBuffer=${Buffer.isBuffer(data)}, len=${(data as any)?.length || (data as any)?.byteLength}`);
+
     // Binary message (Protocol 3 packet forwarding)
-    if (isBinary || Buffer.isBuffer(data)) {
+    if (isBinary) {
       const buf = Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer);
       if (room.protocol === 4 || !room.started || buf.length < 10 || buf.length > 128 * 1024) {
+        console.warn(`[WS REJECT P3 BINARY] Room ${code}, Player ${id}: protocol=${room.protocol}, started=${room.started}, buf.len=${buf.length}`);
         ws.close(1008, 'Invalid packet');
         return;
       }
@@ -526,12 +529,14 @@ wss.on('connection', (ws: WebSocket, req) => {
 
     // Text JSON message
     const str = data.toString();
+    console.log(`[WS MSG TEXT] Room ${code}, Player ${id}: ${str.slice(0, 120)}`);
     if (str.length > 1024 * 1024) return ws.close(1009, 'Too large');
 
     let msg: any;
     try {
       msg = JSON.parse(str);
     } catch {
+      console.warn(`[WS REJECT JSON] Room ${code}, Player ${id}: failed to parse JSON: ${str.slice(0, 50)}`);
       ws.close(1008, 'Invalid JSON');
       return;
     }
@@ -574,6 +579,7 @@ wss.on('connection', (ws: WebSocket, req) => {
         msg.bytes[1] !== id || msg.bytes.slice(2, 9).some((b: number) => b !== 0) ||
         !Number.isInteger(msg.to) || (msg.to !== 0 && !room.players.some(p => p.id === msg.to))
       ) {
+        console.warn(`[WS REJECT P4 PACKET] Room ${code}, Player ${id}: type=${msg.type}, seq=${msg.seq}, bytes.len=${msg.bytes?.length}, to=${msg.to}`);
         return ws.close(1008, 'Invalid packet');
       }
 
