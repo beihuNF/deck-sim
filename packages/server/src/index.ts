@@ -1,481 +1,796 @@
-import { DurableObject } from 'cloudflare:workers';
-import { validCharacterSelection } from './selection';
-import { authFetch, steamIdentity, type AuthEnv, type SteamProfile } from './auth';
-export { SteamAuth } from './auth';
+/**
+ * Standalone Node.js multiplayer room & signaling server for sts2-web.
+ * Independent of Cloudflare Workers - can run on any Linux host or inside Docker.
+ */
+import http from 'node:http';
+import crypto from 'node:crypto';
+import { WebSocketServer, WebSocket } from 'ws';
+import { validCharacterSelection } from './selection.js';
 
-interface Env extends AuthEnv { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<WebRoom> }
-interface Player { id: number; token: string; character: string; unlock: string; ready: boolean; maxAscension: number; disconnectedAt?: number; profile?: SteamProfile; instance?: string }
+interface SteamProfile {
+  steamId: string;
+  name: string;
+  avatar: string;
+}
+
+interface Player {
+  id: number;
+  token: string;
+  character: string;
+  unlock: string;
+  ready: boolean;
+  maxAscension: number;
+  disconnectedAt?: number;
+  profile?: SteamProfile;
+  instance?: string;
+}
+
+interface DeliveryChannel {
+  received: number;
+  sent: number;
+  pending: { seq: number; sender: number; bytes: number[] }[];
+}
+
 interface Room {
-  code: string; version: string; mode: string; maxPlayers: number; created: number; started: boolean;
-  seed: string; ascension: number; modifiers: string[]; dailyDate: string; players: Player[]; protocol?: number;
-  saveJson?: string; loadInfo?: any;
+  code: string;
+  version: string;
+  mode: string;
+  maxPlayers: number;
+  created: number;
+  started: boolean;
+  seed: string;
+  ascension: number;
+  modifiers: string[];
+  dailyDate: string;
+  players: Player[];
+  protocol?: number;
+  saveJson?: string;
+  loadInfo?: any;
+  delivery: Record<string, DeliveryChannel>;
+  sockets: Map<number, WebSocket>;
 }
+
 const PREFIX = '/api/multiplayer/rooms';
-const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
-function isPrivateHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' ||
-    hostname.startsWith('192.168.') || hostname.startsWith('10.') ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname) || hostname.endsWith('.local');
+const PORT = Number(process.env.PORT || 8787);
+const HOST = process.env.HOST || '0.0.0.0';
+
+const rooms = new Map<string, Room>();
+const ipCreationCounts = new Map<string, { count: number; at: number }>();
+
+const ALLOWED_ORIGIN = 'https://sts2.136521.xyz';
+
+function isOriginAllowed(origin?: string): boolean {
+  if (!origin) return true; // 允许内部健康探测或非浏览器工具直连（无 Origin 头）
+  if (origin === ALLOWED_ORIGIN) return true;
+  // 允许本地开发与端到端测试
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  return false;
 }
 
-export function getAllowedOrigin(req: Request): string | null {
-  const origin = req.headers.get('Origin');
-  if (!origin) return null;
-  const url = new URL(req.url);
-  if (origin === url.origin) return origin;
-  try {
-    const originUrl = new URL(origin);
-    if (isPrivateHost(url.hostname) && isPrivateHost(originUrl.hostname)) return origin;
-    if (url.hostname.endsWith('.136521.xyz') && originUrl.hostname.endsWith('.136521.xyz')) return origin;
-    if (url.hostname.endsWith('.workers.dev') && originUrl.hostname.endsWith('.workers.dev')) return origin;
-  } catch {}
-  return null;
+function getCorsOrigin(req: http.IncomingMessage): string | null {
+  const origin = req.headers.origin;
+  if (!origin) return ALLOWED_ORIGIN;
+  return isOriginAllowed(origin) ? origin : null;
 }
 
-function withCors(res: Response, req: Request): Response {
-  if (res.status === 101) return res;
-  const allowed = getAllowedOrigin(req);
-  if (!allowed) return res;
-  const headers = new Headers(res.headers);
-  headers.set('Access-Control-Allow-Origin', allowed);
-  headers.set('Vary', 'Origin');
-  return new Response(res.body, {
-    status: res.status,
-    statusText: res.statusText,
-    headers,
+function sendJson(res: http.ServerResponse, body: unknown, status = 200, req?: http.IncomingMessage) {
+  const content = JSON.stringify(body);
+  const origin = req ? getCorsOrigin(req) : ALLOWED_ORIGIN;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store',
+  };
+  if (origin) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With';
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  }
+  res.writeHead(status, headers);
+  res.end(content);
+}
+
+function handleCors(req: http.IncomingMessage, res: http.ServerResponse): boolean {
+  const origin = getCorsOrigin(req);
+  if (!origin) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('Origin not allowed');
+    return false;
+  }
+  res.writeHead(204, {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+  });
+  res.end();
+  return true;
+}
+
+function readBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => {
+      data += chunk;
+      if (data.length > 5 * 1024 * 1024) {
+        req.destroy();
+        reject(new Error('Payload too large'));
+      }
+    });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
   });
 }
 
-export function sameOrigin(req: Request): boolean {
-  const url = new URL(req.url);
-  const origin = req.headers.get('Origin');
-
-  if (origin) {
-    if (origin === url.origin) return true;
-    try {
-      const originUrl = new URL(origin);
-      if (isPrivateHost(url.hostname) && isPrivateHost(originUrl.hostname)) return true;
-      if (url.hostname.endsWith('.136521.xyz') && originUrl.hostname.endsWith('.136521.xyz')) return true;
-      if (url.hostname.endsWith('.workers.dev') && originUrl.hostname.endsWith('.workers.dev')) return true;
-    } catch {}
-    return false;
-  }
-
-  // 现代浏览器跨站安全标头：若来自恶意跨站攻击，Sec-Fetch-Site 必定为 cross-site
-  const fetchSite = req.headers.get('Sec-Fetch-Site');
-  if (fetchSite === 'cross-site') return false;
-  if (fetchSite === 'same-origin' || fetchSite === 'same-site' || fetchSite === 'none') return true;
-
-  // 移动端/微信等 WebKit 内核在同源 fetch 时通常只携带 Referer
-  const referer = req.headers.get('Referer');
-  if (referer) {
-    try {
-      const refUrl = new URL(referer);
-      if (refUrl.origin === url.origin) return true;
-      if (isPrivateHost(url.hostname) && isPrivateHost(refUrl.hostname)) return true;
-      if (url.hostname.endsWith('.136521.xyz') && refUrl.hostname.endsWith('.136521.xyz')) return true;
-      if (url.hostname.endsWith('.workers.dev') && refUrl.hostname.endsWith('.workers.dev')) return true;
-      return false;
-    } catch {
-      return false;
-    }
-  }
-
-  // WebSocket 升级握手在部分移动端浏览器上不发送 Origin，予以放行
-  if (req.headers.get('Upgrade')?.toLowerCase() === 'websocket') {
-    return true;
-  }
-
-  // 兜底：若没有任何跨域特征且 Host 标头匹配当前目标
-  const host = req.headers.get('Host');
-  if (host && (host === url.host || host === url.hostname)) {
-    return true;
-  }
-
-  return false;
+function getChannel(room: Room, id: number): DeliveryChannel {
+  return (room.delivery[id] ??= { received: 0, sent: 0, pending: [] });
 }
-export default {
-  async fetch(req: Request, env: Env) {
-    const path = new URL(req.url).pathname;
 
-    if (req.method === 'OPTIONS' && path.startsWith('/api/')) {
-      const allowed = getAllowedOrigin(req);
-      if (allowed) {
-        return new Response(null, {
-          status: 204,
-          headers: {
-            'Access-Control-Allow-Origin': allowed,
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-            'Access-Control-Max-Age': '86400',
-            'Vary': 'Origin',
-          },
-        });
-      }
+function broadcastRoom(room: Room) {
+  const message = JSON.stringify({
+    type: 'room',
+    code: room.code,
+    mode: room.mode,
+    maxPlayers: room.maxPlayers,
+    started: room.started,
+    saveJson: room.saveJson,
+    loadInfo: room.loadInfo,
+    settings: {
+      ascension: room.ascension ?? 0,
+      modifiers: room.modifiers ?? [],
+      seed: room.seed,
+      dailyDate: room.dailyDate ?? new Date(room.created).toISOString().slice(0, 10),
+    },
+    maxAscension: Math.min(...room.players.map(p => p.maxAscension ?? 0)),
+    players: room.players.map(({ token: _, unlock: __, instance: ___, ...p }) => ({
+      ...p,
+      connected: p.disconnectedAt == null && room.sockets.has(p.id) && room.sockets.get(p.id)?.readyState === WebSocket.OPEN,
+    })),
+  });
+
+  for (const ws of room.sockets.values()) {
+    if (ws.readyState === WebSocket.OPEN) {
+      try { ws.send(message); } catch {}
     }
-
-    const inviteMatch = /^\/(?:r|room)\/([A-F0-9]{12})\/?$/i.exec(path);
-    if (inviteMatch) {
-      const targetUrl = new URL(req.url);
-      targetUrl.pathname = '/';
-      targetUrl.searchParams.set('room', inviteMatch[1].toUpperCase());
-      return Response.redirect(targetUrl.toString(), 302);
-    }
-    if (path.startsWith('/api/auth/')) {
-      try {
-        return withCors(await authFetch(req, env), req);
-      } catch (err: any) {
-        console.error('[auth error]:', err);
-        return withCors(json({ error: 'steam_service', details: String(err?.message || err) }, 503), req);
-      }
-    }
-    if (!path.startsWith('/api/multiplayer/')) return env.ASSETS.fetch(req);
-    if (!sameOrigin(req)) return withCors(json({ error: 'origin' }, 403), req);
-    const identity = await steamIdentity(req, env);
-    const profileHeaders: Record<string, string> = identity ? { 'X-Steam-Profile': JSON.stringify(identity) } : {};
-
-    // 针对国内与亚太地区玩家，提示 Cloudflare 优先在亚太（APAC）机房创建/路由 Durable Object 实例
-    const cf = (req as any).cf;
-    const country = cf?.country as string | undefined;
-    const ray = req.headers.get('cf-ray') || '';
-    const coloMatch = /-([A-Z0-9]+)$/.exec(ray);
-    const colo = (cf?.colo as string | undefined) || (coloMatch ? coloMatch[1] : '');
-    const isApac = !country || ['CN', 'HK', 'MO', 'TW', 'JP', 'KR', 'SG', 'MY', 'VN', 'TH'].includes(country);
-    const roomOpts = isApac ? { locationHint: 'apac' as const } : undefined;
-
-    if (path === PREFIX && req.method === 'POST') {
-      // One small shared limiter for room creation. Game packets never pass through this object.
-      const limit = await env.ROOMS.get(env.ROOMS.idFromName('creation-limit'), roomOpts).fetch(new Request('https://room/limit', {
-        method: 'POST', body: req.headers.get('CF-Connecting-IP') ?? 'local',
-      }));
-      if (!limit.ok) return withCors(limit, req);
-      const code = crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
-      const url = new URL(req.url); url.pathname = `${PREFIX}/${code}`;
-      const body = await req.text();
-      if (body.length > 512 * 1024) return withCors(json({ error: 'request' }, 413), req);
-      const res = await env.ROOMS.get(env.ROOMS.idFromName(code), roomOpts).fetch(new Request(url, { method: 'POST', body, headers: { 'X-Create-Room': '1', 'X-CF-Colo': colo, ...profileHeaders } }));
-      return withCors(res, req);
-    }
-    const m = new RegExp(`^${PREFIX}/([A-F0-9]{12})(/socket)?$`).exec(path);
-    if (!m) return withCors(json({ error: 'room' }, 404), req);
-    const headers = new Headers(req.headers); headers.delete('X-Create-Room'); headers.delete('X-Steam-Profile');
-    if (identity) headers.set('X-Steam-Profile', JSON.stringify(identity));
-    if (colo) headers.set('X-CF-Colo', colo);
-    const res = await env.ROOMS.get(env.ROOMS.idFromName(m[1]), roomOpts).fetch(new Request(req, { headers }));
-    return withCors(res, req);
-  },
-} satisfies ExportedHandler<Env>;
-
-/** Each room owns up to 4 authenticated sockets. Reuse original game packets; no original MOD code is copied. */
-export class WebRoom extends DurableObject<Env> {
-  private room?: Room;
-  private colo = '';
-  private delivery: Record<string, { received: number; sent: number; pending: { seq: number; sender: number; bytes: number[] }[] }> = {};
-  private channel(id: number) { return this.delivery[id] ??= { received: 0, sent: 0, pending: [] }; }
-  private counts = new Map<string, { n: number; at: number }>();
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    ctx.blockConcurrencyWhile(async () => { this.room = await ctx.storage.get<Room>('room'); this.delivery = await ctx.storage.get('delivery') ?? {}; });
   }
-  async fetch(req: Request) {
-    const coloHeader = req.headers.get('X-CF-Colo');
-    if (coloHeader) this.colo = coloHeader;
-    const url = new URL(req.url);
-    if (url.pathname === '/limit') {
-      const ip = await req.text(), now = Date.now();
-      for (const [k, c] of this.counts) if (now - c.at > 60_000) this.counts.delete(k);
-      const c = this.counts.get(ip) ?? { n: 0, at: now };
-      c.n++; this.counts.set(ip, c);
-      return c.n > 5 ? json({ error: 'rate' }, 429) : json({ ok: true });
-    }
-    const code = url.pathname.split('/')[4];
-    const profile = req.headers.has('X-Steam-Profile') ? JSON.parse(req.headers.get('X-Steam-Profile')!) as SteamProfile : undefined;
-    if (this.room && Date.now() - this.room.created > 24 * 60 * 60_000) return json({ error: 'expired' }, 410);
-    if (req.method === 'POST' && !url.pathname.endsWith('/socket')) {
-      let body: any;
-      try { body = await req.json(); } catch { return json({ error: 'request' }, 400); }
-      if (body.protocol === 4 && (typeof body.instance !== 'string' || body.instance.length > 100)) return json({ error: 'request' }, 400);
-      if (typeof body.version !== 'string' || body.version.length > 100) return json({ error: 'version' }, 400);
-      const guestName = typeof body.guestName === 'string' && body.guestName.trim() ? body.guestName.trim().slice(0, 24) : undefined;
-      const effectiveProfile: SteamProfile | undefined = profile || (guestName ? { steamId: '', name: guestName, avatar: '' } : undefined);
-      const mode = typeof body.mode === 'string' && ['standard', 'daily', 'custom', 'load'].includes(body.mode) ? body.mode : 'standard';
-      const maxPlayers = Number.isInteger(body.maxPlayers) && body.maxPlayers >= 2 && body.maxPlayers <= 4 ? body.maxPlayers : 4;
-      if (!this.room) {
-        if (req.headers.get('X-Create-Room') !== '1') return json({ error: 'room' }, 404);
-        this.room = {
-          code, version: body.version, mode, maxPlayers, created: Date.now(), started: false,
-          seed: '', ascension: 0, modifiers: [], dailyDate: new Date().toISOString().slice(0, 10),
-          players: [], protocol: body.protocol === 4 ? 4 : 3,
-          saveJson: typeof body.saveJson === 'string' ? body.saveJson : undefined,
-          loadInfo: body.loadInfo,
-        };
-      }
-      if (this.room.version !== body.version) return json({ error: 'version' }, 409);
-      const existing = this.room.players.find(p => (typeof body.token === 'string' && p.token === body.token)
-        || (profile && p.profile?.steamId === profile.steamId));
-      if (existing) {
-        if (existing.profile && existing.profile.steamId && existing.profile.steamId !== profile?.steamId) return json({ error: 'account' }, 403);
-        // A live engine owns this lease. A fresh page cannot resume action/choice closures from an old engine.
-        if (this.room.started && existing.instance !== body.instance) return json({ error: 'reload' }, 409);
-        if (!this.room.started) {
-          existing.instance = body.instance;
-          if (profile) existing.profile = profile;
-          else if (guestName && (!existing.profile || !existing.profile.steamId)) existing.profile = { steamId: '', name: guestName, avatar: '' };
-        }
-        await this.ctx.storage.put('room', this.room);
-        return json({ code, id: existing.id, token: existing.token, mode: this.room.mode, maxPlayers: this.room.maxPlayers, started: this.room.started, saveJson: this.room.saveJson, loadInfo: this.room.loadInfo });
-      }
-      if (this.room.started) return json({ error: 'full' }, 409);
+}
 
-      // 清理超时离线（超过 45 秒且无连接）的非房主槽位（仅在大厅未开局阶段；开局后保留槽位以便随时断线重连）
-      const now = Date.now();
-      const active = this.room.players.filter(p => {
-        if (p.id === 1) return true;
-        if (this.room?.started) return true;
-        const sockets = this.ctx.getWebSockets(String(p.id));
-        if (sockets.length > 0) return true;
-        if (p.disconnectedAt && now - p.disconnectedAt > 45_000) return false;
-        return true;
-      });
-      if (active.length !== this.room.players.length) {
-        this.room.players = active;
-        await this.ctx.storage.put('room', this.room);
-      }
+// Create HTTP server
+const server = http.createServer(async (req, res) => {
+  const urlStr = req.url ?? '/';
+  const parsed = new URL(urlStr, `http://${req.headers.host || 'localhost'}`);
+  const path = parsed.pathname;
 
-      if (this.room.players.length >= this.room.maxPlayers) return json({ error: 'full' }, 409);
-      const usedIds = new Set(this.room.players.map(p => p.id));
-      let id = 1;
-      while (usedIds.has(id) && id <= this.room.maxPlayers) id++;
-      if (id > this.room.maxPlayers) return json({ error: 'full' }, 409);
-      const token = crypto.randomUUID();
-      this.room.players.push({ id, token, character: 'IRONCLAD', unlock: '', ready: false, maxAscension: 0, profile: effectiveProfile, instance: body.instance });
-      if (this.room.mode === 'daily') for (const p of this.room.players) p.ready = false;
-      await this.ctx.storage.put('room', this.room);
-      await this.ctx.storage.setAlarm(this.room.created + 24 * 60 * 60_000);
-      this.broadcast();
-      return json({ code, id, token, mode: this.room.mode, maxPlayers: this.room.maxPlayers, saveJson: this.room.saveJson, loadInfo: this.room.loadInfo });
-    }
-    if (!this.room || !url.pathname.endsWith('/socket')) return json({ error: 'room' }, 404);
-    if (req.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'socket' }, 400);
-    const player = this.room.players.find(p => p.token === url.searchParams.get('token'));
-    if (!player || (player.profile?.steamId && player.profile.steamId !== profile?.steamId) || (this.room.started && (this.room.protocol !== 4 || player.instance !== url.searchParams.get('instance')))) return json({ error: 'closed' }, 403);
-    const existingSockets = this.ctx.getWebSockets(String(player.id));
-    if (existingSockets.length) {
-      for (const old of existingSockets) old.close(1000, 'Replaced');
-    }
-    player.disconnectedAt = undefined;
-    const pair = new WebSocketPair();
-    pair[1].serializeAttachment({ id: player.id });
-    this.ctx.acceptWebSocket(pair[1], [String(player.id)]);
-    if (this.room.started) {
-      for (const packet of this.channel(player.id).pending) pair[1].send(JSON.stringify({ type: 'packet', ...packet }));
-    }
-    this.broadcast();
-    return new Response(null, { status: 101, webSocket: pair[0] });
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'local';
+  const reqOrigin = req.headers.origin;
+  console.log(`[HTTP ${req.method}] ${path} (from ${clientIp}, origin: ${reqOrigin || 'direct'})`);
+
+  // Block unauthorized cross-origin requests
+  if (reqOrigin && !isOriginAllowed(reqOrigin)) {
+    console.warn(`[HTTP 403] Unauthorized origin blocked: ${reqOrigin}`);
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('Forbidden');
+    return;
   }
-  private broadcast() {
-    if (!this.room) return;
-    const body = JSON.stringify({
-      type: 'room',
-      code: this.room.code,
-      mode: this.room.mode,
-      maxPlayers: this.room.maxPlayers,
-      started: this.room.started,
-      saveJson: this.room.saveJson,
-      loadInfo: this.room.loadInfo,
-      settings: { ascension: this.room.ascension ?? 0, modifiers: this.room.modifiers ?? [], seed: this.room.seed, dailyDate: this.room.dailyDate ?? new Date(this.room.created).toISOString().slice(0, 10) },
-      maxAscension: Math.min(...this.room.players.map(p => p.maxAscension ?? 0)),
-      players: this.room.players.map(({ token: _, unlock: __, instance: ___, ...p }) => ({
-        ...p,
-        connected: p.disconnectedAt == null && this.ctx.getWebSockets(String(p.id)).length > 0,
-      })),
+
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    handleCors(req, res);
+    return;
+  }
+
+  // Health check
+  if (path === '/' || path === '/health') {
+    sendJson(res, { ok: true, server: 'sts2-room', rooms: rooms.size });
+    return;
+  }
+
+  // Auth profile endpoint
+  if (path === '/api/auth/me') {
+    sendJson(res, { profile: null });
+    return;
+  }
+
+  // Invite redirect (/r/CODE or /room/CODE)
+  const inviteMatch = /^\/(?:r|room)\/([A-F0-9]{12})\/?$/i.exec(path);
+  if (inviteMatch) {
+    const code = inviteMatch[1].toUpperCase();
+    res.writeHead(302, { Location: `/?room=${code}` });
+    res.end();
+    return;
+  }
+
+  // Room Creation: POST /api/multiplayer/rooms
+  if (path === PREFIX && req.method === 'POST') {
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'local';
+    const now = Date.now();
+    for (const [k, v] of ipCreationCounts) {
+      if (now - v.at > 60_000) ipCreationCounts.delete(k);
+    }
+    const c = ipCreationCounts.get(clientIp) ?? { count: 0, at: now };
+    c.count++;
+    ipCreationCounts.set(clientIp, c);
+    if (c.count > 15) {
+      sendJson(res, { error: 'rate' }, 429);
+      return;
+    }
+
+    let bodyStr = '';
+    try {
+      bodyStr = await readBody(req);
+    } catch {
+      sendJson(res, { error: 'request' }, 400);
+      return;
+    }
+
+    let body: any;
+    try {
+      body = JSON.parse(bodyStr);
+    } catch {
+      sendJson(res, { error: 'request' }, 400);
+      return;
+    }
+
+    if (typeof body.version !== 'string' || body.version.length > 100) {
+      sendJson(res, { error: 'version' }, 400);
+      return;
+    }
+
+    const code = crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
+    const mode = typeof body.mode === 'string' && ['standard', 'daily', 'custom', 'load'].includes(body.mode) ? body.mode : 'standard';
+    const maxPlayers = Number.isInteger(body.maxPlayers) && body.maxPlayers >= 2 && body.maxPlayers <= 4 ? body.maxPlayers : 4;
+    const guestName = typeof body.guestName === 'string' && body.guestName.trim() ? body.guestName.trim().slice(0, 24) : undefined;
+    const profile = guestName ? { steamId: '', name: guestName, avatar: '' } : undefined;
+
+    const hostToken = crypto.randomUUID();
+    const room: Room = {
+      code,
+      version: body.version,
+      mode,
+      maxPlayers,
+      created: Date.now(),
+      started: false,
+      seed: '',
+      ascension: 0,
+      modifiers: [],
+      dailyDate: new Date().toISOString().slice(0, 10),
+      players: [
+        {
+          id: 1,
+          token: hostToken,
+          character: 'IRONCLAD',
+          unlock: '',
+          ready: false,
+          maxAscension: 0,
+          profile,
+          instance: body.instance,
+        },
+      ],
+      protocol: body.protocol === 4 ? 4 : 3,
+      saveJson: typeof body.saveJson === 'string' ? body.saveJson : undefined,
+      loadInfo: body.loadInfo,
+      delivery: {},
+      sockets: new Map(),
+    };
+
+    rooms.set(code, room);
+    sendJson(res, {
+      code,
+      id: 1,
+      token: hostToken,
+      mode: room.mode,
+      maxPlayers: room.maxPlayers,
+      saveJson: room.saveJson,
+      loadInfo: room.loadInfo,
     });
-    for (const ws of this.ctx.getWebSockets()) {
-      try { ws.send(body); } catch {}
-    }
+    return;
   }
-  async webSocketMessage(ws: WebSocket, data: string | ArrayBuffer) {
-    const id: number = ws.deserializeAttachment().id;
-    if (!this.room) return ws.close(1008, 'Missing room');
-    if (typeof data !== 'string') {
-      if (this.room.protocol === 4 || !this.room.started || data.byteLength < 10 || data.byteLength > 128 * 1024) return ws.close(1008, 'Invalid packet');
-      // Original bus header: one-byte message type followed by little-endian uint64 sender.
-      const envelope = new Uint8Array(data), to = envelope[0], bytes = envelope.subarray(1);
-      if (to !== 0 && !this.room.players.some(p => p.id === to)) return ws.close(1008, 'Invalid recipient');
-      if (bytes[1] !== id || bytes.slice(2, 9).some(x => x !== 0)) return ws.close(1008, 'Invalid sender');
-      const out = new Uint8Array(bytes.length + 1); out[0] = id; out.set(bytes, 1);
-      for (const other of this.ctx.getWebSockets()) if (other !== ws && (to === 0 || other.deserializeAttachment().id === to)) other.send(out.buffer);
+
+  // Room Join: POST /api/multiplayer/rooms/:code
+  const joinMatch = new RegExp(`^${PREFIX}/([A-F0-9]{12})$`).exec(path);
+  if (joinMatch && req.method === 'POST') {
+    const code = joinMatch[1].toUpperCase();
+    const room = rooms.get(code);
+    if (!room) {
+      sendJson(res, { error: 'room' }, 404);
       return;
     }
-    if (data.length > 1024 * 1024) return ws.close(1009, 'Too large');
-    let msg: any;
-    try { msg = JSON.parse(data); } catch { return ws.close(1008, 'Invalid JSON'); }
-    const me = this.room.players.find(p => p.id === id);
-    if (!me) return ws.close(1008, 'Invalid player');
-    if (msg.type === 'ping') { ws.send(JSON.stringify({ type: 'pong', colo: this.colo })); return; }
-    if (msg.type === 'signal') {
-      if (!Number.isInteger(msg.to) || !this.room.players.some(p => p.id === msg.to)) return;
-      const payload = JSON.stringify({ type: 'signal', from: id, data: msg.data });
-      const targets = this.ctx.getWebSockets(String(msg.to));
-      if (targets.length > 0) {
-        for (const t of targets) try { t.send(payload); } catch {}
-      } else {
-        for (const other of this.ctx.getWebSockets()) {
-          try {
-            if (other !== ws && other.deserializeAttachment()?.id === msg.to) other.send(payload);
-          } catch {}
-        }
-      }
+
+    if (Date.now() - room.created > 24 * 60 * 60_000) {
+      rooms.delete(code);
+      sendJson(res, { error: 'expired' }, 410);
       return;
     }
-    if (msg.type === 'ack' && this.room.protocol === 4) {
-      const channel = this.channel(id);
-      if (Number.isSafeInteger(msg.seq) && msg.seq >= 0 && msg.seq <= channel.sent) {
-        channel.pending = channel.pending.filter(p => p.seq > msg.seq);
-        await this.ctx.storage.put('delivery', this.delivery);
-      }
+
+    let bodyStr = '';
+    try {
+      bodyStr = await readBody(req);
+    } catch {
+      sendJson(res, { error: 'request' }, 400);
       return;
     }
-    if ((msg.type === 'packet' || msg.type === 'volatile') && this.room.protocol === 4 && this.room.started) {
-      const channel = this.channel(id);
-      if ((msg.type === 'packet' && (!Number.isSafeInteger(msg.seq) || msg.seq < 1)) || !Array.isArray(msg.bytes) || msg.bytes.length < 9
-        || msg.bytes.length > 32 * 1024 || msg.bytes.some((b: unknown) => !Number.isInteger(b) || Number(b) < 0 || Number(b) > 255)
-        || msg.bytes[1] !== id || msg.bytes.slice(2, 9).some((b: number) => b !== 0)
-        || !Number.isInteger(msg.to) || (msg.to !== 0 && !this.room.players.some(p => p.id === msg.to))) return ws.close(1008, 'Invalid packet');
-      if (msg.type === 'volatile') {
-        for (const other of this.ctx.getWebSockets()) if (other !== ws && (msg.to === 0 || other.deserializeAttachment().id === msg.to)) other.send(JSON.stringify({ type: 'volatile', bytes: msg.bytes, sender: id }));
+
+    let body: any;
+    try {
+      body = JSON.parse(bodyStr);
+    } catch {
+      sendJson(res, { error: 'request' }, 400);
+      return;
+    }
+
+    if (typeof body.version !== 'string' || body.version.length > 100) {
+      sendJson(res, { error: 'version' }, 400);
+      return;
+    }
+
+    if (room.version !== body.version) {
+      sendJson(res, { error: 'version' }, 409);
+      return;
+    }
+
+    const guestName = typeof body.guestName === 'string' && body.guestName.trim() ? body.guestName.trim().slice(0, 24) : undefined;
+    const existing = room.players.find(p => typeof body.token === 'string' && p.token === body.token);
+    if (existing) {
+      if (room.started && existing.instance !== body.instance) {
+        sendJson(res, { error: 'reload' }, 409);
         return;
       }
-      if (msg.seq <= channel.received) { ws.send(JSON.stringify({ type: 'sent', seq: channel.received })); return; }
-      if (msg.seq !== channel.received + 1) return ws.close(1008, 'Packet gap');
-      channel.received = msg.seq;
-      const outgoing: { id: number; packet: { seq: number; sender: number; bytes: number[] } }[] = [];
-      for (const p of this.room.players) if (p.id !== id && (msg.to === 0 || msg.to === p.id)) {
-        const target = this.channel(p.id);
-        if (target.pending.length >= 2048 || Object.values(this.delivery).reduce((sum, c) => sum + c.pending.reduce((n, packet) => n + packet.bytes.length * 4 + 64, 0), 0) + msg.bytes.length * 4 + 64 > 1024 * 1024) {
-          for (const other of this.ctx.getWebSockets()) other.send(JSON.stringify({ type: 'ended', error: 'backlog' }));
-          return;
+      if (!room.started) {
+        existing.instance = body.instance;
+        if (guestName && (!existing.profile || !existing.profile.steamId)) {
+          existing.profile = { steamId: '', name: guestName, avatar: '' };
         }
-        const packet = { seq: ++target.sent, sender: id, bytes: msg.bytes };
-        target.pending.push(packet); outgoing.push({ id: p.id, packet });
       }
-      // Persist before acknowledging the sender or delivering: retries cannot duplicate actions after hibernation.
-      await this.ctx.storage.put('delivery', this.delivery);
-      ws.send(JSON.stringify({ type: 'sent', seq: channel.received }));
-      for (const { id: recipient, packet } of outgoing) for (const other of this.ctx.getWebSockets(String(recipient))) other.send(JSON.stringify({ type: 'packet', ...packet }));
+      sendJson(res, {
+        code,
+        id: existing.id,
+        token: existing.token,
+        mode: room.mode,
+        maxPlayers: room.maxPlayers,
+        started: room.started,
+        saveJson: room.saveJson,
+        loadInfo: room.loadInfo,
+      });
       return;
     }
-    if (msg.type === 'quick_reload' && id === 1 && this.room.started) {
+
+    if (room.started) {
+      sendJson(res, { error: 'full' }, 409);
+      return;
+    }
+
+    // Clean up disconnected unready guests after 45s
+    const now = Date.now();
+    room.players = room.players.filter(p => {
+      if (p.id === 1) return true;
+      if (room.sockets.has(p.id) && room.sockets.get(p.id)?.readyState === WebSocket.OPEN) return true;
+      if (p.disconnectedAt && now - p.disconnectedAt > 45_000) return false;
+      return true;
+    });
+
+    if (room.players.length >= room.maxPlayers) {
+      sendJson(res, { error: 'full' }, 409);
+      return;
+    }
+
+    const usedIds = new Set(room.players.map(p => p.id));
+    let id = 1;
+    while (usedIds.has(id) && id <= room.maxPlayers) id++;
+    if (id > room.maxPlayers) {
+      sendJson(res, { error: 'full' }, 409);
+      return;
+    }
+
+    const token = crypto.randomUUID();
+    const effectiveProfile = guestName ? { steamId: '', name: guestName, avatar: '' } : undefined;
+    room.players.push({
+      id,
+      token,
+      character: 'IRONCLAD',
+      unlock: '',
+      ready: false,
+      maxAscension: 0,
+      profile: effectiveProfile,
+      instance: body.instance,
+    });
+
+    if (room.mode === 'daily') {
+      for (const p of room.players) p.ready = false;
+    }
+
+    broadcastRoom(room);
+    sendJson(res, {
+      code,
+      id,
+      token,
+      mode: room.mode,
+      maxPlayers: room.maxPlayers,
+      saveJson: room.saveJson,
+      loadInfo: room.loadInfo,
+    });
+    return;
+  }
+
+  sendJson(res, { error: 'not_found' }, 404);
+});
+
+// Setup WebSocket Server
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (req, socket, head) => {
+  const reqOrigin = req.headers.origin;
+  if (reqOrigin && !isOriginAllowed(reqOrigin)) {
+    console.warn(`[WS 403] Unauthorized Origin rejected on upgrade: ${reqOrigin}`);
+    socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
+  const urlStr = req.url ?? '/';
+  const parsed = new URL(urlStr, `http://${req.headers.host || 'localhost'}`);
+  const path = parsed.pathname;
+
+  const socketMatch = new RegExp(`^${PREFIX}/([A-F0-9]{12})/socket$`).exec(path);
+  if (!socketMatch) {
+    socket.destroy();
+    return;
+  }
+
+  const code = socketMatch[1].toUpperCase();
+  const room = rooms.get(code);
+  if (!room) {
+    socket.destroy();
+    return;
+  }
+
+  const token = parsed.searchParams.get('token');
+  const instance = parsed.searchParams.get('instance');
+  const player = room.players.find(p => p.token === token);
+
+  if (!player || (room.started && (room.protocol !== 4 || player.instance !== instance))) {
+    socket.destroy();
+    return;
+  }
+
+  wss.handleUpgrade(req, socket, head, ws => {
+    (ws as any).playerId = player.id;
+    (ws as any).roomCode = code;
+    wss.emit('connection', ws, req);
+  });
+});
+
+wss.on('connection', (ws: WebSocket, req) => {
+  const id: number = (ws as any).playerId;
+  const code: string = (ws as any).roomCode;
+  console.log(`[WS OPEN] Room ${code}, Player ${id} connected`);
+  const room = rooms.get(code);
+  if (!room) {
+    console.warn(`[WS REJECT] Room ${code} not found`);
+    ws.close(1008, 'Room not found');
+    return;
+  }
+
+  const player = room.players.find(p => p.id === id);
+  if (!player) {
+    console.warn(`[WS REJECT] Player ${id} not found in room ${code}`);
+    ws.close(1008, 'Player not found');
+    return;
+  }
+
+  // Replace existing socket if reconnected
+  const oldWs = room.sockets.get(id);
+  if (oldWs && oldWs !== ws && oldWs.readyState === WebSocket.OPEN) {
+    console.log(`[WS REPLACE] Replacing old socket for Player ${id} in room ${code}`);
+    oldWs.close(1000, 'Replaced');
+  }
+
+  room.sockets.set(id, ws);
+  player.disconnectedAt = undefined;
+
+  // Re-send pending packets if game started
+  if (room.started) {
+    for (const packet of getChannel(room, id).pending) {
+      ws.send(JSON.stringify({ type: 'packet', ...packet }));
+    }
+  }
+
+  broadcastRoom(room);
+
+  ws.on('message', async (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
+    if (!room) return;
+
+    // Binary message (Protocol 3 packet forwarding)
+    if (isBinary || Buffer.isBuffer(data)) {
+      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer);
+      if (room.protocol === 4 || !room.started || buf.length < 10 || buf.length > 128 * 1024) {
+        ws.close(1008, 'Invalid packet');
+        return;
+      }
+      const to = buf[0];
+      const bytes = buf.subarray(1);
+      if (to !== 0 && !room.players.some(p => p.id === to)) return ws.close(1008, 'Invalid recipient');
+      if (bytes[1] !== id || bytes.subarray(2, 9).some((x: number) => x !== 0)) return ws.close(1008, 'Invalid sender');
+
+      const out = Buffer.alloc(bytes.length + 1);
+      out[0] = id;
+      bytes.copy(out, 1);
+
+      for (const [otherId, otherWs] of room.sockets.entries()) {
+        if (otherWs !== ws && otherWs.readyState === WebSocket.OPEN && (to === 0 || otherId === to)) {
+          otherWs.send(out);
+        }
+      }
+      return;
+    }
+
+    // Text JSON message
+    const str = data.toString();
+    if (str.length > 1024 * 1024) return ws.close(1009, 'Too large');
+
+    let msg: any;
+    try {
+      msg = JSON.parse(str);
+    } catch {
+      ws.close(1008, 'Invalid JSON');
+      return;
+    }
+
+    const me = room.players.find(p => p.id === id);
+    if (!me) return ws.close(1008, 'Invalid player');
+
+    // Ping / Pong
+    if (msg.type === 'ping') {
+      ws.send(JSON.stringify({ type: 'pong', colo: 'SUN' }));
+      return;
+    }
+
+    // WebRTC Signal forwarding (SDP Offer/Answer, ICE Candidates)
+    if (msg.type === 'signal') {
+      if (!Number.isInteger(msg.to) || !room.players.some(p => p.id === msg.to)) return;
+      const targetWs = room.sockets.get(msg.to);
+      if (targetWs && targetWs.readyState === WebSocket.OPEN) {
+        targetWs.send(JSON.stringify({ type: 'signal', from: id, data: msg.data }));
+      }
+      return;
+    }
+
+    // Reliable Protocol 4 ack
+    if (msg.type === 'ack' && room.protocol === 4) {
+      const channel = getChannel(room, id);
+      if (Number.isSafeInteger(msg.seq) && msg.seq >= 0 && msg.seq <= channel.sent) {
+        channel.pending = channel.pending.filter(p => p.seq > msg.seq);
+      }
+      return;
+    }
+
+    // Reliable Protocol 4 game packets & volatile packets
+    if ((msg.type === 'packet' || msg.type === 'volatile') && room.protocol === 4 && room.started) {
+      const channel = getChannel(room, id);
+      if (
+        (msg.type === 'packet' && (!Number.isSafeInteger(msg.seq) || msg.seq < 1)) ||
+        !Array.isArray(msg.bytes) || msg.bytes.length < 9 || msg.bytes.length > 32 * 1024 ||
+        msg.bytes.some((b: unknown) => !Number.isInteger(b) || (b as number) < 0 || (b as number) > 255) ||
+        msg.bytes[1] !== id || msg.bytes.slice(2, 9).some((b: number) => b !== 0) ||
+        !Number.isInteger(msg.to) || (msg.to !== 0 && !room.players.some(p => p.id === msg.to))
+      ) {
+        return ws.close(1008, 'Invalid packet');
+      }
+
+      if (msg.type === 'volatile') {
+        const payload = JSON.stringify({ type: 'volatile', bytes: msg.bytes, sender: id });
+        for (const [otherId, otherWs] of room.sockets.entries()) {
+          if (otherWs !== ws && otherWs.readyState === WebSocket.OPEN && (msg.to === 0 || otherId === msg.to)) {
+            otherWs.send(payload);
+          }
+        }
+        return;
+      }
+
+      if (msg.seq <= channel.received) {
+        ws.send(JSON.stringify({ type: 'sent', seq: channel.received }));
+        return;
+      }
+      if (msg.seq !== channel.received + 1) return ws.close(1008, 'Packet gap');
+
+      channel.received = msg.seq;
+      const outgoing: { recipientId: number; packet: { seq: number; sender: number; bytes: number[] } }[] = [];
+      for (const p of room.players) {
+        if (p.id !== id && (msg.to === 0 || msg.to === p.id)) {
+          const target = getChannel(room, p.id);
+          if (target.pending.length >= 2048) {
+            for (const otherWs of room.sockets.values()) {
+              if (otherWs.readyState === WebSocket.OPEN) otherWs.send(JSON.stringify({ type: 'ended', error: 'backlog' }));
+            }
+            return;
+          }
+          const packet = { seq: ++target.sent, sender: id, bytes: msg.bytes };
+          target.pending.push(packet);
+          outgoing.push({ recipientId: p.id, packet });
+        }
+      }
+
+      ws.send(JSON.stringify({ type: 'sent', seq: channel.received }));
+      for (const { recipientId, packet } of outgoing) {
+        const recipientWs = room.sockets.get(recipientId);
+        if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
+          recipientWs.send(JSON.stringify({ type: 'packet', ...packet }));
+        }
+      }
+      return;
+    }
+
+    // Quick reload (Host only)
+    if (msg.type === 'quick_reload' && id === 1 && room.started) {
       if (typeof msg.saveJson !== 'string' || msg.saveJson.length > 5 * 1024 * 1024) return ws.close(1008, 'Invalid saveJson');
-      for (const p of this.room.players) {
-        const target = this.channel(p.id);
+      for (const p of room.players) {
+        const target = getChannel(room, p.id);
         target.pending = [];
         target.received = 0;
         target.sent = 0;
       }
-      await this.ctx.storage.put('delivery', this.delivery);
-      const reloadPacket = JSON.stringify({
-        type: 'quick_reload',
-        saveJson: msg.saveJson,
-      });
-      for (const client of this.ctx.getWebSockets()) {
-        try { client.send(reloadPacket); } catch {}
-      }
-      return;
-    }
-    if (msg.type === 'leave' && !this.room.started) {
-      if (id === 1) {
-        for (const other of this.ctx.getWebSockets()) if (other !== ws) other.close(1000, 'Host left');
-        await this.ctx.storage.deleteAll(); this.room = undefined;
-      } else {
-        this.room.players = this.room.players.filter(p => p.id !== id);
-        await this.ctx.storage.put('room', this.room); this.broadcast();
-      }
-      ws.close(1000, 'Left');
-      return;
-    }
-    if (msg.type === 'kick' && id === 1 && !this.room.started) {
-      const targetId = Number(msg.targetId);
-      if (targetId && targetId !== 1) {
-        const targetPlayer = this.room.players.find(p => p.id === targetId);
-        if (targetPlayer) {
-          // 先从房间列表中移除该玩家并存储
-          this.room.players = this.room.players.filter(p => p.id !== targetId);
-          await this.ctx.storage.put('room', this.room);
-          // 立即广播最新的房间状态给房主及其他在房玩家
-          this.broadcast();
-          // 向被踢玩家发送通知并安全断开连接
-          const sockets = this.ctx.getWebSockets(String(targetId));
-          for (const s of sockets) {
-            try { s.send(JSON.stringify({ type: 'kicked' })); } catch {}
-            try { s.close(4003, 'Kicked by host'); } catch {}
-          }
+      const reloadPacket = JSON.stringify({ type: 'quick_reload', saveJson: msg.saveJson });
+      for (const client of room.sockets.values()) {
+        if (client.readyState === WebSocket.OPEN) {
+          try { client.send(reloadPacket); } catch {}
         }
       }
       return;
     }
+
+    // Leave room
+    if (msg.type === 'leave' && !room.started) {
+      if (id === 1) {
+        for (const [otherId, otherWs] of room.sockets.entries()) {
+          if (otherId !== 1 && otherWs.readyState === WebSocket.OPEN) {
+            otherWs.close(1000, 'Host left');
+          }
+        }
+        rooms.delete(code);
+      } else {
+        room.players = room.players.filter(p => p.id !== id);
+        room.sockets.delete(id);
+        broadcastRoom(room);
+      }
+      ws.close(1000, 'Left');
+      return;
+    }
+
+    // Kick player (Host only)
+    if (msg.type === 'kick' && id === 1 && !room.started) {
+      const targetId = Number(msg.targetId);
+      if (targetId && targetId !== 1) {
+        room.players = room.players.filter(p => p.id !== targetId);
+        broadcastRoom(room);
+        const targetWs = room.sockets.get(targetId);
+        if (targetWs) {
+          try { targetWs.send(JSON.stringify({ type: 'kicked' })); } catch {}
+          try { targetWs.close(4003, 'Kicked by host'); } catch {}
+          room.sockets.delete(targetId);
+        }
+      }
+      return;
+    }
+
+    // Rename player
     if (msg.type === 'rename' && typeof msg.name === 'string' && msg.name.trim()) {
       const newName = msg.name.trim().slice(0, 24);
       me.profile = { steamId: me.profile?.steamId ?? '', name: newName, avatar: me.profile?.avatar ?? '' };
-      await this.ctx.storage.put('room', this.room);
-      this.broadcast();
+      broadcastRoom(room);
       return;
     }
-    if (msg.type === 'settings' && id === 1 && !this.room.started && this.room.mode !== 'daily' && this.room.mode !== 'load') {
-      if (!Number.isInteger(msg.ascension) || msg.ascension < 0 || msg.ascension > Math.min(...this.room.players.map(p => p.maxAscension ?? 0))
-        || typeof msg.seed !== 'string' || !/^[A-Z0-9_]{0,40}$/.test(msg.seed)
-        || !Array.isArray(msg.modifiers) || msg.modifiers.length > 40 || msg.modifiers.some((m: unknown) => typeof m !== 'string' || !/^[A-Z0-9_]+(:[A-Z0-9_]+)?$/.test(m))
-        || (this.room.mode !== 'custom' && msg.modifiers.length)) return;
-      this.room.ascension = msg.ascension; this.room.seed = msg.seed; this.room.modifiers = msg.modifiers;
-      for (const p of this.room.players) p.ready = false;
-    } else if (msg.type === 'select' && !this.room.started && this.room.mode !== 'load') {
-      if (!validCharacterSelection(msg.character, msg.unlock, this.room.mode === 'daily')) return ws.close(1008, 'Invalid selection');
-      me.character = msg.character; me.unlock = msg.unlock;
+
+    // Settings (Host only)
+    if (msg.type === 'settings' && id === 1 && !room.started && room.mode !== 'daily' && room.mode !== 'load') {
+      if (
+        !Number.isInteger(msg.ascension) || msg.ascension < 0 ||
+        msg.ascension > Math.min(...room.players.map(p => p.maxAscension ?? 0)) ||
+        typeof msg.seed !== 'string' || !/^[A-Z0-9_]{0,40}$/.test(msg.seed) ||
+        !Array.isArray(msg.modifiers) || msg.modifiers.length > 40 ||
+        msg.modifiers.some((m: unknown) => typeof m !== 'string' || !/^[A-Z0-9_]+(:[A-Z0-9_]+)?$/.test(m)) ||
+        (room.mode !== 'custom' && msg.modifiers.length)
+      ) return;
+      room.ascension = msg.ascension;
+      room.seed = msg.seed;
+      room.modifiers = msg.modifiers;
+      for (const p of room.players) p.ready = false;
+      broadcastRoom(room);
+      return;
+    }
+
+    // Select character
+    if (msg.type === 'select' && !room.started && room.mode !== 'load') {
+      const ok = validCharacterSelection(msg.character, msg.unlock, room.mode === 'daily');
+      if (!ok) {
+        console.warn(`[WS REJECT] Room ${code}, Player ${id}: invalid character selection ${msg.character}`);
+        return ws.close(1008, 'Invalid selection');
+      }
+      me.character = msg.character;
+      me.unlock = msg.unlock;
       me.maxAscension = Number.isInteger(msg.maxAscension) ? Math.max(0, Math.min(10, msg.maxAscension)) : 0;
-      this.room.ascension = Math.min(this.room.ascension ?? 0, ...this.room.players.map(p => p.maxAscension ?? 0));
-      // 遵循原版规则：切换角色必须重置准备状态
+      room.ascension = Math.min(room.ascension ?? 0, ...room.players.map(p => p.maxAscension ?? 0));
       me.ready = false;
-    } else if (msg.type === 'ready' && !this.room.started && (this.room.mode === 'load' || validCharacterSelection(me.character, me.unlock, this.room.mode === 'daily'))) {
-      me.ready = msg.ready === true;
-    } else if (msg.type !== 'start' || id !== 1 || this.room.started) return;
-    // StartRunLobby begins as soon as every connected player has readied.
-    if (!this.room.started && this.room.players.length >= 2 && this.room.players.every(p => p.ready)) {
-      // 全员就绪判定：至少 2 人，所有玩家（包括房主自身）全部就绪且连接在线
-      const isValidPlayer = (p: Player) => this.room?.mode === 'load' ? true : validCharacterSelection(p.character, p.unlock, this.room?.mode === 'daily');
-      if (this.room.players.length < 2 || this.room.players.some(p => !p.ready || !isValidPlayer(p) || !this.ctx.getWebSockets(String(p.id)).length)) return;
-      this.room.started = true;
-      this.room.seed ||= crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
-      await this.ctx.storage.put('room', this.room);
-      for (const other of this.ctx.getWebSockets()) other.send(JSON.stringify({
-        type: 'start',
-        mode: this.room.mode,
-        seed: this.room.seed,
-        saveJson: this.room.saveJson,
-        settings: { ascension: this.room.ascension ?? 0, modifiers: this.room.modifiers ?? [], dailyDate: this.room.dailyDate ?? new Date(this.room.created).toISOString().slice(0, 10) },
-        players: this.room.players.map(({ id, character, unlock, profile }) => ({ id, character, unlock, profile })),
-      }));
+      broadcastRoom(room);
       return;
     }
-    await this.ctx.storage.put('room', this.room);
-    this.broadcast();
-  }
-  async webSocketClose(ws: WebSocket, code: number, reason: string) {
-    ws.close(code, reason);
-    if (!this.room) return;
-    const id = ws.deserializeAttachment().id;
-    const player = this.room.players.find(p => p.id === id);
-    if (player && !this.ctx.getWebSockets(String(id)).some(other => other !== ws)) {
-      if (!this.room.started) player.ready = false;
-      player.disconnectedAt = Date.now();
-      await this.ctx.storage.put('room', this.room);
-      if (this.room.started && this.room.protocol !== 4) {
-        for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(JSON.stringify({ type: 'ended' }));
-      } else this.broadcast();
+
+    // Ready status
+    if (msg.type === 'ready' && !room.started && (room.mode === 'load' || validCharacterSelection(me.character, me.unlock, room.mode === 'daily'))) {
+      me.ready = msg.ready === true;
+      broadcastRoom(room);
+      return;
+    }
+
+    // Start run (Host only)
+    if (msg.type === 'start' && id === 1 && !room.started) {
+      const isValidPlayer = (p: Player) => room.mode === 'load' ? true : validCharacterSelection(p.character, p.unlock, room.mode === 'daily');
+      if (
+        room.players.length >= 2 &&
+        room.players.every(p => p.ready && isValidPlayer(p) && room.sockets.get(p.id)?.readyState === WebSocket.OPEN)
+      ) {
+        room.started = true;
+        room.seed ||= crypto.randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase();
+        const startMsg = JSON.stringify({
+          type: 'start',
+          mode: room.mode,
+          seed: room.seed,
+          saveJson: room.saveJson,
+          settings: {
+            ascension: room.ascension ?? 0,
+            modifiers: room.modifiers ?? [],
+            dailyDate: room.dailyDate ?? new Date(room.created).toISOString().slice(0, 10),
+          },
+          players: room.players.map(({ id, character, unlock, profile }) => ({ id, character, unlock, profile })),
+        });
+        for (const otherWs of room.sockets.values()) {
+          if (otherWs.readyState === WebSocket.OPEN) otherWs.send(startMsg);
+        }
+        return;
+      }
+    }
+  });
+
+  ws.on('close', (closeCode: number, reason: Buffer) => {
+    console.log(`[WS CLOSE] Room ${code}, Player ${id}: code=${closeCode}, reason=${reason?.toString() || 'none'}`);
+    room.sockets.delete(id);
+    player.disconnectedAt = Date.now();
+    if (!room.started) player.ready = false;
+
+    if (room.started && room.protocol !== 4) {
+      for (const otherWs of room.sockets.values()) {
+        if (otherWs.readyState === WebSocket.OPEN) otherWs.send(JSON.stringify({ type: 'ended' }));
+      }
+    } else {
+      broadcastRoom(room);
+    }
+  });
+
+  ws.on('error', (err) => {
+    console.error(`[WS ERROR] Room ${code}, Player ${id}:`, err);
+    try { ws.close(); } catch {}
+  });
+});
+
+// Periodic garbage collection for expired rooms
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, room] of rooms.entries()) {
+    // Rooms older than 24 hours
+    if (now - room.created > 24 * 60 * 60_000) {
+      for (const ws of room.sockets.values()) {
+        try { ws.close(1000, 'Room expired'); } catch {}
+      }
+      rooms.delete(code);
+      continue;
+    }
+    // Rooms inactive with 0 connected sockets for > 2 hours
+    const hasOnline = Array.from(room.sockets.values()).some(ws => ws.readyState === WebSocket.OPEN);
+    if (!hasOnline && room.players.every(p => p.disconnectedAt && now - p.disconnectedAt > 2 * 60 * 60_000)) {
+      rooms.delete(code);
     }
   }
-  async webSocketError(ws: WebSocket) { await this.webSocketClose(ws, 1011, 'Connection error'); }
-  async alarm() {
-    for (const ws of this.ctx.getWebSockets()) ws.close(1000, 'Room expired');
-    await this.ctx.storage.deleteAll(); this.room = undefined;
-  }
-}
+}, 60_000);
+
+server.listen(PORT, HOST, () => {
+  console.log(`[sts2-room] Standalone room & signaling server listening on http://${HOST}:${PORT}`);
+});

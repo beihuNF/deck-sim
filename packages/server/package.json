@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsc -p .",
     "check": "tsc -p . --noEmit",
-    "start": "node dist/standalone.js"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
