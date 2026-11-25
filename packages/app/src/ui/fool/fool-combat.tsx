@@ -1,6 +1,6 @@
 // NFoolCombatUi / NFoolArrowUi / NFoolCombatSymbol：愚者的弓、箭矢槽与三旋律（Wah / Cho / Ki）状态界面
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { G, $, list } from '../../game';
 import { imageUrl } from '../../assets';
 import { loc } from '../../i18n';
@@ -207,7 +207,7 @@ export function FoolCombatUi({ me, pcs, out }: { me: any; pcs: any; out: boolean
   }
   if (!everVisible.current) return null;
 
-  const positions = useMemo(() => slotPositions(melodies.length), [melodies.length]);
+  const positions = slotPositions(melodies.length);
 
   return (
     <div class={'fool-ui' + (out ? ' out' : '')} style={{ top: `${615 + view.oy}px` }}>

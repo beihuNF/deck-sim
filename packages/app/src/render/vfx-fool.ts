@@ -164,8 +164,9 @@ NImpaledArrowVfx.Create = (creature: any, arrowSlot: any) => {
       const g = frontVisual && !frontVisual.destroyed
         ? frontVisual.getGlobalTransform(new Matrix(), false)
         : (frontWrap && !frontWrap.destroyed ? frontWrap.getGlobalTransform(new Matrix(), false) : null);
-      const sx = g?.tx ?? cnode(creature)?.VfxSpawnPosition?.X ?? 960;
-      const sy = g?.ty ?? cnode(creature)?.VfxSpawnPosition?.Y ?? 540;
+      const localPos = g && !layer.destroyed ? layer.toLocal({ x: g.tx, y: g.ty }) : null;
+      const sx = localPos?.x ?? cnode(creature)?.VfxSpawnPosition?.X ?? 960;
+      const sy = localPos?.y ?? cnode(creature)?.VfxSpawnPosition?.Y ?? 540;
       const rot = g ? Math.atan2(g.b, g.a) : 0;
 
       if (!layer.destroyed) {
