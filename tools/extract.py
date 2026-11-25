@@ -271,7 +271,8 @@ def main():
         # NDebugAudioManager plays res://debug_audio/<name> (raw mp3/wav; .tres = AudioStreamRandomizer over several)
         out = os.path.join(a.out, 'audio', 'debug'); os.makedirs(out, exist_ok=True); index = {}
         for p in pck.paths(lambda p: p.startswith('debug_audio/') and os.path.splitext(p)[1] in ('.mp3', '.wav', '.ogg')):
-            name = p[len('debug_audio/'):]; open(os.path.join(out, name), 'wb').write(pck.read(p)); index[name] = [name]
+            name = p[len('debug_audio/'):]; dst = os.path.join(out, name); os.makedirs(os.path.dirname(dst), exist_ok=True)
+            open(dst, 'wb').write(pck.read(p)); index[name] = [name]
         for p in pck.paths(lambda p: p.startswith('debug_audio/') and p.endswith('.tres')):
             refs = re.findall(r'path="res://debug_audio/([^"]+)"', pck.read(p).decode('utf-8', 'replace'))
             index[p[len('debug_audio/'):]] = [r for r in refs if r in index]

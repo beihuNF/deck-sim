@@ -175,12 +175,13 @@ def db(names, objs, files):
 
     def cond(c):
         """INST/TRNB condition bytecode: 0x11 guid (push parameter), 0x5?20 f32 lo f32 hi (range test: bit8 negate,
-        bit9 exclusive hi), 0x1?02 (and 0x10 / or 0x11), 0x30 (apply). -> [name, lo, hi, flags] | ['&'|'|', a, b]"""
+        bit9 exclusive hi), 0x0?03 (event stopping state: bit8 negate), 0x1?02 (and 0x10 / or 0x11), 0x30 (apply). -> [name, lo, hi, flags] | ['&'|'|', a, b]"""
         st, i = [], 0
         while i < len(c):
             op = u32(c, i)
             if op == 0x11: st.append(params[G(c[i + 4:i + 20])]['name']); i += 20
             elif op & 0xff == 0x20: st.append([st.pop(), round(f32(c, i + 4), 4), round(f32(c, i + 8), 4), (op >> 8) & 3]); i += 12
+            elif op & 0xff == 0x03: st.append(['__stopping', 1, 1, (op >> 8) & 1]); i += 4
             elif op & 0xff == 0x02: st.append('&' if op >> 8 == 0x10 else '|'); i += 4
             elif op == 0x30: b_, op_, a_ = st.pop(), st.pop(), st.pop(); st.append([op_, a_, b_]); i += 4
             else: raise ValueError(f'condition opcode {op:#x}')
