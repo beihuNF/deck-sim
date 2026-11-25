@@ -72,7 +72,11 @@ export function anyImage(res: string | null | undefined): { url: string } | { fr
   const f = atlasFrame(res);
   if (f) return { frame: f };
   const u = imageUrl(res) ?? imageUrl(res?.replace(/\.tres$/, '.png'));
-  return u ? { url: u } : null;
+  if (u) return { url: u };
+  // ResourceLoader.Exists 在 Web 端恒为 true，energy_fool 等不在 ui_atlas 中的图标需回退到 packed/energy_icons
+  const e = /atlases\/ui_atlas\.sprites\/card\/(energy_\w+)\.tres$/.exec(res ?? '');
+  const eu = e ? imageUrl(`images/packed/energy_icons/${e[1]}.png`) : null;
+  return eu ? { url: eu } : null;
 }
 
 /** An atlas frame as its own image (data URL) for CSS border-image nine-patches; null until the page has loaded. */

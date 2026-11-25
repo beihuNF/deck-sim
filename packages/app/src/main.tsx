@@ -15,6 +15,8 @@ import { acquireSaveLock, forceAcquireSaveLock, saveMetadata } from './saves';
 import './render/vfx-cards';
 import './render/vfx-attacks';
 import './render/vfx-misc';
+import './render/vfx-fool';
+import './ui/fool/byrd-evolution';
 import { loadAudioIndex, setVolumes, resolveSfx } from './audio';
 import { MainMenu } from './ui/menu';
 import { RunScreen } from './ui/run';
