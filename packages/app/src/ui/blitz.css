@@ -1,0 +1,69 @@
+/* 闪电模式选角、问号按钮与规则弹窗样式 */
+.blitz .chs-stat:has(.gold) { display: none; }
+.chs-asc-icon-blitz { position: absolute; left: 669px; top: 757px; width: 71px; height: 77px; object-fit: contain; pointer-events: none; }
+
+.blz-ready-waiting {
+  position: absolute; left: 592px; top: 885px; width: 736px; height: 122px;
+  display: grid; place-items: center; isolation: isolate;
+  color: #7FFF00; font: 700 32px 'Kreon', var(--font); text-align: center;
+}
+.blz-waiting-bg {
+  position: absolute; inset: 0; z-index: -1;
+  border: 42px solid transparent; border-image-slice: 21 fill;
+  filter: brightness(0); opacity: .502; pointer-events: none;
+}
+
+/* 右上角模式说明问号按钮 */
+.mode-info-btn {
+  position: absolute; right: 24px; top: 16px; width: 64px; height: 64px;
+  cursor: pointer; z-index: 5;
+}
+.mode-info-btn img { position: absolute; left: 8px; top: 8px; width: 48px; height: 48px; pointer-events: none; }
+.mib-shadow { filter: brightness(0); opacity: .25; translate: 4px 4px; }
+.mib-icon { mix-blend-mode: plus-lighter; }
+
+/* 闪电 / 恐惧规则确认弹窗 */
+.mode-disclaimer { position: absolute; inset: 0; z-index: 40; }
+.mode-disclaimer.closing { opacity: 0; transition: opacity .2s linear; pointer-events: none; }
+.md-bg {
+  position: absolute; inset: 0; background: #000; opacity: .8;
+  animation: mdBgIn .25s linear both;
+}
+.mode-disclaimer.delayed .md-bg { animation: none; opacity: .8; }
+@keyframes mdBgIn { from { opacity: 0; } to { opacity: .8; } }
+
+.md-panel {
+  position: absolute; left: 596px; top: 125px; width: 728px; height: 830px;
+  animation: mdPanelIn .5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.mode-disclaimer.delayed .md-panel { animation-delay: .8s; }
+@keyframes mdPanelIn { from { opacity: 0; translate: 0 100px; } to { opacity: 1; translate: 0 0; } }
+
+.md-panel-img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.md-content {
+  position: absolute; left: 92px; top: 64px; right: 84px; bottom: 148px;
+  display: flex; flex-direction: column; gap: 24px;
+}
+.md-header {
+  height: 64px; flex: none; display: flex; align-items: center; justify-content: center;
+  font: 700 40px 'Kreon', var(--font); letter-spacing: 3px;
+  color: #EFC851; -webkit-text-stroke: 8px #332D1A; paint-order: stroke fill;
+  text-shadow: 6px 4px 0 rgba(0, 0, 0, .25);
+}
+.md-desc {
+  flex: 1; display: flex; align-items: center;
+  font: 400 26px/1.24 'Kreon', var(--font); letter-spacing: 1px;
+  color: #FFF6E2; text-shadow: 3px 2px 0 rgba(0, 0, 0, .25);
+}
+
+.disc-confirm-btn {
+  position: absolute; left: 195px; top: 695px; width: 338px; height: 68px;
+  cursor: pointer; transform-origin: 169px 34px;
+}
+.dcb-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.dcb-label {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font: 700 32px 'Kreon', var(--font); letter-spacing: 2px;
+  color: #EFC851; -webkit-text-stroke: 6px #332A1A; paint-order: stroke fill;
+  text-shadow: 3px 2px 0 rgba(0, 0, 0, .25);
+}

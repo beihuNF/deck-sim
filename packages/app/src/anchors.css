@@ -56,11 +56,12 @@
 /* ---- daily / custom run (ui/modes.css): the left half is centred on a quarter of the width, the right half on three */
 /* daily Title, Date; custom CustomModeTitle: across the left half, T */
 :is(.dr-title, .dr-date, .cr-title) { margin-left: calc(-.5 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
-/* daily TimeLeft, custom SeedContainer: L,T of the left half */
-:is(.dr-time, .cr-seed) { margin-left: calc(-1 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
+/* daily TimeLeft, custom mode+seed row */
+.dr-time { margin-left: calc(-1 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
+.cr-mode-seed-row { margin-left: calc(-.5 * var(--ox)); margin-top: calc(-1 * var(--oy)); }
 /* daily CharacterContainer, ModifiersLabel, ModifiersContainer: centre of the left half */
 :is(.dr-char-icon, .dr-asc-icon, .dr-asc-num, .dr-char-name, .dr-player-name, .dr-ready-tick, .daily-coop .remote-player-container, .dr-mods-label, .dr-mods) { margin-left: calc(-.5 * var(--ox)); }
-.dr-disclaimer { margin-top: var(--oy); }
+.dr-disclaimer, .cr-disclaimer { margin-top: var(--oy); }
 .dr-ready-waiting { margin-left: var(--ox); margin-top: var(--oy); }
 /* daily_run_leaderboard.tscn: centre of the right half */
 :is(.dr-lb-title, .dr-lb-day, .dr-lb-none, .dr-lb-scores, .dr-lb-arrow) { margin-left: calc(.5 * var(--ox)); }
@@ -69,9 +70,15 @@
 /* custom AscensionPanel (its .chs-asc is already bottom-anchored), CharSelectButtons: C,B of the left half */
 .cr-asc { margin-left: calc(-.5 * var(--ox)); }
 .cr-buttons { margin-left: calc(-.5 * var(--ox)); margin-top: var(--oy); }
-/* custom ModifiersTitle: T; modifiers_list.tscn Content: 0.979 of the list (ui/modes.tsx sizes the scroll area) */
-.cr-mods-title { margin-top: calc(-1 * var(--oy)); }
+/* custom ModifiersHeader: T; modifiers_list.tscn Content: 0.979 of the list (ui/modes.tsx sizes the scroll area) */
+.cr-mods-header { margin-top: calc(-1 * var(--oy)); }
 .cr-mod-list { width: calc(671.4px + .979 * var(--ox)); }
+/* blitz / dread info button, disclaimer, dread records & rotating tickbox */
+.mode-info-btn { margin-left: var(--ox); margin-top: calc(-1 * var(--oy)); }
+.mode-disclaimer > .md-bg { inset: calc(-1 * var(--oy)) calc(-1 * var(--ox)); }
+.drd-rot-tickbox { margin-top: var(--oy); }
+.drd-score-container { margin-left: calc(-1 * var(--ox)); margin-top: var(--oy); }
+.blz-ready-waiting { margin-top: var(--oy); }
 
 /* ---- profiles, credits (ui/profile.css) */
 /* ChooseProfileMessage: C,T; DeleteProfileButton1–3: C,B; LoadingOverlay's Label: R,B */

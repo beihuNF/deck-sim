@@ -20,7 +20,8 @@ import { setTip, setTips, hoverTipsOf } from './tooltip';
 import { inspectCard } from './cards-view';
 import { merchantBackdrop, fakeMerchantBackdrop } from '../render/scene';
 import { creatureSpine, visualsKey } from '../render/stage';
-import { bubbles, type MerchantView, type FakeMerchantView } from '../bridge';
+import { bubbles, type MerchantView, type BlitzMerchantView, type FakeMerchantView } from '../bridge';
+import { BlitzShopScreen, type BlitzShopView } from './blitz-shop';
 import { noise } from './screenshake';
 import { SpeechBubble } from './creature-ui';
 import { TargetingArrow, TintFilters, usePointer } from './cardlayer';
@@ -38,9 +39,10 @@ const reticle = (view: ShopView) => (r: any) => { view.MerchantButton.reticle = 
 /** The top of SceneContainer in the backdrop: scenes added to the room's container (the Foul Potion's splash) play there. */
 const withSceneFx = (view: ShopView) => (c: Container | null) => { if (c) { const fx = new Container(); c.addChild(fx); view.MerchantButton.scene.layer = fx; } return c; };
 
-export function ShopScreen({ view }: { view: MerchantView }) {
-  const players = safe(() => list(view.players), []);
-  return <ShopRoom view={view} backdrop={() => merchantBackdrop(players, outlineSkin(view), reticle(view)).then(withSceneFx(view))} />;
+export function ShopScreen({ view }: { view: MerchantView | BlitzMerchantView }) {
+  if ((view as any).isBlitz) return <BlitzShopScreen view={view as unknown as BlitzShopView} />;
+  const players = safe(() => list((view as MerchantView).players), []);
+  return <ShopRoom view={view as MerchantView} backdrop={() => merchantBackdrop(players, outlineSkin(view as MerchantView), reticle(view as MerchantView)).then(withSceneFx(view as MerchantView))} />;
 }
 
 /**

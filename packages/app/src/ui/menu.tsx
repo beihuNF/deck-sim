@@ -11,6 +11,8 @@ import { loc, locv, locExists, appText } from '../i18n';
 import { continueRun, abandonRun } from '../flow';
 import { openTimeline, revealableCount, Timeline } from './timeline';
 import { DailyRun, CustomRun } from './modes';
+import { BlitzSelect } from './blitz';
+import { DreadSelect } from './dread';
 import { Profiles } from './profile';
 import { PatchNotes } from './patchnotes';
 import { RichText } from './richtext';
@@ -101,6 +103,8 @@ export function MainMenu() {
       )}
       {top === 'singleplayer' && <SingleplayerSubmenu />}
       {top === 'charselect' && <CharSelect />}
+      {top === 'blitz' && <BlitzSelect />}
+      {top === 'dread' && <DreadSelect />}
       {top === 'settings' && <SettingsScreen inRun={false} onBack={popMenu} />}
       {/* NSubmenuStack.Push hides the compendium while one of its screens (ui.subscreen) is up */}
       {top === 'compendium' && !ui.subscreen && <CompendiumSubmenu onBack={popMenu} />}
@@ -226,8 +230,8 @@ function MainMenuTextButton({ row, onFocus, onUnfocus, children }: { row: Row; o
 }
 
 // ------------------------------------------------------------------ continue-run info
-interface RunInfo { saved: string; icon: string | null; progress: string; ascension: string | null; hp: string; gold: string }
-/** NContinueRunInfo.ShowInfo from the saved run (null when the save cannot be read). */
+interface RunInfo { saved: string; icon: string | null; progress: string; ascension: string | null; hp: string; gold: string | null }
+/** NContinueRunInfo.ShowInfo：按 GameMode 与 IsCustomGame 展示模式标签，闪电模式隐藏金币 */
 function continueInfo(): RunInfo | null {
   return safe(() => {
     const res = G.SaveManager.Instance.LoadRunSave();
@@ -239,13 +243,23 @@ function continueInfo(): RunInfo | null {
     for (let i = 0; i < save.CurrentActIndex; i++) floor += G.ModelDb.GetById(G.ActModel, acts[i].Id).GetNumberOfFloors(list(save.Players).length > 1);
     const act = G.ModelDb.GetById(G.ActModel, acts[save.CurrentActIndex].Id).Title.GetFormattedText();
     const ch = G.ModelDb.GetById(G.CharacterModel, p.CharacterId);
+    const tags: string[] = [];
+    if (save.GameMode === G.GameMode.Dread) {
+      tags.push(`[aqua]${m('CONTINUE_RUN_INFO.dread')}[/aqua]`);
+      if (save.IsCustomGame) tags.push(m('CONTINUE_RUN_INFO.custom'));
+    } else {
+      if (save.GameMode === G.GameMode.Daily) tags.push(m('CONTINUE_RUN_INFO.daily'));
+      else if (save.GameMode === G.GameMode.Blitz) tags.push(m('CONTINUE_RUN_INFO.blitz'));
+      if (save.IsCustomGame) tags.push(m('CONTINUE_RUN_INFO.custom'));
+      if (save.Ascension > 0) tags.push(`[orange]${m('CONTINUE_RUN_INFO.ascension')} ${save.Ascension}[/orange]`);
+    }
     return {
       saved,
       icon: imageUrl(`images/ui/top_panel/character_icon_${String(ch.Id.Entry).toLowerCase()}.png`),
       progress: `${act} [blue]- ${m('CONTINUE_RUN_INFO.floor')} ${floor}[/blue]`,
-      ascension: save.Ascension > 0 ? `${m('CONTINUE_RUN_INFO.ascension')} ${save.Ascension}` : null,
+      ascension: tags.length ? tags.join(' ') : null,
       hp: `[red]${p.CurrentHp}/${p.MaxHp}[/red]`,
-      gold: `[gold]${p.Gold}[/gold]`,
+      gold: save.GameMode === G.GameMode.Blitz ? null : `[gold]${p.Gold}[/gold]`,
     };
   }, null);
 }
@@ -261,7 +275,7 @@ function ContinueRunInfo({ run, shown }: { run: RunInfo; shown: boolean }) {
         {run.ascension && <div class="mri-asc"><RichText text={run.ascension} /></div>}
         <div class="mri-row">
           <div style={tb('top_bar_heart')} /><div class="mri-hp"><RichText text={run.hp} /></div>
-          <div style={tb('top_bar_gold')} /><div class="mri-gold"><RichText text={run.gold} /></div>
+          {run.gold != null && <><div style={tb('top_bar_gold')} /><div class="mri-gold"><RichText text={run.gold} /></div></>}
         </div>
       </div>
     </div>
@@ -348,16 +362,22 @@ function PortLinks() {
 
 // ------------------------------------------------------------------ singleplayer submenu
 /**
- * NSingleplayerSubmenu: Standard, Daily and Custom (330 × 705 NSubmenuButtons at x 395 / 795 / 1195, y 187) over the
- * blurred menu, and the back button. Daily / Custom need their epochs.
+ * NSingleplayerSubmenu：标准、每日挑战、闪电、恐惧（解锁 DreadEpoch 后可见，且容器缩放至 0.85）与自定义
  */
 function SingleplayerSubmenu() {
-  const daily = epochRevealed(G.DailyRunEpoch), custom = epochRevealed(G.CustomAndSeedsEpoch);
+  const daily = epochRevealed(G.DailyRunEpoch);
+  const blitz = epochRevealed(G.BlitzEpoch);
+  const dread = epochRevealed(G.DreadEpoch);
+  const custom = epochRevealed(G.CustomAndSeedsEpoch);
   return (
     <div class="sp-submenu">
-      <SubmenuButton x={395} keyPrefix="STANDARD" icon="submenu_standard" hsv={[0, 0.8, 0.8]} enabled onClick={() => pushMenu('charselect')} />
-      <SubmenuButton x={795} keyPrefix="DAILY" icon="submenu_daily" hsv={[0.48, 0.8, 0.7]} enabled={daily} onClick={() => pushMenu('daily')} />
-      <SubmenuButton x={1195} keyPrefix="CUSTOM" icon="submenu_custom" hsv={[0.93, 1.2, 0.65]} enabled={custom} onClick={() => pushMenu('custom')} />
+      <div class="sp-button-container" style={dread ? { transform: 'scale(0.85)' } : undefined}>
+        <SubmenuButton keyPrefix="STANDARD" icon="submenu_standard" hsv={[0, 0.8, 0.8]} enabled onClick={() => pushMenu('charselect')} />
+        <SubmenuButton keyPrefix="DAILY" icon="submenu_daily" hsv={[0.48, 0.8, 0.7]} enabled={daily} onClick={() => pushMenu('daily')} />
+        <SubmenuButton keyPrefix="BLITZ" icon="submenu_blitz" hsv={[0.24, 1.0, 0.7]} enabled={blitz} onClick={() => pushMenu('blitz')} />
+        {dread && <SubmenuButton keyPrefix="DREAD" icon="submenu_dread" hsv={[0.75, 1.0, 0.65]} enabled onClick={() => pushMenu('dread')} />}
+        <SubmenuButton keyPrefix="CUSTOM" icon="submenu_custom" hsv={[0.93, 1.2, 0.65]} enabled={custom} onClick={() => pushMenu('custom')} />
+      </div>
       <BackButton enabled onClick={popMenu} />
     </div>
   );
@@ -369,7 +389,7 @@ function SingleplayerSubmenu() {
  * the panel desaturated, the icon half grey, the lock and the LOCKED description.
  */
 export function SubmenuButton({ x, keyPrefix, icon, hsv, enabled, onClick, title, desc }: {
-  x: number; keyPrefix?: string; icon: string; hsv: number[]; enabled: boolean; onClick: () => void;
+  x?: number; keyPrefix?: string; icon: string; hsv: number[]; enabled: boolean; onClick: () => void;
   title?: string; desc?: string;
 }) {
   const [hover, setHover] = useState(false);
@@ -391,7 +411,7 @@ export function SubmenuButton({ x, keyPrefix, icon, hsv, enabled, onClick, title
     return '';
   }, [desc, keyPrefix, enabled]);
   return (
-    <div class={'submenu-btn' + (enabled ? '' : ' disabled') + (hover ? ' hover' : '')} style={{ left: `${x}px` }}
+    <div class={'submenu-btn' + (enabled ? '' : ' disabled') + (hover ? ' hover' : '') + (x == null ? ' flow' : '')} style={x != null ? { left: `${x}px` } : undefined}
       onPointerEnter={() => { if (!enabled) return; setHover(true); playOneShot('event:/sfx/ui/clicks/ui_hover'); }}
       onPointerLeave={() => { setHover(false); setDown(false); }}
       onPointerDown={(e) => { if (enabled && e.button === 0) { setDown(true); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
@@ -400,7 +420,7 @@ export function SubmenuButton({ x, keyPrefix, icon, hsv, enabled, onClick, title
         style={{ filter: `${hsvFilter(hsv[0], 1, 1)} saturate(${s}) brightness(${v})`, transition: hover ? 'none' : 'filter 1s cubic-bezier(0.16, 1, 0.3, 1)' }} />
       <div class="smb-title">{t}</div>
       <img class="smb-icon" src={imageUrl(`images/ui/main_menu/${icon}.png`) ?? ''} />
-      {!enabled && <img class="smb-icon smb-lock" src={imageUrl('images/ui/main_menu/submenu_lock.png') ?? ''} />}
+      {!enabled && <img class="smb-icon smb-lock" src={imageUrl('images/ui/main_menu/submenu_locked.png') ?? ''} />}
       <div class="smb-desc"><RichText text={d} /></div>
     </div>
   );

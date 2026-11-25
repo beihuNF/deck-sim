@@ -8,19 +8,39 @@ export const setAspect = (page) => page.evaluate((a) => {
   window.G.SaveManager.Instance.SettingsSave.AspectRatioSetting = window.G.AspectRatioSetting[a];
   window.dispatchEvent(new Event('resize'));
 }, process.env.ASPECT ?? '');
-export async function toCharSelect(page) {
+export async function toCharSelect(page, mode = (process.env.MODE ?? 'standard').toLowerCase()) {
   // a fresh profile's first menu opens NEarlyAccessDisclaimer in the modal container
   if (await page.waitForSelector('.ea-proceed', { timeout: 1500 }).catch(() => null)) {
     await page.click('.ea-proceed');
     await page.waitForSelector('.ea-panel', { state: 'detached' });
   }
+  if (mode !== 'standard') {
+    await page.evaluate(() => {
+      const G = window.G;
+      const p = G?.SaveManager?.Instance?.Progress;
+      if (p && p.NumberOfRuns < 1) {
+        const s = p.GetOrCreateCharacterStats(G.ModelDb.Character(G.Ironclad).Id);
+        s.TotalLosses = (s.TotalLosses ?? 0) + 1;
+      }
+    });
+  }
   await page.click('.mm-single_player');
-  // the first run goes straight to character select; later ones through the singleplayer submenu's Standard
+  // the first run goes straight to character select; later ones through the singleplayer submenu
   await page.waitForSelector('.charselect, .sp-submenu');
-  if (await page.$('.sp-submenu')) await page.click('.submenu-btn >> nth=0');
+  if (await page.$('.sp-submenu')) {
+    const idx = mode === 'blitz' ? 2 : mode === 'dread' ? 3 : 0;
+    await page.click(`.submenu-btn >> nth=${idx}`);
+  }
   await page.waitForSelector('.charselect .confirm-btn.shown');
 }
 export async function embark(page, char) {
+  // 模式说明弹窗（Blitz / Dread）：有延迟淡入，先等容器出现再点击确认按钮
+  if (await page.waitForSelector('.mode-disclaimer', { timeout: 2500 }).catch(() => null)) {
+    await page.waitForSelector('.disc-confirm-btn', { state: 'visible', timeout: 6000 });
+    await page.waitForTimeout(300);
+    await page.click('.disc-confirm-btn');
+    await page.waitForSelector('.mode-disclaimer', { state: 'detached' }).catch(() => {});
+  }
   // v0.113.1 NCharacterSelectScreen.TryShowAscensionSinglePlayerFtue: 已解锁进阶且开启教程时弹出 FTUE
   if (await page.waitForSelector('.ftue-confirm', { timeout: 1500 }).catch(() => null)) {
     await page.click('.ftue-confirm');

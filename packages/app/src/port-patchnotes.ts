@@ -1,6 +1,17 @@
 /** Web port updates, newest first. Add both languages here; original game notes remain in assets/patch_notes. */
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
+    date: '2026_11_25',
+    eng: `[gold][b]New Game Modes[/b][/gold]
+• Added Blitz mode with its streamlined top-bar map, dedicated Blitz Merchant shop, and mode unlock screen.
+• Added Dread mode with Dominion boss powers, dread visuals, and mode unlock screen.
+• Updated Custom mode setup and character selection memory, and adapted the top bar, run history, and game over summary for all game modes.`,
+    zhs: `[gold][b]全新游戏模式[/b][/gold]
+• 新增闪电（Blitz）模式，支持顶栏精简路线图、专属闪电商店及模式解锁提示。
+• 新增恐惧（Dread）模式，支持主宰（Dominion）首领强化能力、恐惧视觉表现及模式解锁提示。
+• 升级自定义模式设置与角色选择记忆，并完善顶栏、战绩历史与结算界面对各模式的展示支持。`,
+  },
+  {
     date: '2026_10_14',
     eng: `[gold][b]Multiplayer[/b][/gold]
 • Upgraded multiplayer networking to dedicated high-speed relay nodes, significantly improving room creation stability and connection speed.

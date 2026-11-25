@@ -112,7 +112,7 @@ export function DailyRun({ lobby }: { lobby?: DailyLobby }) {
       <div class="dr-char-name">{fmt(d.character.Title)}</div>
       {lobby && <>
         <div class="dr-player-name">{lobby.playerName}</div>
-        {lobby.ready && <div class="dr-ready-tick" style={{ ...frameStyle(frameByName('compressed', 'confirm_button_tick'), 64, 64), filter: tint(0.498, 1, 0) }} />}
+        {lobby.ready && <div class="dr-ready-tick" style={{ ...frameStyle(frameByName('compressed_atlas', 'confirm_button_tick'), 64, 64), filter: tint(0.498, 1, 0) }} />}
         {lobby.players}
       </>}
       <div class="dr-mods-label">{m('DAILY_RUN_MENU.MODIFIERS')}</div>
@@ -199,9 +199,17 @@ function ScoreWarning() {
 }
 
 // ------------------------------------------------------------------ custom
-/** Kept between visits like the cached screen's LineEdit and tickboxes. */
-const custom = { seed: '', mods: new Set<string>() };
+/** 记住单人自定义界面的输入与选择（对应被缓存的 NCustomRunScreen） */
+const custom = { seed: '', mods: new Set<string>(), gameMode: 1 /* GameMode.Standard */ };
 interface ModRow { key: string; make: () => any; text: string; canonical: any }
+export type CustomGameModeName = 'standard' | 'blitz' | 'dread';
+const toGameModeNum = (name?: CustomGameModeName) =>
+  name === 'blitz' ? G.GameMode.Blitz : name === 'dread' ? G.GameMode.Dread : G.GameMode.Standard;
+const toGameModeName = (num: number): CustomGameModeName =>
+  num === G.GameMode.Blitz ? 'blitz' : num === G.GameMode.Dread ? 'dread' : 'standard';
+const gameModeTitle = (mode: number) =>
+  m(mode === G.GameMode.Blitz ? 'BLITZ.title' : mode === G.GameMode.Dread ? 'DREAD.title' : 'STANDARD.title');
+
 /** NCustomRunModifiersList.GetAllModifiers: good then bad, CharacterCards once per character. */
 export function allModifiers(): ModRow[] {
   const out: ModRow[] = [];
@@ -249,26 +257,126 @@ export interface CustomLobby {
   modifiers: string[];
   selectedCharacter: string;
   ready: boolean;
+  gameMode?: CustomGameModeName;
+  availableGameModes?: CustomGameModeName[];
+  characterPool?: any[];
   players: ComponentChildren;
   onSelectCharacter: (charEntry: string) => void;
-  onConfigure: (settings: { seed?: string; ascension?: number; modifiers?: string[] }) => void;
+  onConfigure: (settings: { seed?: string; ascension?: number; modifiers?: string[]; gameMode?: CustomGameModeName }) => void;
   onReady: () => void;
   onBack: () => void;
+}
+
+/** NCustomGameModeDropdown：自定义局子模式下拉框（标准 / 闪电 / 恐惧） */
+function CustomGameModeDropdown({
+  value,
+  options,
+  disabled,
+  onChange,
+}: {
+  value: number;
+  options: number[];
+  disabled: boolean;
+  onChange: (mode: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hot, setHot] = useState(false);
+  return (
+    <div class={'cr-dropdown' + (disabled ? ' disabled' : '')}>
+      {open && <div class="std-dismiss" onPointerDown={(e) => e.stopPropagation()} onPointerUp={() => setOpen(false)} />}
+      <div
+        class="std-face"
+        data-ctl
+        style={{ background: hot && !disabled ? '#3C5B6B' : '#2C434F' }}
+        onPointerEnter={() => { if (!disabled) { setHot(true); hoverSfx(); } }}
+        onPointerLeave={() => setHot(false)}
+        onPointerUp={() => { if (!disabled) { clickSfx(); setOpen((v) => !v); } }}
+      >
+        <div class="std-label">{gameModeTitle(value)}</div>
+        {!disabled && <div class="std-arrow" style={frameStyle(frameByName('ui_atlas', 'settings_tiny_left_arrow'), 26, 26)} />}
+      </div>
+      {open && (
+        <div class="std-list" onWheel={(e) => e.stopPropagation()}>
+          {options.map((mode) => (
+            <div
+              key={mode}
+              class="std-item"
+              data-ctl
+              onPointerEnter={hoverSfx}
+              onPointerUp={() => {
+                setOpen(false);
+                if (mode !== value) onChange(mode);
+              }}
+            >
+              {gameModeTitle(mode)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** NCustomRunRandomizeButton：随机挑选角色（单人）与 2 好 1 坏词缀 */
+function CustomRunRandomizeButton({ disabled, onClick }: { disabled: boolean; onClick: () => void }) {
+  const [st, setSt] = useState<'' | 'hover' | 'press'>('');
+  const s = st === 'hover' && !disabled ? 1.1 : 1;
+  const v = st === 'hover' && !disabled ? 1.1 : st === 'press' && !disabled ? 0.7 : 0.8;
+  return (
+    <div
+      class={'cr-randomize-btn' + (disabled ? ' disabled' : '')}
+      data-ctl
+      onPointerEnter={() => { if (!disabled) { setSt('hover'); hoverSfx(); } }}
+      onPointerLeave={() => setSt('')}
+      onPointerDown={(e) => { if (!disabled && e.button === 0) { setSt('press'); clickSfx(); } }}
+      onPointerUp={(e) => { if (!disabled && e.button === 0 && st === 'press') { setSt('hover'); onClick(); } }}
+    >
+      <img
+        class="crr-bg"
+        src={imageUrl('images/ui/reward_screen/reward_item_button.png') ?? ''}
+        style={{ filter: `saturate(${s}) brightness(${v})` }}
+      />
+      <div class="crr-label">{m('CUSTOM_RUN_SCREEN.RANDOMIZE')}</div>
+    </div>
+  );
 }
 
 export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
   const chars = characters();
   const all = useMemo(allModifiers, []);
-  // 单人本地状态
   const [singleSel, setSingleSel] = useState(chars[0].c);
+  const [singleMode, setSingleMode] = useState<number>(() => custom.gameMode || G.GameMode.Standard);
   const [busy, setBusy] = useState(false);
-  const singleMax = maxAscension(singleSel);
-  const [singleLevel, setSingleLevel] = useState(() => Math.min(safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(singleSel.Id).PreferredAscension, 0), singleMax));
 
-  // 单人或多人数据
+  const singleAvailableModes = useMemo(() => {
+    const out = [G.GameMode.Standard];
+    if (safe(() => G.SaveManager.Instance.IsEpochRevealed$_T1(G.BlitzEpoch), false)) out.push(G.GameMode.Blitz);
+    if (safe(() => G.SaveManager.Instance.IsEpochRevealed$_T1(G.DreadEpoch), false)) out.push(G.GameMode.Dread);
+    return out;
+  }, []);
+
+  const gameMode = lobby ? toGameModeNum(lobby.gameMode) : singleMode;
+  const availableModes = lobby
+    ? (lobby.availableGameModes?.length ? lobby.availableGameModes.map(toGameModeNum) : [G.GameMode.Standard])
+    : singleAvailableModes;
+
+  const modeMaxForSingle = (mode: number, c: any) => {
+    if (mode === G.GameMode.Dread) return 10;
+    if (mode === G.GameMode.Blitz) return safe(() => G.SaveManager.Instance.Progress.MaxBlitzAscension, 0);
+    return maxAscension(c);
+  };
+  const prefAscForSingle = (mode: number, c: any, mx: number) => {
+    if (mode === G.GameMode.Dread) return 10;
+    if (mode === G.GameMode.Blitz) return Math.min(safe(() => G.SaveManager.Instance.Progress.PreferredBlitzAscension, 0), mx);
+    return Math.min(safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(c.Id).PreferredAscension, 0), mx);
+  };
+
+  const singleMax = modeMaxForSingle(singleMode, singleSel);
+  const [singleLevel, setSingleLevel] = useState(() => prefAscForSingle(singleMode, singleSel, singleMax));
+
   const sel = lobby ? (chars.find(c => c.c.Id.Entry === lobby.selectedCharacter)?.c ?? chars[0].c) : singleSel;
   const max = lobby ? lobby.maxAscension : singleMax;
-  const level = lobby ? lobby.ascension : singleLevel;
+  const level = lobby ? (gameMode === G.GameMode.Dread ? 10 : lobby.ascension) : singleLevel;
   const seed = lobby ? lobby.seed : custom.seed;
   const isHost = lobby ? lobby.isHost : true;
   const isReady = lobby ? lobby.ready : false;
@@ -283,19 +391,36 @@ export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
     if (c === singleSel) return;
     playOneShot(c.CharacterSelectSfx);
     setSingleSel(c);
-    const mx = maxAscension(c);
-    setSingleLevel(Math.min(safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(c.Id).PreferredAscension, 0), mx));
+    const mx = modeMaxForSingle(singleMode, c);
+    setSingleLevel(prefAscForSingle(singleMode, c, mx));
+  };
+
+  const changeGameMode = (mode: number) => {
+    if (lobby) {
+      if (!isHost || isReady) return;
+      lobby.onConfigure({ gameMode: toGameModeName(mode) });
+      return;
+    }
+    custom.gameMode = mode;
+    setSingleMode(mode);
+    const mx = modeMaxForSingle(mode, singleSel);
+    setSingleLevel(prefAscForSingle(mode, singleSel, mx));
   };
 
   const changeLevel = (n: number) => {
+    if (gameMode === G.GameMode.Dread) return;
     if (lobby) {
       if (!isHost || isReady) return;
       lobby.onConfigure({ ascension: n });
       return;
     }
     setSingleLevel(n);
-    // StartRunLobby.UpdatePreferredAscension: only once the character has an ascension to remember
-    safe(() => { const s = G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(singleSel.Id); if (s.MaxAscension !== 0) s.PreferredAscension = n; }, undefined);
+    if (singleMode === G.GameMode.Blitz) {
+      safe(() => { G.SaveManager.Instance.Progress.PreferredBlitzAscension = n; }, undefined);
+    } else {
+      // StartRunLobby.UpdatePreferredAscension: 仅在角色已解锁高进阶时记忆偏好
+      safe(() => { const s = G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(singleSel.Id); if (s.MaxAscension !== 0) s.PreferredAscension = n; }, undefined);
+    }
   };
 
   const handleToggleMod = (r: ModRow) => {
@@ -308,6 +433,37 @@ export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
     toggle(r, all);
   };
 
+  const handleRandomize = () => {
+    if (lobby && (!isHost || isReady)) return;
+    if (!lobby && busy) return;
+    let nextChar = sel;
+    if (!lobby) {
+      const unlocked = chars.filter((x) => !x.locked);
+      if (unlocked.length) {
+        const picked = unlocked[Math.floor(Math.random() * unlocked.length)].c;
+        nextChar = picked;
+        if (picked !== singleSel) {
+          playOneShot(picked.CharacterSelectSfx);
+          setSingleSel(picked);
+          const mx = modeMaxForSingle(singleMode, picked);
+          setSingleLevel(prefAscForSingle(singleMode, picked, mx));
+        }
+      }
+    }
+    const poolChars = lobby?.characterPool?.length ? lobby.characterPool : [nextChar];
+    const pickedMods = safe(() => list(G.ModifierModel.Pick2Good1Bad(G.Rng.Chaotic, poolChars)), []);
+    const keys = pickedMods.map((mod: any) =>
+      mod instanceof G.CharacterCards && mod.CharacterModel ? `${mod.Id.Entry}:${mod.CharacterModel.Entry}` : mod.Id.Entry,
+    );
+    if (lobby) {
+      lobby.onConfigure({ modifiers: keys });
+    } else {
+      custom.mods.clear();
+      for (const k of keys) if (all.some((r) => r.key === k)) custom.mods.add(k);
+      invalidate();
+    }
+  };
+
   const go = async () => {
     if (lobby) {
       lobby.onReady();
@@ -316,7 +472,14 @@ export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
     if (busy) return;
     setBusy(true);
     const seedVal = custom.seed ? G.SeedHelper.CanonicalizeSeed(custom.seed) : null;
-    await embark(sel, { ascension: max > 0 ? level : 0, seed: seedVal, modifiers: all.filter((r) => custom.mods.has(r.key)).map((r) => r.make()) });
+    const asc = singleMode === G.GameMode.Dread ? 10 : (max > 0 ? level : 0);
+    await embark(sel, {
+      ascension: asc,
+      seed: seedVal,
+      modifiers: all.filter((r) => custom.mods.has(r.key)).map((r) => r.make()),
+      gameMode: singleMode,
+      isCustom: true,
+    });
   };
 
   const isModOn = (r: ModRow) => lobby ? lobby.modifiers.includes(r.key) : custom.mods.has(r.key);
@@ -324,37 +487,48 @@ export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
   return (
     <div class={'custom' + (lobby ? ' custom-coop mp-lobby-screen' : '')}>
       <div class="cr-title">{m('CUSTOM_RUN_SCREEN.CUSTOM_MODE_TITLE')}</div>
-      <div class="cr-seed">
-        <div class="cr-seed-label">{m('CUSTOM_RUN_SCREEN.SEED_LABEL')}</div>
-        <input
-          class="cr-seed-input"
-          value={seed}
-          placeholder={m('CUSTOM_RUN_SCREEN.SEED_RANDOM_PLACEHOLDER')}
-          spellcheck={false}
-          disabled={lobby ? (!isHost || isReady) : busy}
-          onInput={(e) => {
-            const val = (e.target as HTMLInputElement).value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
-            if (lobby) {
-              if (isHost && !isReady) lobby.onConfigure({ seed: val });
-            } else {
-              custom.seed = val;
-            }
-          }}
-          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }}
-        />
+      <div class="cr-mode-seed-row">
+        {availableModes.length > 1 && (
+          <CustomGameModeDropdown
+            value={gameMode}
+            options={availableModes}
+            disabled={lobby ? (!isHost || isReady) : busy}
+            onChange={changeGameMode}
+          />
+        )}
+        <div class="cr-seed">
+          <div class="cr-seed-label">{m('CUSTOM_RUN_SCREEN.SEED_LABEL')}</div>
+          <input
+            class="cr-seed-input"
+            value={seed}
+            placeholder={m('CUSTOM_RUN_SCREEN.SEED_RANDOM_PLACEHOLDER')}
+            spellcheck={false}
+            disabled={lobby ? (!isHost || isReady) : busy}
+            onInput={(e) => {
+              const val = (e.target as HTMLInputElement).value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
+              if (lobby) {
+                if (isHost && !isReady) lobby.onConfigure({ seed: val });
+              } else {
+                custom.seed = val;
+              }
+            }}
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }}
+          />
+        </div>
       </div>
-      {max > 0 && (
+      {(max > 0 || gameMode === G.GameMode.Dread) && (
         <div class="cr-asc">
           <AscensionPanel
             multiplayer={!!lobby}
-            level={Math.min(level, max)}
-            max={max}
+            gameMode={gameMode}
+            level={Math.min(level, Math.max(max, gameMode === G.GameMode.Dread ? 10 : 0))}
+            max={gameMode === G.GameMode.Dread ? 10 : max}
             readOnly={lobby ? (!isHost || isReady) : false}
             onChange={changeLevel}
           />
         </div>
       )}
-      <div class="cr-buttons">
+      <div class="cr-buttons" style={{ left: `${480 - (chars.length * 116 - 16) / 2}px` }}>
         {chars.map(({ c, locked }) => (
           <CharacterSelectButton
             c={c}
@@ -365,7 +539,10 @@ export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
           />
         ))}
       </div>
-      <div class="cr-mods-title">{m('CUSTOM_RUN_SCREEN.MODIFIERS_TITLE')}</div>
+      <div class="cr-mods-header">
+        <div class="cr-mods-title">{m('CUSTOM_RUN_SCREEN.MODIFIERS_TITLE')}</div>
+        <CustomRunRandomizeButton disabled={lobby ? (!isHost || isReady) : busy} onClick={handleRandomize} />
+      </div>
       <ScrollArea rect={[992, 168 - view.oy, 686 + view.ox, 750 + 2 * view.oy]} bar={[1680 + view.ox, 168 - view.oy, 48, 750 + 2 * view.oy]}>
         <div class="cr-mod-list">
           {all.map((r) => (
@@ -378,6 +555,7 @@ export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
           ))}
         </div>
       </ScrollArea>
+      <div class="cr-disclaimer">{m('CUSTOM_RUN_SCREEN.disclaimer')}</div>
       {lobby && lobby.players}
       {lobby && isReady && (
         <div class="dr-ready-waiting">
