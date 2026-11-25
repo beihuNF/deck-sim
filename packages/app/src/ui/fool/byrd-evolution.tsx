@@ -162,8 +162,8 @@ export class ByrdEvolutionView {
 
   /** 启动进化音效、闪烁缩放序列并等待动画结束（或玩家点击跳过）。 */
   PlayAnimation() {
-    G.SfxCmd.PlayLoop('event:/sfx/byrdpip/byrdlett_evolution', false);
-    G.SfxCmd.PlayLoop('event:/music/byrdlett_evolution_music', false);
+    G.SfxCmd.PlayLoop$String_Boolean('event:/sfx/byrdpip/byrdlett_evolution', false);
+    G.SfxCmd.PlayLoop$String_Boolean('event:/music/byrdlett_evolution_music', false);
     this.audioStarted = true;
     this.startTimer = setTimeout(() => this.startEvolution(), 750);
     return this.done.Task;
@@ -286,8 +286,8 @@ export class ByrdEvolutionView {
     this.stopTimers();
     clearTimeout(this.finaleTimer);
     if (this.audioStarted) {
-      G.SfxCmd.StopLoop('event:/sfx/byrdpip/byrdlett_evolution');
-      G.SfxCmd.StopLoop('event:/music/byrdlett_evolution_music');
+      G.SfxCmd.StopLoop$1('event:/sfx/byrdpip/byrdlett_evolution');
+      G.SfxCmd.StopLoop$1('event:/music/byrdlett_evolution_music');
       this.audioStarted = false;
     }
   }

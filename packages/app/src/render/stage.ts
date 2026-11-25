@@ -434,6 +434,10 @@ export class CombatStage {
   get kaiserCrabSpine(): Spine | null {
     return (this.bgLayer.children[0] as any)?.$kaiserCrabSpine ?? null;
   }
+  /** 判断目标生物 Spine 是否包含箭矢挂槽（供 NCreature.HasSpineArrowSlots 查询）。 */
+  hasArrowSlots(c: any): boolean {
+    return !!this.actors.get(c)?.spine?.skeleton.findSlot('ARROW_HIT_FRONT');
+  }
   sync() {
     const cs = this.view.combatState;
     if (!cs) return;
@@ -665,10 +669,7 @@ export class CombatStage {
       } catch (e) { console.warn('animator', a.key, e); a.animator = undefined; }
       a.spine = sp;
       const creatureNode = N('Rooms.NCombatRoom').Instance?.GetCreatureNode(c);
-      if (creatureNode) {
-        creatureNode.SpineAnimation = ms;
-        creatureNode.HasSpineArrowSlots = !!sp.skeleton.findSlot('ARROW_HIT_FRONT');
-      }
+      if (creatureNode) creatureNode.SpineAnimation = ms;
       a.root.addChild(sp);
       loadScene(a.key).then((s) => { if (s && !sp.destroyed) attachCreatureFx(a.root, s, sp); });
     });
