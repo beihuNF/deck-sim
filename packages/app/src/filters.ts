@@ -3,7 +3,7 @@ const MATS: Record<string, [number, number, number]> = {
   // card frames (by pool)
   card_frame_red_mat: [0.025, 0.85, 1.0], card_frame_blue_mat: [0.55, 0.9, 1.0], card_frame_green_mat: [0.32, 0.45, 1.2],
   card_frame_orange_mat: [0.12, 1.5, 1.2], card_frame_pink_mat: [0.965, 0.55, 1.2], card_frame_colorless_mat: [1.0, 0.0, 1.2],
-  card_frame_curse_mat: [0.85, 0.05, 0.55], card_frame_quest_mat: [1.0, 1.0, 1.0],
+  card_frame_curse_mat: [0.85, 0.05, 0.55], card_frame_quest_mat: [1.0, 1.0, 1.0], card_frame_yellow_mat: [0.16, 0.4, 1.3],
   // banners / portrait borders / type plaques (by rarity)
   card_banner_ancient_mat: [0.0, 0.2, 0.9], card_banner_common_mat: [1.0, 0.0, 0.85], card_banner_curse_mat: [0.27, 1.1, 0.9],
   card_banner_event_mat: [0.875, 0.85, 0.9], card_banner_quest_mat: [0.515, 1.727, 0.9], card_banner_rare_mat: [0.563, 1.198, 1.14],

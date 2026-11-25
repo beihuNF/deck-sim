@@ -52,6 +52,7 @@ const ORB: Record<string, { base: number[]; rot: number[]; top: number[]; partic
   defect: { base: [1], rot: [2, 3], top: [4, 5], particle: [0, 0.796, 0.851], burstY: 63 },
   regent: { base: [1], rot: [2, 3], top: [5, 5], particle: [0.894, 0.655, 0.216], burstY: 62 },
   necrobinder: { base: [1], rot: [2], top: [3], particle: [0.988, 0.549, 0.643], burstY: 63 },
+  fool: { base: [1], rot: [2, 3], top: [4, 5], particle: [0.894, 0.655, 0.216], burstY: 62 },
 };
 const SHINE_CURVE = [[0.00596422, 0.0309963, 0, 4.46389], [0.298211, 0.736162, 0.832039, 0.832039], [0.99006, 0.932841, -0.247478, 0]];
 const BURST_CURVE = [[0.00596422, 0.0309963, 0, 2.09119], [1, 0.995203, 0.241291, 0]];

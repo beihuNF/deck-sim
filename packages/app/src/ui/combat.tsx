@@ -14,6 +14,7 @@ import { t } from '../i18n';
 import { showFtue } from './ftue';
 import { CardLayer, TargetingArrow, TintFilters, usePointer } from './cardlayer';
 import { EnergyCounter, EndTurnButton, PingButton, PileButton, pileHotkey, endTurnHotkey, combatIsCurrent, hud } from './combat-hud';
+import { FoolCombatUi } from './fool/fool-combat';
 import { CreatureOverlay, FloatNumber, SpeechBubble, PowerPop } from './creature-ui';
 import { OrbLabels } from './orbs';
 import { HandSelectUi, SelectConfirmButton, confirmHotkey, peekHotkey } from './hand-select';
@@ -139,6 +140,7 @@ export function CombatScreen({ view, visualOnly = false }: { view: any; visualOn
           <EndTurnButton view={view} me={me} />
           <PingButton view={view} me={me} />
           <EnergyCounter me={me} pcs={pcs} out={!cm.IsInProgress || !!ui.gameOver} />
+          <FoolCombatUi me={me} pcs={pcs} out={!cm.IsInProgress || !!ui.gameOver} />
           {view.Ui.Hand.IsInCardSelection ? (
             <>
               {/* NCombatUi.OnHandSelectModeEntered: the hand comes to the front, over its backstop (a peek target) */}

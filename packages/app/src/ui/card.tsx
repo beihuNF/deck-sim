@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useLayoutEffect, useRef } from 'preact/hooks';
 import { G, $ } from '../game';
-import { atlasFrame, frameByName, frameStyle, imageUrl } from '../assets';
+import { anyImage, atlasFrame, frameByName, frameStyle, imageUrl } from '../assets';
 import { matFilter } from '../filters';
 import { RichText } from './richtext';
 import { flipbook } from './anim';
@@ -189,7 +189,12 @@ export function Card({ card, pile, width = 300, target = null, mode, preview, vi
           <div class="card-plaque-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/cards/card_portrait_border_plaque2.png')})`, filter: ancient ? matFilter('card_banner_ancient_mat.tres') : bannerMat }} />
           <span>{typeLabel}</span>
         </div>
-        {showEnergy && <div style={img(atlasFrame(safe(() => card.EnergyIconPath, '')) ?? frameByName('ui_atlas', 'card/energy_colorless'), -166, -227, 64, 64)} />}
+        {showEnergy && (() => {
+          const ei = anyImage(safe(() => card.EnergyIconPath, ''));
+          return ei && 'url' in ei
+            ? <img class="card-part" src={ei.url} style={at(-166, -227, 64, 64)} />
+            : <div style={img(ei?.frame ?? frameByName('ui_atlas', 'card/energy_colorless'), -166, -227, 64, 64)} />;
+        })()}
         {showEnergy && <div class="card-cost" ref={costRef} style={{ ...at(-157, -221, 46, 56), color: energyText, WebkitTextStrokeColor: energyOutline }}><span>{costText}</span></div>}
         {showEnergy && unplayable && <div style={img(frameByName('ui_atlas', 'card/card_unplayable_icon'), -158, -219, 48, 48)} />}
         {showStar && <img class="card-part" src={imageUrl('images/ui/combat/energy_star.png') ?? ''} style={at(-186, -189, 58, 58)} />}

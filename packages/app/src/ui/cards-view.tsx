@@ -56,7 +56,7 @@ const PILE: Record<string, [string, string]> = {
   deck: ['Deck', 'DECK_PILE_INFO'], draw: ['Draw', 'DRAW_PILE_INFO'], discard: ['Discard', 'DISCARD_PILE_INFO'], exhaust: ['Exhaust', 'EXHAUST_PILE_INFO'],
 };
 // CardPool.FrameMaterial hsv per character (NDeckViewScreen tints its sort buttons with the hue)
-const FRAME_H: Record<string, number> = { ironclad: 0.025, silent: 0.32, defect: 0.55, necrobinder: 0.965, regent: 0.12 };
+const FRAME_H: Record<string, number> = { ironclad: 0.025, silent: 0.32, defect: 0.55, necrobinder: 0.965, regent: 0.12, fool: 0.16 };
 
 /** NCardPileScreen (draw / discard / exhaust) and NDeckViewScreen, over the capstone backstop. */
 export function CardsView() {

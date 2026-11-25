@@ -190,7 +190,7 @@ export function particleItem(it: any, emit = false, onDone?: () => void): Contai
 }
 
 const spineLoads = new Map<string, Promise<boolean>>();
-function spineItem(it: any, onSpine?: (sp: Spine) => void): Container {
+export function spineItem(it: any, onSpine?: (sp: Spine) => void): Container {
   const holder = new Container();
   holder.setFromMatrix(M(it.m));
   const key = 'scene:' + it.spine.skel;
@@ -303,13 +303,18 @@ export function attachCreatureFx(root: Container, s: SceneData, sp: Spine | null
   // NDevotedSculptorVfx._Ready: both emitters start off and burst once on their Spine event.
   const sculptorEvents: Record<string, string> = sp && s.items[spineAt]?.vfx?.includes('NDevotedSculptorVfx')
     ? { 'Visuals/VoiceBoneNode/VoiceParticles': 'caw', 'Visuals/AttackParticles': 'attack' } : {};
+  // NFoolVfx._Ready: 6 组挂在槽位上的粒子按 Spine 事件启停与单次喷发
+  const isFoolVfx = !!(sp && s.items[spineAt]?.vfx?.includes('NFoolVfx'));
+  const foolParticles = isFoolVfx ? new Map<string, { wrap: Container; it: any }>() : null;
   const back = new Container(), front = new Container();
   const bones = new Map<string, Container>(), slots = new Map<string, Container>();
   s.items.forEach((it, i) => {
     if (it.k === 'spine' || it.clipOnly || ((it.bone || it.slot) && !sp)) return;
     const event = it.k === 'particles' ? sculptorEvents[it.p] : undefined;
-    const d = event ? new Container() : drawItem(it);
+    const foolItem = isFoolVfx && it.k === 'particles' && (it.p?.startsWith('Visuals/ParticleCannonSlot/') || it.p === 'Visuals/LeafWaterfallSlot/LeafWaterfallParticles');
+    const d = event || foolItem ? new Container() : drawItem(it);
     if (!d) return;
+    if (foolItem && foolParticles) foolParticles.set(it.p, { wrap: d, it });
     if (event) sp!.state.addListener({ event: (_, ev) => {
       if (ev.data.name !== event || d.destroyed) return;
       // GPUParticles2D.Restart clears the previous burst, including one still loading its texture.
@@ -321,6 +326,47 @@ export function attachCreatureFx(root: Container, s: SceneData, sp: Spine | null
     else if (it.bone) group(bones, `${it.bone}|${it.behind ? 'b' : 'f'}`).addChild(d);
     else (spineAt >= 0 && i < spineAt ? back : front).addChild(d);
   });
+  if (foolParticles && foolParticles.size && sp) {
+    const restart = (path: string, oneShot: boolean) => {
+      const entry = foolParticles.get(path);
+      if (!entry || entry.wrap.destroyed) return;
+      for (const child of entry.wrap.removeChildren()) child.destroy({ children: true });
+      entry.wrap.addChild(particleItem({ ...entry.it, oneShot, emitting: true }, true));
+    };
+    const stop = (path: string, clear = false) => {
+      const entry = foolParticles.get(path);
+      if (!entry || entry.wrap.destroyed) return;
+      for (const child of entry.wrap.children) {
+        const em = (child as any).emitter;
+        if (em) em.emitting = false;
+      }
+      if (clear) for (const child of entry.wrap.removeChildren()) child.destroy({ children: true });
+    };
+    const resetAll = () => {
+      stop('Visuals/ParticleCannonSlot/LeafCannonParticles', true);
+      stop('Visuals/LeafWaterfallSlot/LeafWaterfallParticles', true);
+      stop('Visuals/ParticleCannonSlot/MagicLeafParticles');
+      stop('Visuals/ParticleCannonSlot/MusicParticles');
+      stop('Visuals/ParticleCannonSlot/StarParticles');
+      stop('Visuals/ParticleCannonSlot/ImpactParticle');
+    };
+    sp.state.addListener({
+      start: resetAll,
+      event: (_, ev) => {
+        const name = ev.data.name;
+        if (name === 'leaf_cannon_start') restart('Visuals/ParticleCannonSlot/LeafCannonParticles', false);
+        else if (name === 'leaf_cannon_end') stop('Visuals/ParticleCannonSlot/LeafCannonParticles');
+        else if (name === 'leaf_waterfall_start') restart('Visuals/LeafWaterfallSlot/LeafWaterfallParticles', false);
+        else if (name === 'leaf_waterfall_end') stop('Visuals/LeafWaterfallSlot/LeafWaterfallParticles', true);
+        else if (name === 'magic_leaf_shoot') restart('Visuals/ParticleCannonSlot/MagicLeafParticles', true);
+        else if (name === 'music_particles_shoot') restart('Visuals/ParticleCannonSlot/MusicParticles', true);
+        else if (name === 'stars_shoot') {
+          restart('Visuals/ParticleCannonSlot/StarParticles', true);
+          restart('Visuals/ParticleCannonSlot/ImpactParticle', true);
+        }
+      },
+    });
+  }
   root.addChildAt(back, 0);
   root.addChild(front);
   if (!sp) return;
@@ -404,7 +450,7 @@ export async function combatBackground(bgScene: string, layers: string[], fg: st
   };
   const parts = await Promise.all([...layers.map((p, i) => attach(`Layer_${String(i).padStart(2, '0')}`, p)), fg ? attach('Foreground', fg) : null]);
   for (const p of parts) if (p) bgC.addChild(p);
-  if (bg) bgC.addChild(buildScene(bg)); // the background scene's own dressing (lights etc.) sits above its layers' parents
+  if (bg) bgC.addChild(buildScene(bg, undefined, (sp) => { if (bgScene.includes('kaiser_crab')) (root as any).$kaiserCrabSpine = sp; })); // the background scene's own dressing (lights etc.) sits above its layers' parents
   return root;
 }
 
@@ -633,20 +679,29 @@ export async function treasureBackdrop(rs: any): Promise<Container | null> {
  * gives its place each frame ([x, y, alpha, scale], the relic's centre and state) or null to hide it.
  */
 export async function chestRelicGlow(rarity: 'uncommon' | 'rare', follow: () => number[] | null) {
-  const s = await loadScene('scenes/ui/treasure_relic_holder.tscn');
-  const it = s?.items.find((x) => x.p === (rarity === 'rare' ? 'Relic/RareGlow' : 'Relic/UncommonGlow'));
+  // v0.113.1 起宝箱遗物不再内联 RareGlow/UncommonGlow，改为独立 VFX 场景（NRelicRareGlow / NCardUncommonGlow）
+  const s = await loadScene(rarity === 'rare' ? 'scenes/vfx/relic_rare_glow_vfx.tscn' : 'scenes/vfx/uncommon_glow_vfx.tscn');
+  const it = s?.items[0];
   const root = chestRoot;
-  if (!it || !root || root.destroyed) return;
-  const c = particleItem(it);
-  c.setFromMatrix(new Matrix(it.m[0], it.m[1], it.m[2], it.m[3], 0, 0));
+  if (!s || !it || !root || root.destroyed) return;
+  const c = particleItem(it, true);
+  c.setFromMatrix(rootMatrix(s, 0, 0).scale(0.6, 0.6));
   const g = new Container();
   g.addChild(c);
   root.addChild(g);
+  const startAt = performance.now();
+  const delayMs = rarity === 'rare' ? Math.random() * 200 : 0;
   const tick = () => {
     if (g.destroyed) { Ticker.shared.remove(tick); return; }
     const f = follow();
     g.visible = !!f;
-    if (f) { g.position.set(f[0], f[1]); g.alpha = f[2]; g.scale.set(f[3]); }
+    if (f) {
+      const elapsed = Math.max(0, performance.now() - startAt - delayMs);
+      const fade = rarity === 'rare' ? 0.9 * Math.min(1, elapsed / 1000) : Math.min(1, elapsed / 250);
+      g.position.set(f[0], f[1]);
+      g.alpha = f[2] * fade;
+      g.scale.set(f[3]);
+    }
   };
   Ticker.shared.add(tick);
 }
