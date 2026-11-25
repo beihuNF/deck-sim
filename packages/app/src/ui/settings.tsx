@@ -578,11 +578,13 @@ function Slider({ r }: { r: Extract<Row, { kind: 'slider' }> }) {
   );
 }
 
-/** NLanguageDropdown: greyed and locked in a run. */
+/** NLanguageDropdown: greyed and locked in a run; 隐藏原版 _hiddenLanguages（如 ara） */
 function LanguageDropdown({ disabled }: { disabled: boolean }) {
   const cur = safe(() => settings().Language, 'eng') ?? 'eng';
+  const visible = languages.filter((l) => l !== 'ara' && !safe(() => G.LocManager.IsHiddenLanguage?.(l), false));
+  const curLabel = LANG_NAMES[cur] ?? (cur === 'ara' ? 'العربية' : cur);
   const pick = async (l: string) => { await setLanguage(l); sm().SaveSettings(); invalidate(); };
-  return <Dropdown label={LANG_NAMES[cur] ?? cur} options={languages.map((l) => LANG_NAMES[l] ?? l)} disabled={disabled} onPick={(i) => void pick(languages[i])} />;
+  return <Dropdown label={curLabel} options={visible.map((l) => LANG_NAMES[l] ?? l)} disabled={disabled} onPick={(i) => void pick(visible[i])} />;
 }
 /**
  * NSettingsDropdown (320 × 64): the current option (Kreon Bold 28, gold) on #2C434F (#3C5B6B hovered) with a down

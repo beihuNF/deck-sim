@@ -21,6 +21,11 @@ export async function toCharSelect(page) {
   await page.waitForSelector('.charselect .confirm-btn.shown');
 }
 export async function embark(page, char) {
+  // v0.113.1 NCharacterSelectScreen.TryShowAscensionSinglePlayerFtue: 已解锁进阶且开启教程时弹出 FTUE
+  if (await page.waitForSelector('.ftue-confirm', { timeout: 1500 }).catch(() => null)) {
+    await page.click('.ftue-confirm');
+    await page.waitForSelector('.modal-viewport.open', { state: 'detached' }).catch(() => {});
+  }
   if (char) { await page.click(`.chs-buttons > :nth-child(${char})`); await page.waitForTimeout(200); }
   await page.click('.charselect .confirm-btn.shown');
 }

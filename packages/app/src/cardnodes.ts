@@ -485,7 +485,10 @@ export class HandView extends Web(NPlayerHand) {
   RemoveCardHolder(h: any) {
     this.awaiting.delete(h);
     if (this.currentPlay && this.currentPlay.holder === h) this.currentPlay.CancelPlayCard();
-    if (this.FocusedHolder === h) this.FocusedHolder = null;
+    if (this.FocusedHolder === h) {
+      this.FocusedHolder = null;
+      safe(() => G.RunManager.Instance.HoveredModelTracker.OnLocalCardUnhovered(), null);
+    }
     h.Clear();
     h.$parent?.RemoveChild(h);
     h.QueueFree();
@@ -567,6 +570,10 @@ export class HandView extends Web(NPlayerHand) {
   /** NPlayerHand.AnimOut (combat ended): selection cancelled, the hand sinks to (0, 500) over 0.8 s Back In. */
   AnimOut() {
     // CancelHandSelectionIfNecessary
+    if (this.FocusedHolder) {
+      this.FocusedHolder = null;
+      safe(() => G.RunManager.Instance.HoveredModelTracker.OnLocalCardUnhovered(), null);
+    }
     if (this.IsInCardSelection && this.selectTcs) { this.selectTcs.TrySetCanceled?.() ?? this.selectTcs.TrySetResult([]); this.AfterCardsSelected(null); }
     this.CancelAllCardPlay();
     this.enableTw?.Kill();
@@ -639,7 +646,16 @@ export class HandView extends Web(NPlayerHand) {
     this.draggedIndex = -1;
     this.RefreshLayout();
   }
-  QueueFree() { this.CancelAllCardPlay(); this.selectTcs?.TrySetResult([]); this.stop(); super.QueueFree(); }
+  QueueFree() {
+    if (this.FocusedHolder) {
+      this.FocusedHolder = null;
+      safe(() => G.RunManager.Instance.HoveredModelTracker.OnLocalCardUnhovered(), null);
+    }
+    this.CancelAllCardPlay();
+    this.selectTcs?.TrySetResult([]);
+    this.stop();
+    super.QueueFree();
+  }
 
   // ---------------------------------------------------------------- selection (NPlayerHand.SelectCards)
   SelectCards(prefs: any, filter: ((c: any) => boolean) | null, source: any, mode: number) {

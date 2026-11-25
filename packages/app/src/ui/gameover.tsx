@@ -181,7 +181,10 @@ export function GameOver({ g }: { g: any }) {
     if (win) {
       victory = go('VICTORY_DAMAGE_LOCAL', { PlayerDamage: score, PersonalDamage: safe(() => Number(G.StatsManager.GetPersonalArchitectDamage()), 0) });
       const asc = rs.AscensionLevel;
-      if (asc < 10 && asc > 0 && asc >= me.MaxAscensionWhenRunStarted) victory += '\n\n' + go('VICTORY_UNLOCKED_ASCENSION', { AscensionLevel: asc + 1 });
+      const unlockedAsc = g.result
+        ? g.result.newMaxAscension > g.result.oldMaxAscension && (g.result.oldMaxAscension > 0 || !g.result.isSingleplayer) && !safe(() => G.GameModeHelper.AreAchievementsAndEpochsLockedForRun(rs), false)
+        : asc < 10 && asc > 0 && asc >= me.MaxAscensionWhenRunStarted;
+      if (unlockedAsc) victory += '\n\n' + go('VICTORY_UNLOCKED_ASCENSION', { AscensionLevel: asc + 1, IsMultiplayer: g.result ? !g.result.isSingleplayer : false });
     }
     g.view = {
       win, score, victory,

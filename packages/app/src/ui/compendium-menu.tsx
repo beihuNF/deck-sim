@@ -20,10 +20,10 @@ const open = (s: Screen) => { ui.subscreen = s; invalidate(); };
 export function CompendiumSubmenu({ onBack }: { onBack: () => void }) {
   const history = safe(() => G.SaveManager.Instance.GetRunHistoryCount() > 0, false); // NRunHistory.CanBeShown
   const top: [string, string, number[], (() => void) | null][] = [
-    ['COMPENDIUM_CARD_LIBRARY', 'submenu_card_library', [1, 0.6, 0.8], () => open('library')],
-    ['COMPENDIUM_RELIC_COLLECTION', 'submenu_relic_collection', [0.48, 0.8, 0.7], () => open('relics')],
-    ['COMPENDIUM_POTION_LAB', 'submenu_potion_lab', [0.24, 1, 0.7], () => open('potions')],
-    ['COMPENDIUM_BESTIARY', 'submenu_bestiary', [0.93, 1.2, 0.65], null],
+    ['COMPENDIUM_CARD_LIBRARY', 'submenu_compendium_card_library', [1, 0.6, 0.8], () => open('library')],
+    ['COMPENDIUM_RELIC_COLLECTION', 'submenu_compendium_relic_collection', [0.48, 0.8, 0.7], () => open('relics')],
+    ['COMPENDIUM_POTION_LAB', 'submenu_compendium_potion_lab', [0.24, 1, 0.7], () => open('potions')],
+    ['COMPENDIUM_BESTIARY', 'submenu_compendium_bestiary', [0.93, 1.2, 0.65], null],
   ];
   const bottom: [string, string, number[], number[], () => void][] = [
     ['STATISTICS', 'submenu_stats_icon', [0.84, 1.4, 1.1], [52.9, 27, 174.2, 112], () => open('stats')],
@@ -59,7 +59,7 @@ function ShortSubmenuButton({ x, keyPrefix, icon, hsv, onClick }: { x: number; k
       onPointerUp={(e) => { if (enabled && e.button === 0 && st === 'press') { setSt(''); onClick!(); } }}>
       <img class="ssb-panel" src={imageUrl('images/packed/common_ui/submenu_panel_short.png') ?? ''} style={{ filter: `${hsvFilter(hsv[0], 1, 1)} saturate(${hsv[1]}) brightness(${v})`, transition: `filter ${tl}` }} />
       <img class="ssb-icon" src={imageUrl(`images/ui/main_menu/${icon}.png`) ?? ''} />
-      {!enabled && <img class="ssb-icon" src={imageUrl('images/ui/main_menu/submenu_lock.png') ?? ''} />}
+      {!enabled && <img class="ssb-icon" src={imageUrl('images/ui/main_menu/submenu_locked.png') ?? ''} />}
       <div class="ssb-title">{m(`${keyPrefix}.title`)}</div>
       <div class="ssb-desc"><RichText text={desc} /></div>
     </div>

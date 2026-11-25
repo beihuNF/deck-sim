@@ -39,6 +39,7 @@ const DEFS: Record<string, Def> = {
   cannot_play_card_ftue: { popup: [671, 412, 579, 257], outline: OUT_B, margin: 6, targets: ['.end-turn-btn'], sneaky: '.end-turn-btn' },
   can_play_cards_ftue: { popup: [580.1, 412, 768.3, 341], outline: OUT_A, margin: 6, header: [99, 37, 115, 93], desc: [61.9, 97, 53.4, 41], arrow: { x: 188, y: 599, to: 'lb' }, targets: ['.energy-counter'] },
   map_select_ftue: { popup: [125, -506, 579, 257], outline: OUT_A, desc: [40, 75, 38, 61], arrow: { x: -213, y: 214, rot: -0.548695 }, targets: ['.map-screen .mp.travelable'] },
+  ascension_singleplayer_ftue: { popup: [576, 355, 768, 370], outline: OUT_B, size: 20, header: [99, 38, 115, 96], desc: [62, 98, 53, 86], button: [246.5, 303, 275, 75] },
 };
 
 interface Tip { id: string; key: string; def: Def; done: () => void; sneaky?: () => void; anchor?: number[] }
@@ -66,13 +67,12 @@ export function showFtue(id: string, key: string, sneaky?: () => void): Promise<
     if (queue.length === 1) next();
   });
 }
-/** The beta's single-player ascension popup uses the existing web modal and progress flag. */
-N('Ftue.NAscensionSingleplayerFtue').Create = () => {
-  if (!G.TestMode.IsOn && !G.SaveManager.Instance.SeenPopup('ascension_singleplayer_ftue')) {
+/** 原版 v0.113.1 由 NCharacterSelectScreen.TryShowAscensionSinglePlayerFtue 触发（遵循 tutorials=off） */
+export function showAscensionSingleplayerFtue() {
+  if (!G.TestMode.IsOn && !seenFtue('ascension_singleplayer_ftue')) {
     void showFtue('ascension_singleplayer_ftue', 'ASCENSION_SINGLEPLAYER_FTUE');
   }
-  return null; // showFtue owns its modal; there is no Godot node for NModalContainer to add
-};
+}
 function closeTip() {
   const t = queue.shift();
   closeModal();
@@ -120,12 +120,13 @@ function FtuePopup({ t }: { t: Tip }) {
 /** NFtueConfirmButton: the gold outline pulses α 0.25 ↔ 1 (0.6 s each way); hover 1.05 and v 1.4 with a steady outline. */
 function FtueConfirmButton({ rect, onClick }: { rect: number[]; onClick: () => void }) {
   const [st, setSt] = useState<'' | 'hover' | 'press'>('');
+  const pressed = useRef(false);
   const hot = st === 'hover';
   return (
     <div class="ftue-confirm" style={{ left: `${rect[0]}px`, top: `${rect[1]}px`, width: `${rect[2]}px`, height: `${rect[3]}px`, scale: hot ? '1.05' : '1', transition: hot ? 'scale .05s cubic-bezier(0.16, 1, 0.3, 1)' : 'scale .5s cubic-bezier(0.16, 1, 0.3, 1)' }}
-      onPointerEnter={() => { setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); }} onPointerLeave={() => setSt('')}
-      onPointerDown={(e) => { if (e.button === 0) { setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
-      onPointerUp={(e) => { if (e.button === 0 && st === 'press') { setSt(''); onClick(); } }}>
+      onPointerEnter={() => { setSt('hover'); playOneShot('event:/sfx/ui/clicks/ui_hover'); }} onPointerLeave={() => { pressed.current = false; setSt(''); }}
+      onPointerDown={(e) => { if (e.button === 0) { pressed.current = true; setSt('press'); playOneShot('event:/sfx/ui/clicks/ui_click'); } }}
+      onPointerUp={(e) => { if (e.button === 0 && pressed.current) { pressed.current = false; setSt(''); onClick(); } }}>
       <img class={'fc-outline' + (hot ? ' hot' : '')} src={imageUrl('images/ftue/ftue_confirm_button_outline.png') ?? ''} style={{ filter: tint(0.94, 0.726, 0.085) }} />
       <img class="fc-img" src={imageUrl('images/ftue/ftue_confirm_button.png') ?? ''} style={{ filter: `brightness(${hot ? 1.4 : 1})`, transition: 'filter .05s' }} />
       <div class="fc-label">{loc('ftues', 'CONFIRM_BUTTON')}</div>

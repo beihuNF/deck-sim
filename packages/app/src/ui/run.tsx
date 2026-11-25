@@ -53,7 +53,7 @@ export function RunScreen() {
         {(!room || room.kind === 'maproom') && <div class="room-empty" />}
       </div>
       {/* NOverlayStack: the screens under the shared backstop (the map's Opened / Closed hide and show them) */}
-      <OverlayLayer fallback={(o) => (o.kind === 'crystalsphere' ? <CrystalSphereScreen v={o} /> : o.kind === 'gameover' ? <GameOver g={o.g} /> : null)} />
+      <OverlayLayer fallback={(o) => (o.kind === 'crystalsphere' ? <CrystalSphereScreen v={o} /> : o.kind === 'gameover' ? <GameOver g={o.g} /> : o.render ? o.render(o) : null)} />
       {/* NGlobalUi order: overlays < NMapScreen < capstone (deck / pile views) < relics and top bar */}
       {rs && isMapVisible() && <MapScreen />}
       <CapstoneBackstop />
