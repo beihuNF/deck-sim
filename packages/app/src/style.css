@@ -322,9 +322,15 @@ textarea,
   color: var(--cream); text-shadow: 3px 2px 0 rgba(0, 0, 0, .25); pointer-events: none; }
 .mm-notice span { opacity: .55; pointer-events: auto; cursor: pointer; transition: opacity .3s; }
 .mm-notice span:hover { opacity: 1; transition: none; }
-/* NSingleplayerSubmenu: three NSubmenuButtons */
+/* NSingleplayerSubmenu: NSubmenuButtons（流式居中容器，兼容联机绝对定位用法） */
 .sp-submenu { position: absolute; inset: 0; }
+.sp-button-container { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 960px 540px; }
 .submenu-btn { position: absolute; top: 187px; width: 330px; height: 705px; transform-origin: 150px 250px; transition: scale .5s cubic-bezier(0.33, 1, 0.68, 1); cursor: pointer; }
+.submenu-btn.flow { position: relative; top: auto; width: 362px; flex: none; padding-left: 16px; box-sizing: border-box; }
+.submenu-btn.flow .smb-panel { left: 0; }
+.submenu-btn.flow .smb-title { left: 28px; }
+.submenu-btn.flow .smb-icon { left: 39px; }
+.submenu-btn.flow .smb-desc { left: 41px; }
 .submenu-btn.hover { scale: 1.025; transition: none; }
 .submenu-btn.disabled { filter: brightness(.663); cursor: default; }
 .smb-panel { position: absolute; left: -13px; top: 0; width: 362px; height: 705px; pointer-events: none; }

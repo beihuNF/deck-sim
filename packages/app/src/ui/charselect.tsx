@@ -91,7 +91,7 @@ export function CharSelect() {
     setLevel(Math.min(pref, m));
     setSel({ c, locked, n: (sel?.n ?? 0) + 1 });
   };
-  // OnSubmenuOpened: the first button is selected, or a newly unlocked character plays its unlock first
+  // 打开界面时优先选中上次记忆的标准模式角色或刚解锁的角色
   useEffect(() => {
     embarking = false;
     const pending = safe(() => G.SaveManager.Instance.Progress.PendingCharacterUnlock, null);
@@ -99,7 +99,12 @@ export function CharSelect() {
     if (b) {
       setUnlocking(true);
       void playUnlock(b.c, () => { setUnlocking(false); select(b.c, false); });
-    } else select(buttons[0].c, buttons[0].locked);
+    } else {
+      const prefId = safe(() => G.SaveManager.Instance.Progress.PreferredStandardCharacter, null);
+      const prefBtn = none(prefId) ? null : buttons.find((x) => !x.locked && safe(() => x.c.Id.Equals(prefId), false));
+      const initial = prefBtn ?? buttons[0];
+      select(initial.c, initial.locked);
+    }
     return () => { void charSelectBg(null); ua.c = null; };
   }, []);
   const changeLevel = (n: number) => {
@@ -112,6 +117,14 @@ export function CharSelect() {
     embarking = true;
     setBusy(true);
     await acceptTutorialsFtue();
+    // 启程时记忆玩家选择的标准模式角色（若为随机则记忆 RandomCharacter）
+    safe(() => {
+      const p = G.SaveManager.Instance.Progress;
+      if (!p.PreferredStandardCharacter?.Equals?.(sel.c.Id)) {
+        p.PreferredStandardCharacter = sel.c.Id;
+        G.SaveManager.Instance.SaveProgressFile();
+      }
+    }, undefined);
     let c = sel.c, asc = level;
     if (isRandom(c)) {
       // RollRandomCharacter, then its shake, sfx and background for a second
@@ -148,7 +161,7 @@ export function CharSelect() {
 }
 
 /** NRegentCharacterSelectBg's constellation hover Controls (under the rest of the screen). */
-function RegentHovers() {
+export function RegentHovers() {
   const [zones, setZones] = useState<ReturnType<typeof regentZones>>(null);
   // the background loads asynchronously after the selection
   useEffect(() => $.onFrame(() => { const z = regentZones(); if (z) setZones(z); return !z; }), []);
@@ -245,32 +258,40 @@ export function CharacterSelectButton({ c, locked, selected, enabled, onSelect }
 }
 
 /**
- * NAscensionPanel (643, 738)–(1277, 855), fixed at the bottom: the gold arrows (hidden at 0 / max), the ascension
- * flame with the level, and "[gold]title[/gold]\ndescription". AnimIn: alpha 0 → 1 over 0.2 s, 30 px up (0.3 s Back Out).
+ * NAscensionPanel (643, 738)–(1277, 855)，支持标准/闪电/恐惧三种模式的图标、标题说明与箭头显隐
  */
-export function AscensionPanel({ level, max, onChange, readOnly = false, multiplayer = false }: { level: number; max: number; onChange: (n: number) => void; readOnly?: boolean; multiplayer?: boolean }) {
+export function AscensionPanel({ level, max, onChange, readOnly = false, multiplayer = false, gameMode }: { level: number; max: number; onChange: (n: number) => void; readOnly?: boolean; multiplayer?: boolean; gameMode?: number }) {
+  const mode = gameMode ?? G.GameMode.Standard;
+  const isBlitz = mode === G.GameMode.Blitz;
+  const isDread = mode === G.GameMode.Dread;
+  const canAdjust = !readOnly && !isDread;
   useEffect(() => {
-    if (readOnly) return;
+    if (!canAdjust) return;
     const onPage = (e: Event) => onChange(Math.min(max, Math.max(0, level + (e as CustomEvent<number>).detail)));
     window.addEventListener('input-page', onPage);
     return () => window.removeEventListener('input-page', onPage);
-  }, [readOnly, level, max, onChange]);
-  const key = `LEVEL_${String(level).padStart(2, '0')}`;
-  const text = `[b][gold]${loc('ascension', `${key}.title`)}[/gold][/b]\n${loc('ascension', `${key}.description`)}`;
+  }, [canAdjust, level, max, onChange]);
+  const title = fmt(safe(() => G.AscensionHelper.GetTitle(level, mode), null)) || loc('ascension', `LEVEL_${String(level).padStart(2, '0')}.title`);
+  const desc = fmt(safe(() => G.AscensionHelper.GetDescription(level, mode), null)) || loc('ascension', `LEVEL_${String(level).padStart(2, '0')}.description`);
+  const text = `[b][gold]${title}[/gold][/b]\n${desc}`;
   const numRef = useRef<HTMLDivElement>(null);
-  useFit(numRef, `asc|${level}`, 36, 22, (el) => el.scrollWidth <= 64);
+  useFit(numRef, `asc|${mode}|${level}`, 36, 22, (el) => el.scrollWidth <= 64);
   return (
     <div class="chs-asc">
       <div class="chs-asc-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/tiny_nine_patch.png')})` }} />
-      {!readOnly && level > 0 && <NGoldArrowButton left size={64} class="chs-arrow left" onClick={() => onChange(level - 1)} />}
-      {!readOnly && getInputDevice() !== 'keyboard' && <>
+      {canAdjust && level > 0 && <NGoldArrowButton left size={64} class="chs-arrow left" onClick={() => onChange(level - 1)} />}
+      {canAdjust && getInputDevice() !== 'keyboard' && <>
         <span class="chs-page-hint left"><RichText text={actionHint('viewDeck').replace('[img ', '[img size=64 ')} /></span>
         <span class="chs-page-hint right"><RichText text={actionHint('viewExhaust').replace('[img ', '[img size=64 ')} /></span>
       </>}
-      <div class="chs-asc-icon" style={{ ...frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_ascension'), 64, 93), filter: multiplayer ? hsvFilter(0.52, 1, 1.2) : undefined }} />
+      {isBlitz ? (
+        <img class="chs-asc-icon-blitz" src={imageUrl('images/packed/character_select/blitz_top_bar_icon.png') ?? ''} />
+      ) : (
+        <div class="chs-asc-icon" style={{ ...frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_ascension'), 64, 93), filter: multiplayer ? hsvFilter(0.52, 1, 1.2) : undefined }} />
+      )}
       <div class="chs-asc-level" ref={numRef} style={multiplayer ? { WebkitTextStrokeColor: '#004759' } : undefined}>{level}</div>
       <div class="chs-asc-desc"><RichText text={text} /></div>
-      {!readOnly && level < max && <NGoldArrowButton size={64} class="chs-arrow right" onClick={() => onChange(level + 1)} />}
+      {canAdjust && level < max && <NGoldArrowButton size={64} class="chs-arrow right" onClick={() => onChange(level + 1)} />}
     </div>
   );
 }

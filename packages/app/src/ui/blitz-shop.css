@@ -1,0 +1,149 @@
+/* Blitz 商人货架及商品槽位样式（1920 × 1080 设计坐标，地毯局部空间） */
+
+.blitz-slots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.blitz-slot {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+}
+
+.blitz-slot-vis {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.blitz-slot-icon,
+.blitz-slot-shadow {
+  position: absolute;
+  left: -121px;
+  top: -120px;
+  width: 240px;
+  height: 240px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.blitz-slot-shadow {
+  left: -101px;
+  top: -104px;
+  filter: brightness(0);
+  opacity: 0.25;
+}
+
+.blitz-slot-hit {
+  position: absolute;
+  left: -121px;
+  top: -120px;
+  width: 240px;
+  height: 240px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.blitz-slot.is-disabled .blitz-slot-icon {
+  filter: brightness(0.45) saturate(0.5);
+}
+
+.blitz-slot.is-disabled .blitz-slot-shadow {
+  opacity: 0.15;
+}
+
+/* 稀有槽位金色闪烁特效 */
+.blitz-vfx-rare {
+  position: absolute;
+  left: -135px;
+  top: -135px;
+  width: 270px;
+  height: 270px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 224, 102, 0.34) 0%, rgba(255, 196, 61, 0.12) 45%, transparent 72%);
+  animation: blitzRarePulse 2.4s ease-in-out infinite;
+}
+
+.bv-sp {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff4b8;
+  box-shadow: 0 0 10px 3px rgba(255, 214, 79, 0.85);
+  animation: blitzSparkle 1.8s ease-in-out infinite;
+}
+
+.bv-sp1 { left: 32px; top: 44px; animation-delay: 0s; }
+.bv-sp2 { right: 30px; top: 68px; animation-delay: 0.45s; }
+.bv-sp3 { left: 54px; bottom: 38px; animation-delay: 0.9s; }
+.bv-sp4 { right: 48px; bottom: 48px; animation-delay: 1.35s; }
+
+/* 诅咒槽位暗紫光晕与粒子 */
+.blitz-vfx-cursed {
+  position: absolute;
+  left: -138px;
+  top: -138px;
+  width: 276px;
+  height: 276px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(168, 72, 232, 0.36) 0%, rgba(114, 34, 178, 0.14) 48%, transparent 72%);
+  animation: blitzCursedPulse 2.6s ease-in-out infinite;
+}
+
+.bv-cu {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #d58cff;
+  box-shadow: 0 0 12px 4px rgba(176, 66, 255, 0.85);
+  animation: blitzCursedRise 2.1s ease-in-out infinite;
+}
+
+.bv-cu1 { left: 42px; bottom: 46px; animation-delay: 0s; }
+.bv-cu2 { right: 42px; bottom: 54px; animation-delay: 0.55s; }
+.bv-cu3 { left: 90px; bottom: 26px; animation-delay: 1.05s; }
+.bv-cu4 { right: 86px; bottom: 30px; animation-delay: 1.55s; }
+
+/* 剩余可选数量提示文案（对应 BlitzSelectionText） */
+.blitz-selection-text {
+  position: absolute;
+  left: 151px;
+  top: 882px;
+  width: 1400px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font: 700 32px/1.2 'Kreon', var(--font);
+  letter-spacing: 1px;
+  color: #fff6e2;
+  text-shadow: 0 3px 6px rgba(0, 0, 0, 0.75);
+}
+
+@keyframes blitzRarePulse {
+  0%, 100% { opacity: 0.72; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+@keyframes blitzSparkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+
+@keyframes blitzCursedPulse {
+  0%, 100% { opacity: 0.75; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes blitzCursedRise {
+  0% { opacity: 0; transform: translateY(8px) scale(0.7); }
+  45% { opacity: 0.95; transform: translateY(-10px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-28px) scale(0.6); }
+}

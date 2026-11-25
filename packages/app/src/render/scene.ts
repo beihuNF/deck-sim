@@ -1,7 +1,7 @@
 // Renders scenes flattened by tools/scenes.py (backgrounds, rest sites, merchant, event backgrounds, VFX) as Pixi
 // display trees: textured quads, colour rects, Spine skeletons, particle emitters and Godot-shader quads (render/canvas).
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Assets, BlurFilter, Container, Graphics, Matrix, Rectangle, Sprite, Texture, Ticker } from 'pixi.js';
+import { Assets, BlurFilter, ColorMatrixFilter, Container, Graphics, Matrix, Rectangle, Sprite, Texture, Ticker } from 'pixi.js';
 import { Spine } from '@esotericsoftware/spine-pixi-v8';
 import { A, imageUrl, atlasFrame, skelSrc } from '../assets';
 import { QuadBatch, bakedTexture, loadShader, plainShader, type ShaderParams } from './canvas';
@@ -873,4 +873,25 @@ function randomGradient() {
   sp.position.set(-437, -107);
   sp.width = 2634; sp.height = 1236;
   return sp;
+}
+
+/** NDreadScreen GrayScaler：在角色选择背景层应用灰度与亮度/对比度滤镜，传空则清除 */
+export function setCharSelectGrayscale(brightness?: number, contrast?: number) {
+  const cs = menu.cs;
+  if (!cs || cs.destroyed) return;
+  if (brightness == null || contrast == null) {
+    cs.filters = [];
+    return;
+  }
+  const f = new ColorMatrixFilter();
+  const k = contrast * brightness;
+  const off = 0.5 * (1 - contrast) * brightness;
+  const r = 0.2126 * k, g = 0.7152 * k, b = 0.0722 * k;
+  f.matrix = [
+    r, g, b, 0, off,
+    r, g, b, 0, off,
+    r, g, b, 0, off,
+    0, 0, 0, 1, 0,
+  ];
+  cs.filters = [f];
 }

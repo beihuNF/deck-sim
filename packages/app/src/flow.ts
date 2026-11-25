@@ -122,18 +122,42 @@ function resetUi() {
   resetCombatUi();
   invalidate();
 }
-export interface RunOptions { ascension?: number; seed?: string | null; modifiers?: any[]; dailyTime?: any }
-/** NCharacterSelectScreen / NCustomRunScreen / NDailyRunScreen → NGame.StartNewSingleplayerRun. */
+export interface RunOptions { ascension?: number; seed?: string | null; modifiers?: any[]; dailyTime?: any; gameMode?: number; isCustom?: boolean; isRotatingDread?: boolean }
+/** NCharacterSelectScreen / NBlitzScreen / NDreadScreen / NCustomRunScreen / NDailyRunScreen → NGame.StartNewSingleplayerRun. */
 export async function startRun(character: any, o: RunOptions = {}) {
   resetUi();
   const seed = o.seed || new URLSearchParams(location.search).get('seed') || G.SeedHelper.GetRandomSeed(null, 12);
+  const gameMode = o.gameMode ?? (o.dailyTime != null ? G.GameMode.Daily : G.GameMode.Standard);
   const isRandomChar = G.RandomCharacter && character instanceof G.RandomCharacter;
   if (isRandomChar) character = rollRandomCharacter();
-  // StartRunLobby.UpdatePreferredAscension: remember the level picked for this character (not for dailies)
-  if (!o.dailyTime && o.ascension != null && !isRandomChar) safe(() => { G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(character.Id).PreferredAscension = o.ascension; });
+  // StartRunLobby.UpdatePreferredAscension：按模式记录玩家偏好进阶等级（每日挑战与恐惧模式除外）
+  if (gameMode !== G.GameMode.Daily && gameMode !== G.GameMode.Dread && o.ascension != null) {
+    if (gameMode === G.GameMode.Blitz) {
+      safe(() => {
+        const p = G.SaveManager.Instance.Progress;
+        if (p.PreferredBlitzAscension !== o.ascension) {
+          p.PreferredBlitzAscension = o.ascension;
+          G.SaveManager.Instance.SaveProgressFile();
+        }
+      });
+    } else if (!isRandomChar) {
+      safe(() => { G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(character.Id).PreferredAscension = o.ascension; });
+    }
+  }
   await G.startNewSingleplayerRun({
-    character, seed, shouldSave: true, ascension: o.ascension ?? 0, modifiers: o.modifiers ?? [], dailyTime: o.dailyTime,
-    attach: (rs: any) => { run = rs; attachRun(rs); },
+    character, seed, shouldSave: true, ascension: o.ascension ?? 0, modifiers: o.modifiers ?? [],
+    gameMode, isCustom: o.isCustom, dailyTime: o.dailyTime,
+    attach: (rs: any) => {
+      // 轮换连胜标记需在 EnterAct / 保存前写入本地玩家扩展字段
+      if (o.isRotatingDread) {
+        safe(() => {
+          const me = G.LocalContext.GetMe$IPlayerCollection(rs);
+          if (me?.ExtraFields) me.ExtraFields.IsPlayingRotatingCharacter = true;
+        });
+      }
+      run = rs;
+      attachRun(rs);
+    },
   });
   invalidate();
 }
