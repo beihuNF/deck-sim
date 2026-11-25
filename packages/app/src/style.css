@@ -255,8 +255,7 @@ label,
   .csph-cell, .csph-divine, .pf-button, .pf-delete, .tl-btn, .tl-arrow,
   .dr-lb-arrow, .cr-mod, .pn-button, .pn-toggle, .pn-prev, .pn-next,
   .cl-search-clear, .cl-pool, .cl-sort, .cl-type, .cl-cost, .cl-rarity,
-  .cl-stat, .relic-entry, .inspect-arrow, .ic-upgrade, .rhs-arrow,
-  .mp-tab, .mp-room-item, .mp-server-btn, .ping-btn, .treasure-skip
+  .cl-stat, .relic-entry, .inspect-arrow, .ic-upgrade, .rhs-arrow
 ) {
   cursor: var(--game-cursor-default, auto) !important;
 }
@@ -1545,10 +1544,6 @@ textarea,
   .ea-header,
   .ea-proceed span,
   .vpb-label,
-  .mp-dialog-title,
-  .mprb-title,
-  .mps-title,
-  .wfpo-title,
   .chs-title,
   .chs-stat span,
   .chs-subtitle,
@@ -1563,11 +1558,7 @@ textarea,
   .modes-title,
   .modes-card-title,
   .modes-btn,
-  .coop-title,
   .patchnotes-title,
-  .mp-dialog-btn,
-  .mp-quick-steam-btn span,
-  .room-code-tag,
   button,
   .game-btn
 ) {

@@ -13,7 +13,7 @@ import { floaters, bubbles, powerPops } from '../bridge';
 import { t } from '../i18n';
 import { showFtue } from './ftue';
 import { CardLayer, TargetingArrow, TintFilters, usePointer } from './cardlayer';
-import { EnergyCounter, EndTurnButton, PingButton, PileButton, pileHotkey, endTurnHotkey, combatIsCurrent, hud } from './combat-hud';
+import { EnergyCounter, EndTurnButton, PileButton, pileHotkey, endTurnHotkey, combatIsCurrent, hud } from './combat-hud';
 import { FoolCombatUi } from './fool/fool-combat';
 import { CreatureOverlay, FloatNumber, SpeechBubble, PowerPop } from './creature-ui';
 import { OrbLabels } from './orbs';
@@ -22,7 +22,6 @@ import { CardFxCanvas } from '../render/cardfx';
 import { arrow, ftueHook, targetManager, TrailVfx, ShuffleFlyVfx, type HandView } from '../cardnodes';
 
 import { getKeyboardBindings } from '../input/hints';
-import { MultiplayerIntents } from './multiplayer-intents';
 
 export { pileHotkey, endTurnHotkey, peekHotkey, confirmHotkey };
 export function getCombatHand(): HandView | null {
@@ -130,7 +129,6 @@ export function CombatScreen({ view, visualOnly = false }: { view: any; visualOn
         {bubbles.map((b) => <SpeechBubble key={'b' + b.id} b={b} s={b.c ? slots.get(b.c) : undefined} />)}
       </div>
       {!visualOnly && <CardLayer root={view.CombatVfxContainer} />}
-      {!visualOnly && <MultiplayerIntents room={view} slots={slots} />}
       <div class="card-fx-host" ref={fxHost} />
       {pcs && !visualOnly && (
         <div class="combat-ui">
@@ -138,7 +136,6 @@ export function CombatScreen({ view, visualOnly = false }: { view: any; visualOn
           <PileButton kind="discard" pile={pcs.DiscardPile} me={me} out={!cm.IsInProgress || !!ui.gameOver} />
           <PileButton kind="exhaust" pile={pcs.ExhaustPile} me={me} out={!cm.IsInProgress || !!ui.gameOver} />
           <EndTurnButton view={view} me={me} />
-          <PingButton view={view} me={me} />
           <EnergyCounter me={me} pcs={pcs} out={!cm.IsInProgress || !!ui.gameOver} />
           <FoolCombatUi me={me} pcs={pcs} out={!cm.IsInProgress || !!ui.gameOver} />
           {view.Ui.Hand.IsInCardSelection ? (

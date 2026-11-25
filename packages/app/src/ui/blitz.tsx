@@ -1,6 +1,5 @@
 // 闪电模式（NBlitzScreen）与说明弹窗（NBlitzInfoDisclaimer）
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { G, list } from '../game';
 import { playOneShot, stopMusic } from '../audio';
@@ -11,7 +10,7 @@ import { hsvFilter } from '../filters';
 import { charSelectBg } from '../render/scene';
 import { acceptTutorialsFtue } from './ftue';
 import { RichText } from './richtext';
-import { BackButton, ConfirmButton, UnreadyButton } from './buttons';
+import { BackButton, ConfirmButton } from './buttons';
 import { InfoPanel, CharacterSelectButton, AscensionPanel, RegentHovers } from './charselect';
 import { transitionView } from './transition';
 import { characters, popMenu } from './menu';
@@ -21,20 +20,6 @@ const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; }
 const none = (id: any) => !id || id === G.ModelId.none || safe(() => id.Equals(G.ModelId.none), false);
 const isRandom = (c: any) => !!G.RandomCharacter && c instanceof G.RandomCharacter;
 const shake = () => safe(() => (window as any).__sts2Shake?.(), null);
-
-export interface BlitzLobby {
-  isHost: boolean;
-  ascension: number;
-  maxAscension: number;
-  selectedCharacter: string;
-  ready: boolean;
-  allUnlocked: boolean;
-  players: ComponentChildren;
-  onSelectCharacter: (charEntry: string) => void;
-  onConfigure: (settings: { ascension?: number }) => void;
-  onReady: () => void;
-  onBack: () => void;
-}
 
 /** 右上角模式说明问号按钮（NDreadInfoButton，闪电/恐惧模式共用） */
 export function ModeInfoButton({ onClick }: { onClick: () => void }) {
@@ -109,80 +94,47 @@ export function BlitzInfoDisclaimer({ delayed, onClose }: { delayed: boolean; on
 }
 
 /** 闪电模式选角界面（NBlitzScreen） */
-export function BlitzSelect({ lobby }: { lobby?: BlitzLobby } = {}) {
+export function BlitzSelect() {
   const chars = characters();
-  const showRandom = lobby ? lobby.allUnlocked : chars.every((x) => !x.locked);
+  const showRandom = chars.every((x) => !x.locked);
   const random = showRandom ? safe(() => G.ModelDb.Character(G.RandomCharacter), null) : null;
   const buttons = [...chars, ...(random ? [{ c: random, locked: false }] : [])];
 
-  const [singleSel, setSingleSel] = useState<{ c: any; locked: boolean; n: number } | null>(null);
-  const [singleLevel, setSingleLevel] = useState(0);
+  const [sel, setSel] = useState<{ c: any; locked: boolean; n: number } | null>(null);
+  const [level, setLevel] = useState(0);
   const [busy, setBusy] = useState(false);
   const [disclaimer, setDisclaimer] = useState<{ delayed: boolean } | null>(null);
 
-  const isHost = lobby ? lobby.isHost : true;
-  const isReady = lobby ? lobby.ready : false;
-  const singleMax = safe(() => G.SaveManager.Instance.Progress.MaxBlitzAscension, 0);
-  const max = lobby ? lobby.maxAscension : singleMax;
-  const level = lobby ? lobby.ascension : singleLevel;
-
-  const sel = lobby
-    ? (() => {
-        const found = buttons.find((x) => x.c.Id.Entry === lobby.selectedCharacter) ?? buttons[0];
-        return { c: found.c, locked: found.locked, n: 0 };
-      })()
-    : singleSel;
+  const max = safe(() => G.SaveManager.Instance.Progress.MaxBlitzAscension, 0);
 
   // 打开界面时选中记忆的 Blitz 角色、初始化闪电进阶并按需弹出首次说明
   useEffect(() => {
     if (!safe(() => G.SaveManager.Instance.SeenPopup('blitz_disclaimer'), true)) {
       setDisclaimer({ delayed: true });
     }
-    if (lobby) {
-      const target = buttons.find((x) => x.c.Id.Entry === lobby.selectedCharacter) ?? buttons[0];
-      void charSelectBg(target.locked ? null : isRandom(target.c) ? 'random_character' : String(target.c.Id.Entry).toLowerCase());
-      return () => { void charSelectBg(null); };
-    }
     const p = safe(() => G.SaveManager.Instance.Progress, null);
     const prefAsc = p?.PreferredBlitzAscension ?? 0;
-    setSingleLevel(Math.min(prefAsc, singleMax));
+    setLevel(Math.min(prefAsc, max));
     const prefId = p?.PreferredBlitzCharacter;
     const prefBtn = !none(prefId) ? buttons.find((x) => !x.locked && safe(() => x.c.Id.Equals(prefId), false)) : null;
     const initial = prefBtn ?? buttons[0];
-    setSingleSel({ c: initial.c, locked: initial.locked, n: 1 });
+    setSel({ c: initial.c, locked: initial.locked, n: 1 });
     if (!isRandom(initial.c)) playOneShot(initial.c.CharacterSelectSfx);
     void charSelectBg(initial.locked ? null : isRandom(initial.c) ? 'random_character' : String(initial.c.Id.Entry).toLowerCase());
     return () => { void charSelectBg(null); };
   }, []);
 
-  // 多人模式下跟随远端选角切换背景
-  useEffect(() => {
-    if (!lobby || !sel) return;
-    void charSelectBg(sel.locked ? null : isRandom(sel.c) ? 'random_character' : String(sel.c.Id.Entry).toLowerCase());
-  }, [lobby?.selectedCharacter]);
-
   const select = (c: any, locked: boolean) => {
-    if (lobby) {
-      if (isReady || sel?.c === c) return;
-      if (!isRandom(c)) playOneShot(c.CharacterSelectSfx);
-      lobby.onSelectCharacter(c.Id.Entry);
-      return;
-    }
-    if (singleSel?.c === c) return;
+    if (sel?.c === c) return;
     if (!isRandom(c)) playOneShot(c.CharacterSelectSfx);
     shake();
     void charSelectBg(locked ? null : isRandom(c) ? 'random_character' : String(c.Id.Entry).toLowerCase());
-    setSingleSel({ c, locked, n: (singleSel?.n ?? 0) + 1 });
+    setSel({ c, locked, n: (sel?.n ?? 0) + 1 });
   };
 
   const changeLevel = (n: number) => {
     const clamped = Math.min(max, Math.max(0, n));
-    if (lobby) {
-      if (!isHost || isReady) return;
-      lobby.onConfigure({ ascension: clamped });
-      return;
-    }
-    setSingleLevel(clamped);
+    setLevel(clamped);
     safe(() => {
       const p = G.SaveManager.Instance.Progress;
       if (p.PreferredBlitzAscension !== clamped) {
@@ -193,23 +145,16 @@ export function BlitzSelect({ lobby }: { lobby?: BlitzLobby } = {}) {
   };
 
   const embark = async () => {
-    if (!sel || sel.locked) return;
+    if (!sel || sel.locked || busy) return;
+    setBusy(true);
     // 启程前记录玩家选择的闪电模式角色（含 RandomCharacter）
     safe(() => {
       const p = G.SaveManager.Instance.Progress;
-      const cur = lobby ? p.PreferredMultiplayerBlitzCharacter : p.PreferredBlitzCharacter;
-      if (!cur?.Equals?.(sel.c.Id)) {
-        if (lobby) p.PreferredMultiplayerBlitzCharacter = sel.c.Id;
-        else p.PreferredBlitzCharacter = sel.c.Id;
+      if (!p.PreferredBlitzCharacter?.Equals?.(sel.c.Id)) {
+        p.PreferredBlitzCharacter = sel.c.Id;
         G.SaveManager.Instance.SaveProgressFile();
       }
     }, undefined);
-    if (lobby) {
-      lobby.onReady();
-      return;
-    }
-    if (busy) return;
-    setBusy(true);
     await acceptTutorialsFtue();
     let c = sel.c;
     if (isRandom(c)) {
@@ -226,10 +171,9 @@ export function BlitzSelect({ lobby }: { lobby?: BlitzLobby } = {}) {
   };
 
   return (
-    <div class={'charselect blitz' + (lobby ? ' mp-lobby-screen' : '')}>
+    <div class="charselect blitz">
       {sel && !sel.locked && safe(() => sel.c.Id.Entry === 'REGENT', false) && <RegentHovers key={sel.n} />}
       {sel && <InfoPanel key={sel.n} c={sel.c} locked={sel.locked} />}
-      {lobby && lobby.players}
       <div class="chs-buttons" style={{ left: `${960 - (buttons.length * 116 - 16) / 2}px` }}>
         {buttons.map(({ c, locked }) => (
           <CharacterSelectButton
@@ -237,7 +181,7 @@ export function BlitzSelect({ lobby }: { lobby?: BlitzLobby } = {}) {
             c={c}
             locked={locked}
             selected={sel?.c === c}
-            enabled={lobby ? !isReady : !busy}
+            enabled={!busy}
             onSelect={() => select(c, locked)}
           />
         ))}
@@ -245,27 +189,15 @@ export function BlitzSelect({ lobby }: { lobby?: BlitzLobby } = {}) {
       {sel && !sel.locked && max > 0 && (
         <AscensionPanel
           key={sel.n}
-          multiplayer={!!lobby}
           gameMode={G.GameMode.Blitz}
           level={Math.min(level, max)}
           max={max}
-          readOnly={lobby ? (!isHost || isReady) : false}
           onChange={changeLevel}
         />
       )}
-      {lobby && isReady && (
-        <div class="blz-ready-waiting">
-          <div class="blz-waiting-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }} />
-          <RichText text={loc('main_menu_ui', 'CHARACTER_SELECT.waitingForPlayers')} />
-        </div>
-      )}
       <ModeInfoButton onClick={() => setDisclaimer({ delayed: false })} />
-      <BackButton enabled={lobby ? true : !busy} onClick={lobby ? lobby.onBack : popMenu} />
-      {lobby && isReady ? (
-        <UnreadyButton enabled={true} onClick={lobby.onReady} />
-      ) : (
-        <ConfirmButton enabled={!!sel && !sel.locked && (lobby ? true : !busy)} onClick={() => void embark()} />
-      )}
+      <BackButton enabled={!busy} onClick={popMenu} />
+      <ConfirmButton enabled={!!sel && !sel.locked && !busy} onClick={() => void embark()} />
       {disclaimer && <BlitzInfoDisclaimer delayed={disclaimer.delayed} onClose={() => setDisclaimer(null)} />}
     </div>
   );

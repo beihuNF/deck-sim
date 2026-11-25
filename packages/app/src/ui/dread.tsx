@@ -1,8 +1,7 @@
 // 恐惧模式（NDreadScreen）、连胜锁链（NChainVisualization）与规则弹窗（NDreadInfoDisclaimer）
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { G, $, GAME_VERSION, list } from '../game';
+import { G, $, GAME_VERSION } from '../game';
 import { playOneShot, stopMusic } from '../audio';
 import { imageUrl, frameByName, frameStyle } from '../assets';
 import { loc, locv } from '../i18n';
@@ -10,7 +9,7 @@ import { startRun } from '../flow';
 import { setTip } from './tooltip';
 import { acceptTutorialsFtue } from './ftue';
 import { RichText } from './richtext';
-import { BackButton, ConfirmButton, UnreadyButton } from './buttons';
+import { BackButton, ConfirmButton } from './buttons';
 import { CharacterSelectButton } from './charselect';
 import { ModeInfoButton, DisclaimerConfirmButton } from './blitz';
 import { setCharSelectGrayscale, charSelectBg } from '../render/scene';
@@ -26,17 +25,6 @@ const isRotatingChar = (c: any) => !!G.RotatingCharacter && c instanceof G.Rotat
 const debugAudio = (f: string) => safe(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play(f), null);
 const stopDebugAudio = (id: number | null) => { if (id != null && id >= 0) safe(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Stop(id, 0.1), null); };
 const shake = () => safe(() => $.ext('MegaCrit.Sts2.Core.Nodes.NGame').Instance.ScreenShake($.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeStrength').Weak, $.ext('MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ShakeDuration').Short, 90), null);
-
-export interface DreadLobby {
-  isHost: boolean;
-  selectedCharacter: string;
-  isRotatingDread: boolean;
-  ready: boolean;
-  players: ComponentChildren;
-  onSelectCharacter: (charEntry: string, isRotatingDread?: boolean) => void;
-  onReady: () => void;
-  onBack: () => void;
-}
 
 const cssColor = (c: any, fallback = 'rgba(255, 213, 0, 0.75)') => {
   if (!c) return fallback;
@@ -278,20 +266,17 @@ function ChainVisualization({
 }
 
 /** 恐惧模式选角界面（NDreadScreen，固定进阶 10） */
-export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
+export function DreadSelect() {
   const chars = characters();
-  const isMp = !!lobby;
   const rotatingModel = safe(() => G.ModelDb.Character(G.RotatingCharacter), null);
-  const currentRotatingStreak = safe(() => G.AscensionHelper.GetCurrentRotatingDreadWinStreak(isMp), 0);
+  const currentRotatingStreak = safe(() => G.AscensionHelper.GetCurrentRotatingDreadWinStreak(false), 0);
 
   const [pendingRes, setPendingRes] = useState<any>(() => safe(() => {
-    const p = G.SaveManager.Instance.Progress;
-    return isMp ? p.PendingMultiplayerDreadWinStreakResult : p.PendingSingleplayerDreadWinStreakResult;
+    return G.SaveManager.Instance.Progress.PendingSingleplayerDreadWinStreakResult;
   }, null));
 
   // 计算轮换按钮当前应展示的英雄（若有待播放结果则先展示上一局轮换角色）
   const rotOverride = useMemo(() => {
-    if (isMp) return null;
     if (pendingRes && rotatingModel && safe(() => pendingRes.CharacterId.Equals(rotatingModel.Id), false)) {
       const startChar = none(pendingRes.InitialRotatingCharacterBeforeReset)
         ? G.ModelDb.Character(G.Ironclad).Id
@@ -302,38 +287,29 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
       }
     }
     if (currentRotatingStreak > 0) {
-      return safe(() => G.AscensionHelper.GetNextRotatingDreadCharacter(isMp), null);
+      return safe(() => G.AscensionHelper.GetNextRotatingDreadCharacter(false), null);
     }
     return null;
-  }, [isMp, pendingRes, currentRotatingStreak]);
+  }, [pendingRes, currentRotatingStreak]);
 
   const buttons = [
     ...chars,
-    ...(!isMp && rotOverride && rotatingModel ? [{ c: rotatingModel, locked: false, rotHero: rotOverride }] : []),
+    ...(rotOverride && rotatingModel ? [{ c: rotatingModel, locked: false, rotHero: rotOverride }] : []),
   ];
 
-  const [singleSel, setSingleSel] = useState<{ c: any; locked: boolean; n: number } | null>(null);
+  const [sel, setSel] = useState<{ c: any; locked: boolean; n: number } | null>(null);
   const [ticked, setTicked] = useState<boolean>(() => safe(() => {
-    const p = G.SaveManager.Instance.Progress;
-    return isMp ? p.PreferredDreadRotatingTickboxOnMultiplayer : p.PreferredDreadRotatingTickboxOnSingleplayer;
+    return G.SaveManager.Instance.Progress.PreferredDreadRotatingTickboxOnSingleplayer;
   }, false));
   const [busy, setBusy] = useState(false);
   const [animatingChain, setAnimatingChain] = useState(false);
   const [chainMode, setChainMode] = useState<'idle' | 'add' | 'break'>('idle');
   const [disclaimer, setDisclaimer] = useState<{ delayed: boolean } | null>(null);
 
-  const isReady = lobby ? lobby.ready : false;
-  const sel = lobby
-    ? (() => {
-        const found = buttons.find((x) => x.c.Id.Entry === lobby.selectedCharacter) ?? buttons[0];
-        return { c: found.c, locked: found.locked, n: 0 };
-      })()
-    : singleSel;
-
   // 解析用于标题/背景/灰度的目标英雄（RotatingCharacter 对应轮换目标角色）
   const resolveDisplayChar = (c: any) => {
     if (!isRotatingChar(c)) return c;
-    return rotOverride ?? safe(() => G.AscensionHelper.GetNextRotatingDreadCharacter(isMp), null) ?? chars[0].c;
+    return rotOverride ?? safe(() => G.AscensionHelper.GetNextRotatingDreadCharacter(false), null) ?? chars[0].c;
   };
 
   const applyVisuals = (c: any) => {
@@ -348,29 +324,23 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
       setDisclaimer({ delayed: true });
     }
     const p = safe(() => G.SaveManager.Instance.Progress, null);
-    let prefId = isMp ? p?.PreferredMultiplayerDreadCharacter : p?.PreferredDreadCharacter;
+    let prefId = p?.PreferredDreadCharacter;
     if (pendingRes && rotatingModel && safe(() => pendingRes.CharacterId.Equals(rotatingModel.Id), false) && pendingRes.WasReset && pendingRes.WinStreakBeforeReset === 0) {
       const startChar = none(pendingRes.InitialRotatingCharacterBeforeReset)
         ? G.ModelDb.Character(G.Ironclad).Id
         : pendingRes.InitialRotatingCharacterBeforeReset;
       prefId = G.AscensionHelper.GetRotatingCharacterIdForStreak(startChar, 1);
       if (p) {
-        if (isMp) p.PreferredMultiplayerDreadCharacter = prefId;
-        else p.PreferredDreadCharacter = prefId;
+        p.PreferredDreadCharacter = prefId;
         p.PendingSingleplayerDreadWinStreakResult = null;
         G.SaveManager.Instance.SaveProgressFile();
       }
       setPendingRes(null);
     }
 
-    if (lobby) {
-      const target = buttons.find((x) => x.c.Id.Entry === lobby.selectedCharacter) ?? buttons[0];
-      applyVisuals(target.c);
-      return () => { setCharSelectGrayscale(); void charSelectBg(null); };
-    }
     const prefBtn = !none(prefId) ? buttons.find((x) => !x.locked && safe(() => x.c.Id.Equals(prefId), false)) : null;
     const initial = prefBtn ?? buttons[0];
-    setSingleSel({ c: initial.c, locked: initial.locked, n: 1 });
+    setSel({ c: initial.c, locked: initial.locked, n: 1 });
     const display = resolveDisplayChar(initial.c);
     playOneShot(display.CharacterSelectSfx);
     applyVisuals(initial.c);
@@ -399,17 +369,16 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
     setChainMode('idle');
     safe(() => {
       const p = G.SaveManager.Instance.Progress;
-      if (isMp) p.PendingMultiplayerDreadWinStreakResult = null;
-      else p.PendingSingleplayerDreadWinStreakResult = null;
+      p.PendingSingleplayerDreadWinStreakResult = null;
       if (pendingRes && rotatingModel && safe(() => pendingRes.CharacterId.Equals(rotatingModel.Id), false) && pendingRes.WasReset) {
         const startChar = none(pendingRes.InitialRotatingCharacterBeforeReset)
           ? G.ModelDb.Character(G.Ironclad).Id
           : pendingRes.InitialRotatingCharacterBeforeReset;
         const nextId = G.AscensionHelper.GetRotatingCharacterIdForStreak(startChar, pendingRes.WinStreakBeforeReset + 1);
         const nextBtn = buttons.find((b) => safe(() => b.c.Id.Equals(nextId), false));
-        if (nextBtn && !isMp) {
+        if (nextBtn) {
           p.PreferredDreadCharacter = nextId;
-          setSingleSel({ c: nextBtn.c, locked: nextBtn.locked, n: (singleSel?.n ?? 0) + 1 });
+          setSel({ c: nextBtn.c, locked: nextBtn.locked, n: (sel?.n ?? 0) + 1 });
           applyVisuals(nextBtn.c);
         }
       }
@@ -418,27 +387,15 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
     setPendingRes(null);
   };
 
-  useEffect(() => {
-    if (!lobby || !sel) return;
-    applyVisuals(sel.c);
-  }, [lobby?.selectedCharacter]);
-
   const select = (c: any, locked: boolean) => {
-    if (animatingChain) return;
-    if (lobby) {
-      if (isReady || sel?.c === c) return;
-      playOneShot(resolveDisplayChar(c).CharacterSelectSfx);
-      lobby.onSelectCharacter(c.Id.Entry, isRotatingChar(c));
-      return;
-    }
-    if (singleSel?.c === c) return;
+    if (animatingChain || sel?.c === c) return;
     shake();
     playOneShot(resolveDisplayChar(c).CharacterSelectSfx);
     applyVisuals(c);
-    setSingleSel({ c, locked, n: (singleSel?.n ?? 0) + 1 });
+    setSel({ c, locked, n: (sel?.n ?? 0) + 1 });
   };
 
-  const showRotTickbox = !isMp && !!sel && !isRotatingChar(sel.c) && currentRotatingStreak <= 0;
+  const showRotTickbox = !!sel && !isRotatingChar(sel.c) && currentRotatingStreak <= 0;
   const isBeginningRot = showRotTickbox && ticked;
   const showChain = !showRotTickbox || !ticked || chainMode === 'break';
 
@@ -447,26 +404,18 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
     if (!sel) return { chainCount: 0, recordLines: [] as { label: string; value: number }[] };
     const p = safe(() => G.SaveManager.Instance.Progress, null);
     const stats = safe(() => p?.GetStatsForCharacter(sel.c.Id), null);
-    const curStreak = isMp ? (stats?.CurrentMultiplayerDreadWinStreak ?? 0) : (stats?.CurrentSingleplayerDreadWinStreak ?? 0);
+    const curStreak = stats?.CurrentSingleplayerDreadWinStreak ?? 0;
     const cnt = chainMode === 'break' && pendingRes ? (pendingRes.WinStreakBeforeReset ?? 0) : curStreak;
 
     const recModel = isBeginningRot && rotatingModel ? rotatingModel : sel.c;
     const recStats = safe(() => p?.GetStatsForCharacter(recModel.Id), null);
-    const [bestCur, bestOld, oldVer] = safe(() => isMp
-      ? G.ProgressSaveManager.ReconcileDreadWinStreakVersion(
-          GAME_VERSION,
-          recStats?.BestMultiplayerDreadWinStreakThisVersion ?? 0,
-          recStats?.BestMultiplayerDreadWinStreakThisVersionTag ?? null,
-          recStats?.BestMultiplayerDreadWinStreakOldVersion ?? 0,
-          recStats?.BestMultiplayerDreadWinStreakOldVersionTag ?? null,
-        )
-      : G.ProgressSaveManager.ReconcileDreadWinStreakVersion(
-          GAME_VERSION,
-          recStats?.BestSingleplayerDreadWinStreakThisVersion ?? 0,
-          recStats?.BestSingleplayerDreadWinStreakThisVersionTag ?? null,
-          recStats?.BestSingleplayerDreadWinStreakOldVersion ?? 0,
-          recStats?.BestSingleplayerDreadWinStreakOldVersionTag ?? null,
-        ), [0, 0, '']);
+    const [bestCur, bestOld, oldVer] = safe(() => G.ProgressSaveManager.ReconcileDreadWinStreakVersion(
+      GAME_VERSION,
+      recStats?.BestSingleplayerDreadWinStreakThisVersion ?? 0,
+      recStats?.BestSingleplayerDreadWinStreakThisVersionTag ?? null,
+      recStats?.BestSingleplayerDreadWinStreakOldVersion ?? 0,
+      recStats?.BestSingleplayerDreadWinStreakOldVersionTag ?? null,
+    ), [0, 0, '']);
 
     const lines: { label: string; value: number }[] = [];
     const rot = isRotatingChar(recModel);
@@ -477,35 +426,25 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
       lines.push({ label: locv('main_menu_ui', rot ? 'DREAD_BEST_ROTATING_STREAK_OLD' : 'DREAD_BEST_STREAK_OLD', { Version: oldVer }), value: bestOld });
     }
     return { chainCount: cnt, recordLines: lines };
-  }, [sel?.c, isMp, isBeginningRot, chainMode, pendingRes]);
+  }, [sel?.c, isBeginningRot, chainMode, pendingRes]);
 
   const embark = async () => {
-    if (!sel || sel.locked || animatingChain) return;
+    if (!sel || sel.locked || animatingChain || busy) return;
+    setBusy(true);
     const isRotRun = isRotatingChar(sel.c) || isBeginningRot;
     const embarkChar = isRotatingChar(sel.c) ? resolveDisplayChar(sel.c) : sel.c;
     // 保存恐惧模式偏好角色与轮换连胜起始角色状态
     safe(() => {
       const p = G.SaveManager.Instance.Progress;
-      if (isMp) {
-        p.PreferredMultiplayerDreadCharacter = sel.c.Id;
-        p.PreferredDreadRotatingTickboxOnMultiplayer = isRotRun;
-      } else {
-        p.PreferredDreadCharacter = sel.c.Id;
-        p.PreferredDreadRotatingTickboxOnSingleplayer = isRotRun;
-        if (isBeginningRot && rotatingModel) {
-          p.CurrentSingleplayerDreadStartingCharacterForRotation = embarkChar.Id;
-          p.PreferredDreadCharacter = rotatingModel.Id;
-        }
+      p.PreferredDreadCharacter = sel.c.Id;
+      p.PreferredDreadRotatingTickboxOnSingleplayer = isRotRun;
+      if (isBeginningRot && rotatingModel) {
+        p.CurrentSingleplayerDreadStartingCharacterForRotation = embarkChar.Id;
+        p.PreferredDreadCharacter = rotatingModel.Id;
       }
       G.SaveManager.Instance.SaveProgressFile();
     }, undefined);
 
-    if (lobby) {
-      lobby.onReady();
-      return;
-    }
-    if (busy) return;
-    setBusy(true);
     await acceptTutorialsFtue();
     stopMusic();
     playOneShot(embarkChar.CharacterTransitionSfx);
@@ -526,7 +465,7 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
   const nameColor = cssColor(safe(() => displayChar?.DreadNameColor, null));
 
   return (
-    <div class={'charselect dread' + (lobby ? ' mp-lobby-screen' : '')}>
+    <div class="charselect dread">
       {sel && isRotatingChar(sel.c) && displayChar && (
         <img
           class="drd-bg-rotating"
@@ -543,7 +482,6 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
           onToggle={() => setTicked((t) => !t)}
         />
       )}
-      {lobby && lobby.players}
       <div class="chs-buttons" style={{ left: `${960 - (buttons.length * 116 - 16) / 2}px` }}>
         {buttons.map(({ c, locked }) => (
           <CharacterSelectButton
@@ -551,7 +489,7 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
             c={c}
             locked={locked}
             selected={sel?.c === c}
-            enabled={lobby ? !isReady && !animatingChain : !busy && !animatingChain}
+            enabled={!busy && !animatingChain}
             onSelect={() => select(c, locked)}
           />
         ))}
@@ -562,19 +500,9 @@ export function DreadSelect({ lobby }: { lobby?: DreadLobby } = {}) {
           <div class="drd-score-values">{recordLines.map((l) => String(l.value)).join('\n')}</div>
         </div>
       )}
-      {lobby && isReady && (
-        <div class="blz-ready-waiting">
-          <div class="blz-waiting-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }} />
-          <RichText text={loc('main_menu_ui', 'CHARACTER_SELECT.waitingForPlayers')} />
-        </div>
-      )}
       <ModeInfoButton onClick={() => setDisclaimer({ delayed: false })} />
-      <BackButton enabled={lobby ? !animatingChain : !busy && !animatingChain} onClick={lobby ? lobby.onBack : popMenu} />
-      {lobby && isReady ? (
-        <UnreadyButton enabled={!animatingChain} onClick={lobby.onReady} />
-      ) : (
-        <ConfirmButton enabled={!!sel && !sel.locked && !animatingChain && (lobby ? true : !busy)} onClick={() => void embark()} />
-      )}
+      <BackButton enabled={!busy && !animatingChain} onClick={popMenu} />
+      <ConfirmButton enabled={!!sel && !sel.locked && !animatingChain && !busy} onClick={() => void embark()} />
       {disclaimer && <DreadInfoDisclaimer delayed={disclaimer.delayed} onClose={() => setDisclaimer(null)} />}
     </div>
   );

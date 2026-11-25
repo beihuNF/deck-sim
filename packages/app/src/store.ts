@@ -4,7 +4,7 @@ import { $ } from './game';
 import { reportError } from './analytics';
 export type Screen = 'boot' | 'menu' | 'run' | 'gameover' | 'library' | 'relics' | 'potions' | 'history'
   | 'stats' | 'credits';
-export type MenuSubmenu = 'singleplayer' | 'charselect' | 'blitz' | 'dread' | 'settings' | 'compendium' | 'timeline' | 'daily' | 'custom' | 'profile' | 'multiplayer';
+export type MenuSubmenu = 'singleplayer' | 'charselect' | 'blitz' | 'dread' | 'settings' | 'compendium' | 'timeline' | 'daily' | 'custom' | 'profile';
 export const ui = {
   screen: 'boot' as Screen,
   room: null as any,         // current room view (bridge object)
@@ -13,7 +13,7 @@ export const ui = {
   toast: '' as string,
   gameOver: null as any,
   live: false,               // combat: periodic safety-net re-render (see loop)
-  cardsView: null as null | { kind: 'deck' | 'draw' | 'discard' | 'exhaust' } | { kind: 'player'; player: any; cards: any[]; relics: any[]; potions: any[] }, // NDeckViewScreen / NCardPileScreen / NMultiplayerPlayerExpandedState
+  cardsView: null as null | { kind: 'deck' | 'draw' | 'discard' | 'exhaust' }, // NDeckViewScreen / NCardPileScreen
   pauseOpen: false,          // NPauseMenu
   subscreen: null as Screen | null, // a compendium screen opened from the pause menu, over the run
   menuStack: [] as MenuSubmenu[], // NMainMenuSubmenuStack: submenus over the (blurred) main menu

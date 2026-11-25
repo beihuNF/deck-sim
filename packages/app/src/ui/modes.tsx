@@ -2,7 +2,6 @@
 // singleplayer submenus over the blurred main menu, laid out at their scene rects.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { ComponentChildren } from 'preact';
 import { G, $, list } from '../game';
 import { invalidate } from '../store';
 import { loc, locv } from '../i18n';
@@ -70,26 +69,14 @@ const utcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getU
 /** A UTC instant as a local Date with the same fields (netDate reads local getters; the daily's time is UTC). */
 const utcFields = (d: Date) => new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
 
-interface DailyLobby {
-  date: string;
-  setup: { characters: any[]; ascension: number; modifiers: any[] };
-  index: number;
-  playerCount: number;
-  playerName: string;
-  ready: boolean;
-  players: ComponentChildren;
-  onReady: () => void;
-  onBack: () => void;
-}
-export function DailyRun({ lobby }: { lobby?: DailyLobby }) {
+export function DailyRun() {
   // the time "fetched" on open (no time server: UtcNow), the run's DailyTime
-  const opened = useMemo(() => ({ time: lobby ? $.ext('System.DateTimeOffset').FromUnixTimeMilliseconds(Date.parse(lobby.date)) : $.ext('System.DateTimeOffset').UtcNow }), [lobby?.date]);
+  const opened = useMemo(() => ({ time: $.ext('System.DateTimeOffset').UtcNow }), []);
   const [now, setNow] = useState(() => new Date());
   const [busy, setBusy] = useState(false);
   useEffect(() => { const h = setInterval(() => setNow(new Date()), 250); return () => clearInterval(h); }, []);
-  const d = useMemo(() => lobby ? { character: lobby.setup.characters[lobby.index], ascension: lobby.setup.ascension, modifiers: lobby.setup.modifiers, seed: '' } : rollDaily(now), [utcDay(now), lobby?.setup, lobby?.index]);
-  const date = lobby ? new Date(lobby.date) : now;
-  const end = utcDay(date) + 86400000, left = Math.max(0, end - now.getTime());
+  const d = useMemo(() => rollDaily(now), [utcDay(now)]);
+  const end = utcDay(now) + 86400000, left = Math.max(0, end - now.getTime());
   const hms = [left / 3600000, (left / 60000) % 60, (left / 1000) % 60].map((x) => String(Math.floor(x) % 100).padStart(2, '0')).join(':');
   const id = String(d.character.Id.Entry).toLowerCase();
   const numRef = useRef<HTMLDivElement>(null);
@@ -100,9 +87,9 @@ export function DailyRun({ lobby }: { lobby?: DailyLobby }) {
     await embark(d.character, { seed: d.seed, ascension: d.ascension, modifiers: d.modifiers, dailyTime: opened.time });
   };
   return (
-    <div class={'daily' + (lobby ? ' daily-coop mp-lobby-screen' : '')}>
+    <div class="daily">
       <div class="dr-title">{m('DAILY_RUN_MENU.DAILY_TITLE')}</div>
-      <div class="dr-date">{netDate(m('DAILY_RUN_MENU.DATE_FORMAT'), utcFields(date))}</div>
+      <div class="dr-date">{netDate(m('DAILY_RUN_MENU.DATE_FORMAT'), utcFields(now))}</div>
       {/* default colour cream and node modulate cream: the gold label is tinted too */}
       <div class="dr-time" style={{ filter: tint(1, 0.965, 0.886) }}><RichText text={locv('main_menu_ui', 'DAILY_RUN_MENU.TIME_LEFT', { time: hms })} /></div>
       {/* NDailyRunCharacterContainer: icon, the ascension flame with its number (always), the name */}
@@ -110,11 +97,6 @@ export function DailyRun({ lobby }: { lobby?: DailyLobby }) {
       <div class="dr-asc-icon" style={frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_ascension'), 33, 48)} />
       <div class="dr-asc-num" ref={numRef}>{d.ascension}</div>
       <div class="dr-char-name">{fmt(d.character.Title)}</div>
-      {lobby && <>
-        <div class="dr-player-name">{lobby.playerName}</div>
-        {lobby.ready && <div class="dr-ready-tick" style={{ ...frameStyle(frameByName('compressed_atlas', 'confirm_button_tick'), 64, 64), filter: tint(0.498, 1, 0) }} />}
-        {lobby.players}
-      </>}
       <div class="dr-mods-label">{m('DAILY_RUN_MENU.MODIFIERS')}</div>
       <div class="dr-mods">
         {d.modifiers.map((mod) => (
@@ -124,14 +106,10 @@ export function DailyRun({ lobby }: { lobby?: DailyLobby }) {
           </div>
         ))}
       </div>
-      <Leaderboard time={opened.time} playerCount={lobby?.playerCount} />
-      {lobby?.ready && <div class="dr-ready-waiting">
-        <div class="dr-waiting-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }} />
-        <RichText text={m('CHARACTER_SELECT.waitingForPlayers')} />
-      </div>}
+      <Leaderboard time={opened.time} />
       <div class="dr-disclaimer">{m('DAILY_RUN_MENU.disclaimer')}</div>
-      <BackButton enabled={!busy} onClick={lobby ? lobby.ready ? lobby.onReady : lobby.onBack : popMenu} />
-      <ConfirmButton enabled={!busy && !lobby?.ready} onClick={lobby ? lobby.onReady : () => void go()} />
+      <BackButton enabled={!busy} onClick={popMenu} />
+      <ConfirmButton enabled={!busy} onClick={() => void go()} />
     </div>
   );
 }
@@ -202,11 +180,6 @@ function ScoreWarning() {
 /** 记住单人自定义界面的输入与选择（对应被缓存的 NCustomRunScreen） */
 const custom = { seed: '', mods: new Set<string>(), gameMode: 1 /* GameMode.Standard */ };
 interface ModRow { key: string; make: () => any; text: string; canonical: any }
-export type CustomGameModeName = 'standard' | 'blitz' | 'dread';
-const toGameModeNum = (name?: CustomGameModeName) =>
-  name === 'blitz' ? G.GameMode.Blitz : name === 'dread' ? G.GameMode.Dread : G.GameMode.Standard;
-const toGameModeName = (num: number): CustomGameModeName =>
-  num === G.GameMode.Blitz ? 'blitz' : num === G.GameMode.Dread ? 'dread' : 'standard';
 const gameModeTitle = (mode: number) =>
   m(mode === G.GameMode.Blitz ? 'BLITZ.title' : mode === G.GameMode.Dread ? 'DREAD.title' : 'STANDARD.title');
 
@@ -232,39 +205,6 @@ function toggle(row: ModRow, all: ModRow[]) {
   if (set) for (const other of all) if (other !== row && safe(() => set.Contains(other.canonical), false)) custom.mods.delete(other.key);
   custom.mods.add(row.key);
   invalidate();
-}
-
-function toggleModKeys(currentKeys: string[], row: ModRow, all: ModRow[]): string[] {
-  let keys = currentKeys.filter(k => k !== row.key);
-  if (!currentKeys.includes(row.key)) {
-    const set = list(G.ModelDb.MutuallyExclusiveModifiers).find((s: any) => s.Contains(row.canonical));
-    if (set) {
-      keys = keys.filter(k => {
-        const other = all.find(m => m.key === k);
-        return other?.canonical !== row.canonical && (!set || !safe(() => set.Contains(other?.canonical), false));
-      });
-    }
-    keys.push(row.key);
-  }
-  return keys;
-}
-
-export interface CustomLobby {
-  isHost: boolean;
-  seed: string;
-  ascension: number;
-  maxAscension: number;
-  modifiers: string[];
-  selectedCharacter: string;
-  ready: boolean;
-  gameMode?: CustomGameModeName;
-  availableGameModes?: CustomGameModeName[];
-  characterPool?: any[];
-  players: ComponentChildren;
-  onSelectCharacter: (charEntry: string) => void;
-  onConfigure: (settings: { seed?: string; ascension?: number; modifiers?: string[]; gameMode?: CustomGameModeName }) => void;
-  onReady: () => void;
-  onBack: () => void;
 }
 
 /** NCustomGameModeDropdown：自定义局子模式下拉框（标准 / 闪电 / 恐惧） */
@@ -341,158 +281,106 @@ function CustomRunRandomizeButton({ disabled, onClick }: { disabled: boolean; on
   );
 }
 
-export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
+export function CustomRun() {
   const chars = characters();
   const all = useMemo(allModifiers, []);
-  const [singleSel, setSingleSel] = useState(chars[0].c);
-  const [singleMode, setSingleMode] = useState<number>(() => custom.gameMode || G.GameMode.Standard);
+  const [sel, setSel] = useState(chars[0].c);
+  const [gameMode, setGameMode] = useState<number>(() => custom.gameMode || G.GameMode.Standard);
   const [busy, setBusy] = useState(false);
 
-  const singleAvailableModes = useMemo(() => {
+  const availableModes = useMemo(() => {
     const out = [G.GameMode.Standard];
     if (safe(() => G.SaveManager.Instance.IsEpochRevealed$_T1(G.BlitzEpoch), false)) out.push(G.GameMode.Blitz);
     if (safe(() => G.SaveManager.Instance.IsEpochRevealed$_T1(G.DreadEpoch), false)) out.push(G.GameMode.Dread);
     return out;
   }, []);
 
-  const gameMode = lobby ? toGameModeNum(lobby.gameMode) : singleMode;
-  const availableModes = lobby
-    ? (lobby.availableGameModes?.length ? lobby.availableGameModes.map(toGameModeNum) : [G.GameMode.Standard])
-    : singleAvailableModes;
-
-  const modeMaxForSingle = (mode: number, c: any) => {
+  const modeMax = (mode: number, c: any) => {
     if (mode === G.GameMode.Dread) return 10;
     if (mode === G.GameMode.Blitz) return safe(() => G.SaveManager.Instance.Progress.MaxBlitzAscension, 0);
     return maxAscension(c);
   };
-  const prefAscForSingle = (mode: number, c: any, mx: number) => {
+  const prefAsc = (mode: number, c: any, mx: number) => {
     if (mode === G.GameMode.Dread) return 10;
     if (mode === G.GameMode.Blitz) return Math.min(safe(() => G.SaveManager.Instance.Progress.PreferredBlitzAscension, 0), mx);
     return Math.min(safe(() => G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(c.Id).PreferredAscension, 0), mx);
   };
 
-  const singleMax = modeMaxForSingle(singleMode, singleSel);
-  const [singleLevel, setSingleLevel] = useState(() => prefAscForSingle(singleMode, singleSel, singleMax));
-
-  const sel = lobby ? (chars.find(c => c.c.Id.Entry === lobby.selectedCharacter)?.c ?? chars[0].c) : singleSel;
-  const max = lobby ? lobby.maxAscension : singleMax;
-  const level = lobby ? (gameMode === G.GameMode.Dread ? 10 : lobby.ascension) : singleLevel;
-  const seed = lobby ? lobby.seed : custom.seed;
-  const isHost = lobby ? lobby.isHost : true;
-  const isReady = lobby ? lobby.ready : false;
+  const max = modeMax(gameMode, sel);
+  const [level, setLevel] = useState(() => prefAsc(gameMode, sel, max));
 
   const select = (c: any) => {
-    if (lobby) {
-      if (isReady) return;
-      playOneShot(c.CharacterSelectSfx);
-      lobby.onSelectCharacter(c.Id.Entry);
-      return;
-    }
-    if (c === singleSel) return;
+    if (c === sel) return;
     playOneShot(c.CharacterSelectSfx);
-    setSingleSel(c);
-    const mx = modeMaxForSingle(singleMode, c);
-    setSingleLevel(prefAscForSingle(singleMode, c, mx));
+    setSel(c);
+    const mx = modeMax(gameMode, c);
+    setLevel(prefAsc(gameMode, c, mx));
   };
 
   const changeGameMode = (mode: number) => {
-    if (lobby) {
-      if (!isHost || isReady) return;
-      lobby.onConfigure({ gameMode: toGameModeName(mode) });
-      return;
-    }
     custom.gameMode = mode;
-    setSingleMode(mode);
-    const mx = modeMaxForSingle(mode, singleSel);
-    setSingleLevel(prefAscForSingle(mode, singleSel, mx));
+    setGameMode(mode);
+    const mx = modeMax(mode, sel);
+    setLevel(prefAsc(mode, sel, mx));
   };
 
   const changeLevel = (n: number) => {
     if (gameMode === G.GameMode.Dread) return;
-    if (lobby) {
-      if (!isHost || isReady) return;
-      lobby.onConfigure({ ascension: n });
-      return;
-    }
-    setSingleLevel(n);
-    if (singleMode === G.GameMode.Blitz) {
+    setLevel(n);
+    if (gameMode === G.GameMode.Blitz) {
       safe(() => { G.SaveManager.Instance.Progress.PreferredBlitzAscension = n; }, undefined);
     } else {
       // StartRunLobby.UpdatePreferredAscension: 仅在角色已解锁高进阶时记忆偏好
-      safe(() => { const s = G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(singleSel.Id); if (s.MaxAscension !== 0) s.PreferredAscension = n; }, undefined);
+      safe(() => { const s = G.SaveManager.Instance.Progress.GetOrCreateCharacterStats(sel.Id); if (s.MaxAscension !== 0) s.PreferredAscension = n; }, undefined);
     }
-  };
-
-  const handleToggleMod = (r: ModRow) => {
-    if (lobby) {
-      if (!isHost || isReady) return;
-      const nextMods = toggleModKeys(lobby.modifiers, r, all);
-      lobby.onConfigure({ modifiers: nextMods });
-      return;
-    }
-    toggle(r, all);
   };
 
   const handleRandomize = () => {
-    if (lobby && (!isHost || isReady)) return;
-    if (!lobby && busy) return;
+    if (busy) return;
     let nextChar = sel;
-    if (!lobby) {
-      const unlocked = chars.filter((x) => !x.locked);
-      if (unlocked.length) {
-        const picked = unlocked[Math.floor(Math.random() * unlocked.length)].c;
-        nextChar = picked;
-        if (picked !== singleSel) {
-          playOneShot(picked.CharacterSelectSfx);
-          setSingleSel(picked);
-          const mx = modeMaxForSingle(singleMode, picked);
-          setSingleLevel(prefAscForSingle(singleMode, picked, mx));
-        }
+    const unlocked = chars.filter((x) => !x.locked);
+    if (unlocked.length) {
+      const picked = unlocked[Math.floor(Math.random() * unlocked.length)].c;
+      nextChar = picked;
+      if (picked !== sel) {
+        playOneShot(picked.CharacterSelectSfx);
+        setSel(picked);
+        const mx = modeMax(gameMode, picked);
+        setLevel(prefAsc(gameMode, picked, mx));
       }
     }
-    const poolChars = lobby?.characterPool?.length ? lobby.characterPool : [nextChar];
-    const pickedMods = safe(() => list(G.ModifierModel.Pick2Good1Bad(G.Rng.Chaotic, poolChars)), []);
+    const pickedMods = safe(() => list(G.ModifierModel.Pick2Good1Bad(G.Rng.Chaotic, [nextChar])), []);
     const keys = pickedMods.map((mod: any) =>
       mod instanceof G.CharacterCards && mod.CharacterModel ? `${mod.Id.Entry}:${mod.CharacterModel.Entry}` : mod.Id.Entry,
     );
-    if (lobby) {
-      lobby.onConfigure({ modifiers: keys });
-    } else {
-      custom.mods.clear();
-      for (const k of keys) if (all.some((r) => r.key === k)) custom.mods.add(k);
-      invalidate();
-    }
+    custom.mods.clear();
+    for (const k of keys) if (all.some((r) => r.key === k)) custom.mods.add(k);
+    invalidate();
   };
 
   const go = async () => {
-    if (lobby) {
-      lobby.onReady();
-      return;
-    }
     if (busy) return;
     setBusy(true);
     const seedVal = custom.seed ? G.SeedHelper.CanonicalizeSeed(custom.seed) : null;
-    const asc = singleMode === G.GameMode.Dread ? 10 : (max > 0 ? level : 0);
+    const asc = gameMode === G.GameMode.Dread ? 10 : (max > 0 ? level : 0);
     await embark(sel, {
       ascension: asc,
       seed: seedVal,
       modifiers: all.filter((r) => custom.mods.has(r.key)).map((r) => r.make()),
-      gameMode: singleMode,
+      gameMode,
       isCustom: true,
     });
   };
 
-  const isModOn = (r: ModRow) => lobby ? lobby.modifiers.includes(r.key) : custom.mods.has(r.key);
-
   return (
-    <div class={'custom' + (lobby ? ' custom-coop mp-lobby-screen' : '')}>
+    <div class="custom">
       <div class="cr-title">{m('CUSTOM_RUN_SCREEN.CUSTOM_MODE_TITLE')}</div>
       <div class="cr-mode-seed-row">
         {availableModes.length > 1 && (
           <CustomGameModeDropdown
             value={gameMode}
             options={availableModes}
-            disabled={lobby ? (!isHost || isReady) : busy}
+            disabled={busy}
             onChange={changeGameMode}
           />
         )}
@@ -500,17 +388,12 @@ export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
           <div class="cr-seed-label">{m('CUSTOM_RUN_SCREEN.SEED_LABEL')}</div>
           <input
             class="cr-seed-input"
-            value={seed}
+            value={custom.seed}
             placeholder={m('CUSTOM_RUN_SCREEN.SEED_RANDOM_PLACEHOLDER')}
             spellcheck={false}
-            disabled={lobby ? (!isHost || isReady) : busy}
+            disabled={busy}
             onInput={(e) => {
-              const val = (e.target as HTMLInputElement).value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
-              if (lobby) {
-                if (isHost && !isReady) lobby.onConfigure({ seed: val });
-              } else {
-                custom.seed = val;
-              }
+              custom.seed = (e.target as HTMLInputElement).value.toUpperCase().replace(/[^A-Z0-9_]/g, '');
             }}
             onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); (e.target as HTMLInputElement).blur(); } }}
           />
@@ -519,52 +402,43 @@ export function CustomRun({ lobby }: { lobby?: CustomLobby } = {}) {
       {(max > 0 || gameMode === G.GameMode.Dread) && (
         <div class="cr-asc">
           <AscensionPanel
-            multiplayer={!!lobby}
             gameMode={gameMode}
             level={Math.min(level, Math.max(max, gameMode === G.GameMode.Dread ? 10 : 0))}
             max={gameMode === G.GameMode.Dread ? 10 : max}
-            readOnly={lobby ? (!isHost || isReady) : false}
             onChange={changeLevel}
           />
         </div>
       )}
       <div class="cr-buttons" style={{ left: `${480 - (chars.length * 116 - 16) / 2}px` }}>
-        {chars.map(({ c, locked }) => (
+        {chars.map(({ c }) => (
           <CharacterSelectButton
             c={c}
-            locked={locked}
+            locked={false}
             selected={c === sel}
-            enabled={lobby ? !isReady && !locked : !busy}
+            enabled={!busy}
             onSelect={() => select(c)}
           />
         ))}
       </div>
       <div class="cr-mods-header">
         <div class="cr-mods-title">{m('CUSTOM_RUN_SCREEN.MODIFIERS_TITLE')}</div>
-        <CustomRunRandomizeButton disabled={lobby ? (!isHost || isReady) : busy} onClick={handleRandomize} />
+        <CustomRunRandomizeButton disabled={busy} onClick={handleRandomize} />
       </div>
       <ScrollArea rect={[992, 168 - view.oy, 686 + view.ox, 750 + 2 * view.oy]} bar={[1680 + view.ox, 168 - view.oy, 48, 750 + 2 * view.oy]}>
         <div class="cr-mod-list">
           {all.map((r) => (
             <ModifierTickbox
               row={r}
-              on={isModOn(r)}
-              disabled={lobby ? (!isHost || isReady) : busy}
-              onToggle={() => handleToggleMod(r)}
+              on={custom.mods.has(r.key)}
+              disabled={busy}
+              onToggle={() => toggle(r, all)}
             />
           ))}
         </div>
       </ScrollArea>
       <div class="cr-disclaimer">{m('CUSTOM_RUN_SCREEN.disclaimer')}</div>
-      {lobby && lobby.players}
-      {lobby && isReady && (
-        <div class="dr-ready-waiting">
-          <div class="dr-waiting-bg" style={{ borderImageSource: `url(${imageUrl('images/ui/fuzzy_nine_patch_char_select.png')})` }} />
-          <RichText text={m('CHARACTER_SELECT.waitingForPlayers')} />
-        </div>
-      )}
-      <BackButton enabled={lobby ? true : !busy} onClick={lobby ? (isReady ? lobby.onReady : lobby.onBack) : popMenu} />
-      <ConfirmButton enabled={lobby ? !isReady : !busy} onClick={() => void go()} />
+      <BackButton enabled={!busy} onClick={popMenu} />
+      <ConfirmButton enabled={!busy} onClick={() => void go()} />
     </div>
   );
 }

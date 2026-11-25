@@ -16,8 +16,6 @@ import { imageUrl } from '../assets';
 import { modalOpen } from '../ui/modal';
 import { ftueActive } from '../ui/ftue';
 import { edge } from '../view';
-import { pingHotkey } from '../ui/combat-hud';
-import { syncControllerFocus } from './peer-input';
 import { logicalRect } from '../ui/tooltip';
 
 // Controller state
@@ -111,18 +109,17 @@ function clearFocus(mouseTarget: EventTarget | null = null) {
   });
   if (focused.size) virtualHovered = null;
 }
-const CONTROL_SELECTOR = 'button:not(:disabled), input:not(:disabled):not([type="hidden"]), a[href], [data-ctl]:not(.disabled):not(.nscrollbar), .mm-btn, .mm-profile, .mp-steam-badge, .settings-tab, .submenu-btn, .chs-btn, .game-btn.shown, .mp.travelable, .event-option, .anc-hitbox, .reward-btn, .bundle, .grid-holder .gh-card, .pause-btn, .vp-btn, .chs-arrow, .rest-btn, .chest-btn, .relic-holder-t, .merchant-btn, .shop-hit, .alt-btn, .view-upgrades, .sort-btn, .inspect-arrow, .ic-upgrade, .ftue-confirm, .cr-arrow, .ea-proceed, .invite-code-btn';
+const CONTROL_SELECTOR = 'button:not(:disabled), input:not(:disabled):not([type="hidden"]), a[href], [data-ctl]:not(.disabled):not(.nscrollbar), .mm-btn, .mm-profile, .settings-tab, .submenu-btn, .chs-btn, .game-btn.shown, .mp.travelable, .event-option, .anc-hitbox, .reward-btn, .bundle, .grid-holder .gh-card, .pause-btn, .vp-btn, .chs-arrow, .rest-btn, .chest-btn, .relic-holder-t, .merchant-btn, .shop-hit, .alt-btn, .view-upgrades, .sort-btn, .inspect-arrow, .ic-upgrade, .ftue-confirm, .cr-arrow, .ea-proceed';
 function navigationRoot(selector?: string): ParentNode {
   // Only the foremost layer owns focus. Screens underneath remain mounted for the original animations.
   const last = (selector: string) => Array.from(document.querySelectorAll<HTMLElement>(selector)).at(-1);
   if (modalOpen()) return document.querySelector('.modal-slot') ?? document;
-  const dialog = last('.mp-join-modal-backstop'); if (dialog) return dialog.querySelector('.mp-join-dialog, .mp-settings-dialog') ?? dialog;
   const dropdown = last('.std-list'); if (dropdown) return dropdown;
   const inspect = last('.inspect-screen'); if (inspect) return inspect.closest('.stage-root') ?? inspect;
   if (ftueActive()) return last('.ftue') ?? document;
   if (ui.subscreen) return document.querySelector('.subscreen-root') ?? document;
   if (ui.pauseOpen) return last('.settings-screen, .pause-menu') ?? document;
-  if (ui.cardsView) return last('.cards-screen, .mp-expanded') ?? document;
+  if (ui.cardsView) return last('.cards-screen') ?? document;
   if (ui.mapOpen) return document.querySelector('.map-screen') ?? document;
   if (ui.overlays.length) {
     const screen = last('.rewards-screen, .card-reward-screen, .choose-card-screen, .bundle-screen, .grid-screen');
@@ -193,8 +190,7 @@ function focusControls(direction: 'up' | 'down' | 'left' | 'right', selector = C
   next?.classList.add('input-focus');
   focusedControl = next ?? null;
   if (next) {
-    const root = document.querySelector('.stage-root')!.getBoundingClientRect(), r = next.getBoundingClientRect();
-    syncControllerFocus((r.left + r.width / 2 - root.left) / root.width * 1920, (r.top + r.height / 2 - root.top) / root.height * 1080);
+    const r = next.getBoundingClientRect();
     const dropdown = next.closest<HTMLElement>('.std-list');
     if (dropdown) {
       const box = dropdown.getBoundingClientRect(), bottom = Math.min(box.bottom, innerHeight - 8), top = Math.max(box.top, 0);
@@ -235,7 +231,7 @@ window.addEventListener('keydown', e => {
       navigateMap(direction[1]);
     }
     else if (direction) focusControls(direction[1]);
-    else if (matches('topPanel')) focusControls('up', '.tb-map, .tb-deck, .tb-settings, .mp-player-state');
+    else if (matches('topPanel')) focusControls('up', '.tb-map, .tb-deck, .tb-settings');
     else {
       const focused = document.querySelector<HTMLElement>('.input-focus');
       if (focused) activateControl(focused);
@@ -246,7 +242,7 @@ window.addEventListener('keydown', e => {
     const confirm = navigationRoot().querySelector<HTMLElement>('.confirm-btn.shown');
     if (confirm) { e.preventDefault(); e.stopImmediatePropagation(); activateControl(confirm); return; }
   }
-  if ((matches('viewDeck') || matches('viewExhaust')) && document.querySelector('.settings-screen, .charselect, .coop-charselect')) {
+  if ((matches('viewDeck') || matches('viewExhaust')) && document.querySelector('.settings-screen, .charselect')) {
     e.preventDefault(); e.stopImmediatePropagation();
     window.dispatchEvent(new CustomEvent('input-page', { detail: matches('viewDeck') ? -1 : 1 }));
   }
@@ -377,12 +373,12 @@ function handleCombatGamepad(
     selectedHandIndex = Math.floor((hand?.ActiveHolders.length ?? 0) / 2);
     stickXTimer = 0;
   }
-  const topFocus = document.querySelector<HTMLElement>('.top-bar .input-focus, .mp-player-states .input-focus');
+  const topFocus = document.querySelector<HTMLElement>('.top-bar .input-focus');
   if (topFocus && !targetManager.IsInSelection) {
     if (actionJustPressed('select')) { activateControl(topFocus); return; }
     if (actionJustPressed('cancel') || actionJustPressed('topPanel')) { clearFocus(); return; }
     for (const [action, direction] of [['up', 'up'], ['down', 'down'], ['handPrev', 'left'], ['handNext', 'right']] as const) {
-      if (actionJustPressed(action)) { focusControls(direction, '.tb-map, .tb-deck, .tb-settings, .mp-player-state'); return; }
+      if (actionJustPressed(action)) { focusControls(direction, '.tb-map, .tb-deck, .tb-settings'); return; }
     }
   }
 
@@ -398,8 +394,6 @@ function handleCombatGamepad(
     else if (actionJustPressed('handNext') || direction === 'right') index = (index + 1) % targets.length;
     const target = targets[index];
     if (targetManager.hovered !== target) targetManager.OnNodeHovered(target);
-    const s = target.slot;
-    if (s) syncControllerFocus(s.x + s.bl + s.w / 2, s.y + s.bt + s.h / 2);
 
     // Select plays a card; confirm/end turn are separate original actions.
     if (actionJustPressed('select')) {
@@ -414,8 +408,6 @@ function handleCombatGamepad(
     }
     return;
   }
-
-  if (actionJustPressed('select') && pingHotkey()) return;
 
   // Self/all-target cards use the same two-press preview/confirm flow as the original controller play.
   if (hand?.currentPlay?.directional) {
@@ -457,7 +449,6 @@ function handleCombatGamepad(
       selectedHandIndex = (selectedHandIndex + step + holders.length) % holders.length;
     }
     selectedHolder = holders[selectedHandIndex];
-    syncControllerFocus(selectedHolder.GlobalPosition.X, selectedHolder.GlobalPosition.Y);
     for (const holder of holders) holder.focus(holder === selectedHolder);
 
     // Play highlighted card (A button)
@@ -475,7 +466,7 @@ function handleCombatGamepad(
   }
 
   // Combat shortcuts
-  if (actionJustPressed('topPanel')) { focusControls('up', '.tb-map, .tb-deck, .tb-settings, .mp-player-state'); return; }
+  if (actionJustPressed('topPanel')) { focusControls('up', '.tb-map, .tb-deck, .tb-settings'); return; }
   if (actionJustPressed('endTurn')) { // Y button -> End Turn
     endTurnHotkey()?.();
     return;
@@ -566,7 +557,7 @@ function handleMenuVirtualCursor(
     if (actionJustPressed('confirm')) { window.dispatchEvent(new KeyboardEvent('keydown', { key: getKeyboardBindings().confirm, bubbles: true })); return; }
   }
 
-  const onPageScreen = !!document.querySelector('.settings-screen, .charselect, .coop-charselect');
+  const onPageScreen = !!document.querySelector('.settings-screen, .charselect');
   if (onPageScreen && (actionJustPressed('viewDeck') || actionJustPressed('viewExhaust'))) {
     window.dispatchEvent(new CustomEvent('input-page', { detail: actionJustPressed('viewDeck') ? -1 : 1 }));
     return;
@@ -674,8 +665,6 @@ function simulateEscape() {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: getKeyboardBindings().cancel, bubbles: true }));
     return;
   }
-  const dialogCancel = navigationRoot().querySelector<HTMLElement>('.mp-dialog-buttons .vp-btn.no');
-  if (dialogCancel) { activateControl(dialogCancel); return; }
   const dropdownDismiss = document.querySelector('.std-list')?.closest('.st-drop')?.querySelector<HTMLElement>('.std-dismiss');
   if (dropdownDismiss) { activateControl(dropdownDismiss); return; }
   const closers = navigationRoot().querySelectorAll<HTMLElement>('[data-esc]');

@@ -2,9 +2,8 @@
 // treasureBackdrop), the common banner, the relic collection's single-player holder and the proceed button.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { G, list } from '../game';
-import { frameByName, frameStyle, atlasFrame, imageUrl } from '../assets';
-import { mpText } from '../multiplayer';
+import { G } from '../game';
+import { frameByName, frameStyle, atlasFrame } from '../assets';
 import { playOneShot } from '../audio';
 import { loc } from '../i18n';
 import { Backdrop } from './backdrop';
@@ -39,7 +38,6 @@ export function TreasureScreen({ view }: { view: TreasureView }) {
           {view.empty
             ? <div class="treasure-empty">{loc('gameplay_ui', 'TREASURE_EMPTY')}</div>
             : view.holderShown && view.relics.map((relic, index) => <RelicHolder key={index} view={view} relic={relic} index={index} el={node => { holders.current[index] = node; }} />)}
-          {!view.empty && view.runState.Players.length > 1 && <button class="treasure-skip" disabled={!view.clickable || view.selectionOff} onClick={() => view.skip()}>{mpText('放弃遗物', 'Skip relic')}</button>}
         </div>
       )}
       {view.banner && <CommonBanner text={loc('gameplay_ui', 'TREASURE_BANNER')} out={view.banner === 'out'} />}
@@ -67,8 +65,6 @@ function RelicHolder({ view, relic, index, el }: { view: TreasureView; relic: an
   const [st, setSt] = useState<'' | 'hover' | 'press'>('');
   const count = view.relics.length;
   const left = 348 + (index - (count - 1) / 2) * 230;
-  const sync = G.RunManager.Instance.TreasureRoomRelicSynchronizer;
-  const voters = list(view.runState.Players).filter(p => { const vote = sync.GetPlayerVote(p); return vote.voteReceived && vote.index === index; });
   const id = String(safe(() => relic.Id.Entry, '')).toLowerCase();
   const rarity = safe(() => relic.Rarity, 0);
   const scale = st === 'hover' ? 2.1 : st === 'press' ? 1.9 : 2;
@@ -93,7 +89,6 @@ function RelicHolder({ view, relic, index, el }: { view: TreasureView; relic: an
         <div class="relic-outline" style={frameStyle(frameByName('relic_outline_atlas', id), 120, 120)} />
         <div style={frameStyle(atlasFrame(safe(() => relic.IconPath, '')) ?? frameByName('relic_atlas', id), 120, 120)} />
       </div>
-      <div class="treasure-votes">{voters.map(p => <img key={p.NetId} data-player-id={p.NetId} src={imageUrl(p.Character.IconTexturePath) ?? ''} alt={String(p.NetId)} />)}</div>
     </div>
   );
 }

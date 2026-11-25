@@ -51,23 +51,6 @@ try {
   await page.evaluate(()=>{window.__pad.id='E2E Xbox Controller';});
   await page.waitForSelector('.controller-focus-hint [data-glyph*="/xbox_one/a.tres"]');
   console.log('Main menu controller focus and glyph passed');
-  await focus('.mm-multiplayer',13); await tap(0); await page.waitForSelector('.mp-screen-container .submenu-btn');
-  await tilt(.8); await page.waitForSelector('.submenu-btn:nth-child(2).input-focus');
-  await tap(0); await page.waitForSelector('.mp-dialog-input');
-  for (const invitation of [' https://sts2.136521.xyz/?room=a1b2c3d4e5f6&lang=zhs ', 'sts2.136521.xyz/?room=a1b2c3d4e5f6', 'a1b2c3d4e5f6']) {
-    await page.locator('.mp-dialog-input').evaluate((el,text)=>{
-      const data=new DataTransfer(); data.setData('text',text);
-      el.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
-    },invitation);
-    assert.equal(await page.inputValue('.mp-dialog-input'),'A1B2C3D4E5F6');
-  }
-  await tilt(0,.8); await page.waitForSelector('.mp-join-dialog .input-focus');
-  assert.equal(await page.locator('.mm-btn.input-focus, .submenu-btn.input-focus').count(),0);
-  await page.screenshot({path:`${out}/join-focus.png`});
-  await tap(1); await page.waitForSelector('.mp-join-dialog',{state:'detached'});
-  assert.equal(await page.evaluate(()=>window.ui.menuStack.length),1,'Cancel returns one level');
-  await tap(1); await page.waitForSelector('.mm-single_player');
-  console.log('Invite paste and single-level cancel passed');
   await focus('.mm-settings',13); await tap(0); await page.waitForSelector('.settings-screen');
   await tap(5); await tap(5); // Original next-tab action, Audio.
   await page.waitForSelector('.sts-bar.input-focus');
@@ -134,6 +117,6 @@ try {
   assert.deepEqual(errors,[]); console.log('OK: rest, chest/relic selection, shop focus/back, modal No and original controller glyphs');
 } catch(e) {
   console.error(e,errors);
-  console.error(await page.evaluate(()=>Array.from(document.querySelectorAll('.input-focus, .vp-btn, .mp-dialog-input')).map(el=>({cls:el.className,pointer:getComputedStyle(el).pointerEvents,rect:el.getBoundingClientRect().toJSON()}))).catch(()=>null));
+  console.error(await page.evaluate(()=>Array.from(document.querySelectorAll('.input-focus, .vp-btn')).map(el=>({cls:el.className,pointer:getComputedStyle(el).pointerEvents,rect:el.getBoundingClientRect().toJSON()}))).catch(()=>null));
   await page.screenshot({path:`${out}/failed.png`}).catch(()=>{}); process.exitCode=1;
 } finally {await browser.close();}

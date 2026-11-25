@@ -21,8 +21,6 @@ import { transitionView } from './transition';
 import { wheelDrag } from './scrollbar';
 import { fullView, view, mapDy } from '../view';
 import { renderResolution } from '../render/quality';
-import { CoopMapDrawings } from './map-coop';
-import { flashPlayerReady } from './multiplayer-state';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const TR = { Linear: 0, Sine: 1, Quad: 4, Expo: 5, Elastic: 6, Cubic: 7, Back: 10 }, EZ = { In: 0, Out: 1, InOut: 2 };
@@ -79,7 +77,6 @@ const playerVotes = new Map<number, any>();
 let mapSync: any = null;
 let runSync: any = null;
 let flavorSync: any = null;
-let coopDrawings: CoopMapDrawings | null = null;
 const mapChanged = (clearDrawings: boolean) => { const r = rs(); if (r?.Map) setMap(r.Map, r.Rng?.Seed ?? 0, clearDrawings); };
 const mapPinged = (player: any, coord: any) => pingMapCoord(coord, player);
 const playVoteTick = () => {
@@ -105,7 +102,6 @@ export function initializeMap() {
   mapSync.PlayerVoteChanged = $.dcombine(mapSync.PlayerVoteChanged, voteChanged);
   mapSync.PlayerVoteCancelled = $.dcombine(mapSync.PlayerVoteCancelled, voteCancelled);
   mapSync.PlayerVotesCleared = $.dcombine(mapSync.PlayerVotesCleared, votesCleared);
-  if (rm.State.Players.length > 1) coopDrawings = new CoopMapDrawings(rm.NetService, list(rm.State.Players), () => drawings.paint());
 }
 function disposeMapSync() {
   if (runSync) runSync.MapChanged = $.dremove(runSync.MapChanged, mapChanged);
@@ -116,7 +112,7 @@ function disposeMapSync() {
     mapSync.PlayerVoteCancelled = $.dremove(mapSync.PlayerVoteCancelled, voteCancelled);
     mapSync.PlayerVotesCleared = $.dremove(mapSync.PlayerVotesCleared, votesCleared);
   }
-  mapSync = null; playerVotes.clear(); coopDrawings?.dispose(); coopDrawings = null;
+  mapSync = null; playerVotes.clear();
 }
 export function refreshMapVotes() {
   for (const p of list(rs()?.Players ?? [])) playerVotes.set(p.NetId, mapSync?.GetVote(p)?.coord ?? null);
@@ -554,7 +550,6 @@ function onPointerDown(e: PointerEvent) {
   if (!S.inputDisabled && !actAnimRunning() && S.mode === 'none' && (e.button === 2 || e.button === 1)) {
     e.preventDefault();
     S.mode = e.button === 2 ? 'draw' : 'erase'; S.held = true;
-    coopDrawings?.setLocalDrawingMode(S.mode === 'draw' ? 1 : 2);
     updateCursor();
     drawings.begin(x, y);
     invalidate();
@@ -658,7 +653,6 @@ const all = (): Record<string, Record<string, Line[]>> => (store ??= safe(() => 
 const runKey = () => `${safe(() => rs().Rng.StringSeed, '')}:${safe(() => G.RunManager.Instance._startTime, 0)}`;
 const actKey = () => String(safe(() => rs().CurrentActIndex, 0));
 let canvas: HTMLCanvasElement | null = null;
-let drawingLayer: HTMLCanvasElement | null = null;
 const drawings = {
   lines(): Line[] {
     const k = runKey(), a = actKey();
@@ -675,7 +669,6 @@ const drawings = {
   begin(x: number, y: number) {
     const lx = x * 0.5, ly = this.ly(y);
     S.line = [lx, ly, lx, ly + 0.5];
-    if (coopDrawings) { coopDrawings.begin(lx, ly, S.mode === 'erase'); return; }
     const k = runKey(), a = actKey();
     ((all()[k] ??= {})[a] ??= []).push({ e: S.mode === 'erase', p: S.line });
     this.paint();
@@ -684,27 +677,15 @@ const drawings = {
     const p = S.line!, lx = x * 0.5, ly = this.ly(y);
     if ((lx - p[p.length - 2]) ** 2 + (ly - p[p.length - 1]) ** 2 < 4) return;
     p.push(lx, ly);
-    if (coopDrawings) { coopDrawings.extend(lx, ly); return; }
     this.paint();
   },
-  end() { if (S.line) { S.line = null; if (coopDrawings) coopDrawings.end(); else this.save(); } },
-  clearMine() { if (coopDrawings) { coopDrawings.clearMine(); return; } const k = runKey(); (all()[k] ??= {})[actKey()] = []; this.save(); this.paint(); },
-  clearAll() { S.line = null; if (coopDrawings) { coopDrawings.clearAll(); return; } const k = runKey(); if (all()[k]) all()[k][actKey()] = []; this.paint(); },
+  end() { if (S.line) { S.line = null; this.save(); } },
+  clearMine() { const k = runKey(); (all()[k] ??= {})[actKey()] = []; this.save(); this.paint(); },
+  clearAll() { S.line = null; const k = runKey(); if (all()[k]) all()[k][actKey()] = []; this.paint(); },
   paint() {
     const c = canvas?.getContext('2d');
     if (!c) return;
     c.clearRect(0, 0, 960, 1620);
-    if (coopDrawings) {
-      if (!drawingLayer) { drawingLayer = document.createElement('canvas'); drawingLayer.width = 960; drawingLayer.height = 1620; }
-      const ctx = drawingLayer.getContext('2d')!;
-      for (const player of list(rs().Players)) {
-        if (player.NetId !== G.LocalContext.NetId && !G.SaveManager.Instance.PrefsSave.ShowMultiplayerDrawings) continue;
-        ctx.clearRect(0, 0, 960, 1620);
-        paintLines(ctx, coopDrawings.layers.get(player.NetId) ?? [], css(player.Character.MapDrawingColor));
-        c.drawImage(drawingLayer, 0, 0);
-      }
-      return;
-    }
     const color = safe(() => css(localPlayer(rs()).Character.MapDrawingColor), '#000');
     paintLines(c, this.lines(), color);
   },
@@ -727,7 +708,6 @@ function stopDrawing() {
   if (S.mode !== 'none') {
     S.mode = 'none';
     S.held = false;
-    coopDrawings?.setLocalDrawingMode(0);
     updateCursor();
     invalidate();
   }
@@ -738,7 +718,6 @@ function toggleMode(m: Mode) {
   if (was !== m) {
     S.mode = m;
     S.held = false;
-    coopDrawings?.setLocalDrawingMode(m === 'draw' ? 1 : m === 'erase' ? 2 : 0);
   }
   updateCursor();
   invalidate();
@@ -995,7 +974,6 @@ export function pingMapCoord(coord: any, player: any) {
   try {
     $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('map_ping.mp3', 1, G.PitchVariance.Medium);
   } catch { /* no audio */ }
-  if (player?.NetId != null) flashPlayerReady(player.NetId);
   setTimeout(() => { const i = mapPings.indexOf(ping); if (i >= 0) { mapPings.splice(i, 1); invalidate(); } }, 700);
 }
 function MapPings({ n }: { n: MapNode }) {

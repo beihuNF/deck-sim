@@ -27,7 +27,7 @@ export default defineConfig(({ command }) => ({
   esbuild: { jsx: 'automatic', jsxImportSource: 'preact', keepNames: false },
   resolve: { alias: { '@sts2/core': path.resolve(__dirname, '../core/src/index.ts') } },
   server: { port: 47173, strictPort: true, host: '127.0.0.1', fs: { allow: [path.resolve(__dirname, '../..')] },
-    proxy: { '/api/auth': { target: 'http://127.0.0.1:8787' }, '/api/multiplayer': { target: 'http://127.0.0.1:8787', ws: true } } },
+    proxy: { '/api/auth': { target: 'http://127.0.0.1:8787' } } },
   // Bundle goes to js/ so it never mixes with the game's assets/ tree (copied from public/).
   build: {
     target: 'es2020', chunkSizeWarningLimit: 20000, sourcemap: false, assetsDir: 'js',
@@ -56,31 +56,6 @@ export default defineConfig(({ command }) => ({
   // decodes paths with decodeURI, which leaves %40 encoded, and would answer with the page instead
   plugins: [
     { name: 'preview-at-sign', configurePreviewServer: (s) => { s.middlewares.use((req, _res, next) => { req.url = req.url?.replaceAll('%40', '@'); next(); }); } },
-    {
-      name: 'invite-link-redirect',
-      configureServer: (server) => {
-        server.middlewares.use((req, res, next) => {
-          const m = req.url ? /^\/(?:r|room)\/([A-F0-9]{12})\/?([?#].*)?$/i.exec(req.url) : null;
-          if (m) {
-            res.writeHead(302, { Location: `/?room=${m[1].toUpperCase()}${m[2] ? (m[2].startsWith('?') ? '&' + m[2].slice(1) : m[2]) : ''}` });
-            res.end();
-            return;
-          }
-          next();
-        });
-      },
-      configurePreviewServer: (server) => {
-        server.middlewares.use((req, res, next) => {
-          const m = req.url ? /^\/(?:r|room)\/([A-F0-9]{12})\/?([?#].*)?$/i.exec(req.url) : null;
-          if (m) {
-            res.writeHead(302, { Location: `/?room=${m[1].toUpperCase()}${m[2] ? (m[2].startsWith('?') ? '&' + m[2].slice(1) : m[2]) : ''}` });
-            res.end();
-            return;
-          }
-          next();
-        });
-      },
-    },
   ],
   define: { __BUILD_ID__: JSON.stringify(Date.now().toString(36)), __ASSETS_ID__: JSON.stringify(command === 'build' ? assetsId(path.resolve(__dirname, 'public/assets')) : 'dev') },
   optimizeDeps: { exclude: ['@sts2/core'] },
