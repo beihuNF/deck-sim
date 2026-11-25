@@ -13,7 +13,7 @@
 - 不要改名、删除存档 DTO 的 JSON 成员，也不要改它们的类型或含义；新增成员必须在旧存档缺这个字段时也能读。
 - 不要改存档里引用的模型 Id、存档文件的路径和文件名（`user://` 下）。
 - 不要改存储位置：IndexedDB 的 `sts2fs` 库、localStorage 的 `sts2fs:` 前缀（IndexedDB 不可用时的退路）和 `sts2fs-j:` 日志（页面关闭时的写入，下次 `vfs.mount()` 重放），都在 `packages/core/src/rt/godot.ts`。
-- 多人游戏战局文件名是 `current_run_mp.save`，与单人存档 `current_run.save` 一样由房主保存并落盘（vfs 同步至 IndexedDB）；退出多人游戏时通过 `$.vfs.endEphemeralSession()` 安全同步并平滑转回主菜单，禁止通过 `location.reload()` 粗暴重载整页。
+- 当前网页版暂不支持多人游戏（已移除联机玩法与服务端）；历史遗留的 `current_run_mp.save` 与 `$.vfs.endEphemeralSession()` 相关存储接口保持兼容不动，禁止通过 `location.reload()` 粗暴重载整页。
 - 更早版本存在 localStorage 的存档，首次启动时迁移到 IndexedDB 的逻辑必须一直可用。
 - 重新生成规则层（`pnpm gen`）或升级游戏版本可能改动存档 DTO，合入前要确认旧存档仍能读取。升级游戏版本按 `.claude/skills/upgrading-game-version/SKILL.md` 的阶段走。
 - 确实需要改格式时，先实现兼容旧格式的读取路径，并用旧存档做测试；拿不准就停下来问。
@@ -77,7 +77,7 @@ CHROME=<路径> node tools/e2e/continue.mjs /tmp/cont              # 保存并�
 
 ## 架构
 
-规则层不是手写的，而是把原作（v0.111.0 public-beta）反编译出的 C# 用 Roslyn 转译器整体转成 TypeScript；手写部分是让它跑起来的运行时，以及接在它下面的表现层。
+规则层不是手写的，而是把原作（v0.113.1 public-beta）反编译出的 C# 用 Roslyn 转译器整体转成 TypeScript；手写部分是让它跑起来的运行时，以及接在它下面的表现层。
 
 ```
 游戏安装包

@@ -2,14 +2,28 @@
 export const portPatchNotes: { date: string; eng: string; zhs: string }[] = [
   {
     date: '2026_11_25',
-    eng: `[gold][b]New Game Modes[/b][/gold]
-• Added Blitz mode with its streamlined top-bar map, dedicated Blitz Merchant shop, and mode unlock screen.
-• Added Dread mode with Dominion boss powers, dread visuals, and mode unlock screen.
-• Updated Custom mode setup and character selection memory, and adapted the top bar, run history, and game over summary for all game modes.`,
-    zhs: `[gold][b]全新游戏模式[/b][/gold]
-• 新增闪电（Blitz）模式，支持顶栏精简路线图、专属闪电商店及模式解锁提示。
-• 新增恐惧（Dread）模式，支持主宰（Dominion）首领强化能力、恐惧视觉表现及模式解锁提示。
-• 升级自定义模式设置与角色选择记忆，并完善顶栏、战绩历史与结算界面对各模式的展示支持。`,
+    eng: `[gold][b]Game Update[/b][/gold]
+• Updated game rules and assets to public-beta v0.113.1.
+• Added the new playable character The Fool, along with new cards, relics, potions, and events.
+• Added Blitz mode with its streamlined top-bar map and dedicated Blitz Merchant shop.
+• Added Dread mode with Dominion boss challenges and dread visuals.
+• Updated Custom mode, character selection memory, top bar, run history, and game over summary.
+
+[gold][b]Experience & Compatibility[/b][/gold]
+• Temporarily removed multiplayer mode to focus on the single-player experience and stability.
+• Maintained seamless compatibility with previous saves.
+• Fixed several known issues and improved overall gameplay experience.`,
+    zhs: `[gold][b]游戏更新[/b][/gold]
+• 游戏规则与资源更新至 public-beta v0.113.1。
+• 新增可选角色“愚者”（The Fool），同步上线全新卡牌、遗物、药水与事件内容。
+• 新增闪电（Blitz）模式，支持顶栏精简路线图与专属闪电商店。
+• 新增恐惧（Dread）模式，支持主宰（Dominion）首领强化挑战与恐惧视觉表现。
+• 升级自定义模式与角色选择记忆，完善顶栏、战绩历史与结算界面展示。
+
+[gold][b]体验与兼容[/b][/gold]
+• 暂时移除多人联机模式，专注打磨单人游戏体验与稳定性。
+• 完美兼容历史版本存档读取。
+• 修复了一些已知问题，优化整体体验。`,
   },
   {
     date: '2026_10_14',
