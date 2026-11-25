@@ -21,7 +21,7 @@ let hooked = false;
 export function installFlowHooks(G: any, _runState?: any) {
   if (hooked) return; // selector scope and CombatManager are process-wide; the handler reads the current run
   hooked = true;
-  G.CardSelectCmd.UseSelector(new G.TestCardSelector().$ctor_TestCardSelector());
+  G.CardSelectorStack.SetTestSelector(new G.TestCardSelector().$ctor_TestCardSelector());
   G.CombatManager.Instance.CombatWon = G.$.dcombine(G.CombatManager.Instance.CombatWon, (room: any) => {
     if (room.Encounter.ShouldGiveRewards) G.RewardsCmd.OfferForRoomEnd(G.RunManager.Instance.State.Players[0], room);
   });

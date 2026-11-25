@@ -8,4 +8,4 @@ export { Random, Exception, StringBuilder, TimeSpan, DateTime, Regex, extAttr } 
 export { WebTween, onFrame, ease, setEngineTimeScale } from './tween';
 export { Vector2, Vector2I, Color, vfs, setStorageErrorHandler, setTimeScale, setGodotLogSink, nextFrame, setResourceReader, setResourceLister, readResource } from './godot';
 import './thirdparty';
-export { jsonContext, JsonSerializer, snapshot, restore } from './json';
+export { jsonContext, JsonSerializer, snapshot, restore, WEB_SAVE_VERSION, SAVE_ENUM_MIGRATIONS, migrateEnumValue, migrateRawSave } from './json';

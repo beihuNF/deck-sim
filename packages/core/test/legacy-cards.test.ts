@@ -43,4 +43,69 @@ describe('retired cards in existing decks', () => {
     await until(() => enemy.CurrentHp < hp);
     expect(enemy.CurrentHp).toBe(hp - 5);
   }, 30000);
+
+  it('OutbreakPower triggers AoE damage after 3 poison applications without overload mismatch', async () => {
+    const { G, me, enemy } = await fight('Silent');
+    await G.PowerCmd.Apply$PlayerChoiceContext_Creature_Decimal_Creature_CardModel_Boolean_T1(
+      G.OutbreakPower, new G.ThrowingPlayerChoiceContext().$ctor_ThrowingPlayerChoiceContext(), me.Creature, 11, me.Creature, null, true);
+    const hp = enemy.CurrentHp;
+    for (let i = 0; i < 3; i++) {
+      await G.PowerCmd.Apply$PlayerChoiceContext_Creature_Decimal_Creature_CardModel_Boolean_T1(
+        G.PoisonPower, new G.ThrowingPlayerChoiceContext().$ctor_ThrowingPlayerChoiceContext(), enemy, 1, me.Creature, null, true);
+    }
+    expect(enemy.CurrentHp).toBe(hp - 11);
+  }, 30000);
+
+  it('DoorRevivalPower AfterDeath ignores non-null source and Doormaker.AnimOut uses SetIsInteractable', async () => {
+    const { G, me } = await fight('Ironclad');
+    const power = G.ModelDb.Power(G.DoorRevivalPower).ToMutable();
+    let opened = false;
+    let animInCalled = false;
+    const doorMonster = {
+      PrepareForDeath() {},
+      SetMoveImmediate() {},
+      Open() { opened = true; },
+      DeadState: {},
+      Doormaker: {
+        Monster: {
+          AnimIn() { animInCalled = true; return G.$.Task.CompletedTask; },
+        },
+      },
+    };
+    const origAdd = G.CreatureCmd.Add$Creature;
+    G.CreatureCmd.Add$Creature = () => G.$.Task.CompletedTask;
+    try {
+      const doorCreature = { Monster: doorMonster };
+      power._owner = doorCreature;
+      power.BeforeDeath(doorCreature);
+      expect(power.IsHalfDead).toBe(true);
+      // v0.113.1 第 3 参为 source（非 null 的 CardModel），不应被误判为 wasRemovalPrevented
+      await power.AfterDeath(new G.ThrowingPlayerChoiceContext().$ctor_ThrowingPlayerChoiceContext(), doorCreature, me.Deck.Cards[0], false, 0);
+      expect(opened).toBe(true);
+      expect(animInCalled).toBe(true);
+    } finally {
+      G.CreatureCmd.Add$Creature = origAdd;
+    }
+
+    // Doormaker.AnimOut 调用 SetIsInteractable(false) 而非已删除的 ToggleIsInteractable
+    const doormaker = G.ModelDb.Monster(G.Doormaker).ToMutable();
+    const dmCreature = { Monster: doormaker };
+    doormaker.Creature = dmCreature;
+    let interactable: boolean | undefined;
+    const NCombatRoom = G.$.ext('MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom');
+    const origRoom = NCombatRoom.Instance;
+    NCombatRoom.Instance = {
+      GetCreatureNode: () => ({
+        Visuals: { Body: { Scale: new G.$.Vector2(1, 1) } },
+        SetIsInteractable: (v: boolean) => { interactable = v; },
+        CreateTween: () => new G.$.WebTween(),
+      }),
+    };
+    try {
+      await doormaker.AnimOut();
+      expect(interactable).toBe(false);
+    } finally {
+      NCombatRoom.Instance = origRoom;
+    }
+  }, 30000);
 });

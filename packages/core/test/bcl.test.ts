@@ -79,3 +79,40 @@ it('StringBuilder.Append(ref interpolated handler) does not append the handler i
   bash.UpgradeInternal();
   expect(bash.GetDescriptionForPile(G.PileType.Hand)).not.toContain('Object');
 });
+
+it('implements v0.113.1 BCL and Godot extensions (RNG bytes, BitConverter, Char, DateTimeOffset, Latin1, GetFile)', () => {
+  const G: any = boot();
+  const $ = G.$;
+  const RNG = $.ext('System.Security.Cryptography.RandomNumberGenerator');
+  const BC = $.ext('System.BitConverter');
+  const Char = $.ext('System.Char');
+  const DTO = $.ext('System.DateTimeOffset');
+  const Enc = $.ext('System.Text.Encoding');
+  const StrExt = $.ext('Godot.StringExtensions');
+
+  const bytes = RNG.GetBytes(8);
+  expect(bytes).toHaveLength(8);
+  expect(typeof BC.ToUInt64([1, 0, 0, 0, 0, 0, 0, 0])).toBe('number');
+  expect(BC.ToUInt64([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])).toBe(0xffffffffffffffffn);
+  expect(typeof G.Rng.CreateChaoticSeed()).not.toBe('undefined');
+
+  expect(Char.IsAsciiLetterOrDigit('A'.charCodeAt(0))).toBe(true);
+  expect(Char.IsAsciiLetterOrDigit('9'.charCodeAt(0))).toBe(true);
+  expect(Char.IsAsciiLetterOrDigit('é'.charCodeAt(0))).toBe(false);
+  expect(Char.IsAsciiLetterOrDigit('_'.charCodeAt(0))).toBe(false);
+
+  const out = { v: null as any };
+  expect(DTO.TryParseExact('14_11_2026', 'dd_MM_yyyy', null, 80, out)).toBe(true);
+  expect(out.v.Year).toBe(2026);
+  expect(out.v.Month).toBe(11);
+  expect(out.v.Day).toBe(14);
+  expect(DTO.TryParseExact('31_02_2026', 'dd_MM_yyyy', null, 80, out)).toBe(false);
+
+  const latin = [0x41, 0xe9, 0xff];
+  expect(Enc.Latin1.GetString(latin)).toBe('Aéÿ');
+  expect(Enc.Latin1.GetBytes('Aéÿ中')).toEqual([0x41, 0xe9, 0xff, 0x3f]);
+
+  expect(StrExt.GetFile('user://default/1/profile1/saves/current_run.save')).toBe('current_run.save');
+  expect(StrExt.GetFile('progress.save')).toBe('progress.save');
+  expect(StrExt.GetFile('')).toBe('');
+});

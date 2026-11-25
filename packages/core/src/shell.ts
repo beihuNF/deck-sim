@@ -31,6 +31,8 @@ export interface NewRunOptions {
   seed: string;
   ascension?: number;
   modifiers?: any[];
+  gameMode?: number;
+  isCustom?: boolean;
   shouldSave?: boolean;
   /** Daily runs: the day (DateTimeOffset) the run belongs to (RunState.DailyTime, daily score). */
   dailyTime?: any;
@@ -44,8 +46,10 @@ export async function startNewSingleplayerRun(o: NewRunOptions) {
   const player = g.Player.CreateForNewRun$CharacterModel_UnlockState_UInt64(o.character, unlockState, 1);
   const rng = new g.Rng().$ctor_Rng$2(g.StringHelper.GetDeterministicHashCode(o.seed), 'act_selection');
   const acts = Array.from(g.ActModel.GetRandomList(rng, unlockState, false)).map((a: any) => a.ToMutable());
-  const gameMode = o.dailyTime != null ? g.GameMode.Daily : o.modifiers?.length ? g.GameMode.Custom : g.GameMode.Standard;
-  const runState = g.RunState.CreateForNewRun([player], acts, o.modifiers ?? [], gameMode, o.ascension ?? 0, o.seed);
+  // v0.113.1 将是否自定义对局拆分为独立的 isCustom 参数，GameMode 仅保留基础模式
+  const gameMode = o.gameMode ?? (o.dailyTime != null ? g.GameMode.Daily : g.GameMode.Standard);
+  const isCustom = o.isCustom ?? (o.dailyTime == null && Boolean(o.modifiers?.length));
+  const runState = g.RunState.CreateForNewRun([player], acts, o.modifiers ?? [], gameMode, isCustom, o.ascension ?? 0, o.seed);
   const rm = g.RunManager.Instance;
   rm.SetUpNewSingleplayer(runState, o.shouldSave ?? false, o.dailyTime ?? null);
   await rm.FinalizeStartingRelics();
@@ -77,7 +81,7 @@ export async function continueSavedRun(attach?: (runState: any) => void) {
 }
 
 // neutral locales whose language the game ships under its ISO 639-2 code (Chinese, Portuguese and Spanish are regional)
-const NEUTRAL: Record<string, string> = { en: 'eng', de: 'deu', fr: 'fra', id: 'ind', it: 'ita', ja: 'jpn', ko: 'kor', pl: 'pol', ru: 'rus', th: 'tha', tr: 'tur' };
+const NEUTRAL: Record<string, string> = { ar: 'ara', en: 'eng', de: 'deu', fr: 'fra', id: 'ind', it: 'ita', ja: 'jpn', ko: 'kor', pl: 'pol', ru: 'rus', th: 'tha', tr: 'tur' };
 /**
  * The game language for the device's locales (navigator.languages, most preferred first), by the rules of
  * PlatformUtil.GetThreeLetterLanguageCode (zh → zhs unless Traditional, pt-BR → ptb) plus Steam's spanish / latam split.

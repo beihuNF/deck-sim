@@ -136,8 +136,10 @@ export async function startWebMultiplayerRun(
   const unlock = new G.UnlockState().$ctor_UnlockState$IEnumerableUnlockState(roster.map((p: any) => p.UnlockState));
   const rng = new G.Rng().$ctor_Rng$2(G.StringHelper.GetDeterministicHashCode(seed), 'act_selection');
   const acts = Array.from(G.ActModel.GetRandomList(rng, unlock, true)).map((a: any) => a.ToMutable());
-  const gameMode = mode === 'daily' ? G.GameMode.Daily : mode === 'custom' ? G.GameMode.Custom : G.GameMode.Standard;
-  const state = G.RunState.CreateForNewRun(roster, acts, modifiers, gameMode, ascension, seed);
+  // v0.113.1 删除 GameMode.Custom，自定义对局由独立的 isCustom 布尔参数标识
+  const isCustom = mode === 'custom' || (mode !== 'daily' && modifiers.length > 0);
+  const gameMode = mode === 'daily' ? G.GameMode.Daily : mode === 'dread' ? G.GameMode.Dread : mode === 'blitz' ? G.GameMode.Blitz : G.GameMode.Standard;
+  const state = G.RunState.CreateForNewRun(roster, acts, modifiers, gameMode, isCustom, ascension, seed);
   const rm = G.RunManager.Instance;
   net.SetPeers(players.map(p => p.id));
   rm.SetUpNewMultiplayer(state, {

@@ -11,7 +11,7 @@ if [ $# -ne 2 ] || [ ! -d "$1/decompiled" ] || [ ! -f "$2/sts2.ts" ] || [ ! -d r
   echo "usage: bash $0 <old ref dir> <new gen dir>   (ref/decompiled must hold the new version)"; exit 2
 fi
 OLD="$1/decompiled" NEW=ref/decompiled GEN=packages/core/src/gen NEWGEN="$2"
-HAND="packages/app/src packages/core/src/rt packages/core/src/shell.ts packages/core/src/overrides.ts"
+HAND="packages/app/src packages/core/src/rt packages/core/src/shell.ts packages/core/src/multiplayer.ts packages/core/src/overrides.ts"
 section() { printf '\n##### %s\n' "$1"; }
 
 section "1. save types: source of every type the save samples contain (\$t)"
@@ -45,10 +45,10 @@ nodes() { (cd "$1/MegaCrit/sts2/Core/Nodes" && find . -name '*.cs' | sort); }
   c=$(grep -rlw -- "$n" $HAND | wc -l | tr -d ' '); [ "$c" -gt 0 ] && echo "$n  $c"
 done
 
-section "7. originals that overrides.ts, shell.ts and rt re-implement or patch, where the original changed"
-{ grep -oE '(^|[^A-Za-z0-9_$.])g\.[A-Z][A-Za-z0-9_]+' packages/core/src/overrides.ts | sed -E 's/.*g\.//'
-  grep -ohE 'MegaCrit\.[A-Za-z0-9_.]+' packages/core/src/overrides.ts packages/core/src/shell.ts packages/core/src/rt/*.ts | sed -E 's/.*\.//'
-  grep -oE '(^|[^A-Za-z0-9_])N[A-Z][A-Za-z]+' packages/core/src/shell.ts | sed -E 's/^[^N]*//'
+section "7. originals that overrides.ts, shell.ts, multiplayer.ts and rt re-implement or patch, where the original changed"
+{ grep -oE '(^|[^A-Za-z0-9_$.])[Gg]\.[A-Z][A-Za-z0-9_]+' packages/core/src/overrides.ts packages/core/src/shell.ts packages/core/src/multiplayer.ts | sed -E 's/.*[Gg]\.//'
+  grep -ohE 'MegaCrit\.[A-Za-z0-9_.]+' packages/core/src/overrides.ts packages/core/src/shell.ts packages/core/src/multiplayer.ts packages/core/src/rt/*.ts | sed -E 's/.*\.//'
+  grep -oE '(^|[^A-Za-z0-9_])N[A-Z][A-Za-z]+' packages/core/src/shell.ts packages/core/src/multiplayer.ts | sed -E 's/^[^N]*//'
 } | sort -u | while read -r n; do
   for f in $({ (cd "$OLD" && find . -name "$n.cs"); (cd "$NEW" && find . -name "$n.cs"); } | sort -u); do
     cmp -s "$OLD/$f" "$NEW/$f" || echo "$f"

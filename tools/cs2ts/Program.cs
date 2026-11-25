@@ -151,7 +151,11 @@ foreach (Match match in Regex.Matches(legacyText, @"(?m)^export class (\w+)\b[\s
         // archived tween await bound to the same Finished signal.
         .Replace("Tween_SignalName$.Finished", "\"finished\"")
         .Replace("PowerCmd.SetAmount(", "LegacyPowerCmd.SetAmount(")
-        .Replace("AfterPowerAmountChanged(power, amount, applier, cardSource)", "AfterPowerAmountChanged(choiceContext, power, amount, applier, cardSource)");
+        .Replace("AfterPowerAmountChanged(power, amount, applier, cardSource)", "AfterPowerAmountChanged(choiceContext, power, amount, applier, cardSource)")
+        // v0.113.1 在 AfterDeath 第 3 参数插入 source，保持旧档门神与复活钩子的参数对齐
+        .Replace("AfterDeath(choiceContext, creature, wasRemovalPrevented, deathAnimLength)", "AfterDeath(choiceContext, creature, _source, wasRemovalPrevented, deathAnimLength)")
+        // v0.113.1 将 NCreature.ToggleIsInteractable 改名为 SetIsInteractable
+        .Replace(".ToggleIsInteractable(", ".SetIsInteractable(");
     body = Regex.Replace(body, @"(?m)^  \w+\(([^\n]*)\)[^\n]*\{[\s\S]*?(?=^  (?:\w|\$)|^\}|\z)", method =>
     {
         var parameters = method.Groups[1].Value.Split(',').Select(p => p.Trim()).ToHashSet();
@@ -160,8 +164,9 @@ foreach (Match match in Regex.Matches(legacyText, @"(?m)^export class (\w+)\b[\s
         return Regex.Replace(method.Value, @"PowerCmd\.Apply\$(IEnumerableCreature|Creature)_Decimal_Creature_CardModel_Boolean_T1\((\w+), ",
             call => $"PowerCmd.Apply$PlayerChoiceContext_{call.Groups[1].Value}_Decimal_Creature_CardModel_Boolean_T1({call.Groups[2].Value}, {choice}, ");
     });
-    body = body.Replace("Damage$PlayerChoiceContext_Creature_Decimal_ValueProp_Creature_CardModel(", "Damage$PlayerChoiceContext_Creature_Decimal_ValueProp_Creature_CardModel_CardPlay(")
-        .Replace("Damage$PlayerChoiceContext_IEnumerableCreature_Decimal_ValueProp_Creature_CardModel(", "Damage$PlayerChoiceContext_IEnumerableCreature_Decimal_ValueProp_Creature_CardModel_CardPlay(")
+    // v0.113.1 中单目标 7 参重载为 Damage$7，多目标重载新增默认参数 ModifyDamageHookType
+    body = body.Replace("Damage$PlayerChoiceContext_Creature_Decimal_ValueProp_Creature_CardModel(", "Damage$7(")
+        .Replace("Damage$PlayerChoiceContext_IEnumerableCreature_Decimal_ValueProp_Creature_CardModel(", "Damage$PlayerChoiceContext_IEnumerableCreature_Decimal_ValueProp_Creature_CardModel_CardPlay_ModifyDamageHookType(")
         .Replace("this.Amount, ValueProp.Unpowered, this.Owner, null);", "this.Amount, ValueProp.Unpowered, this.Owner, null, null);");
     sb.Append(body).Append('\n');
     legacyNames.Add(name);
@@ -185,7 +190,10 @@ foreach (Match match in Regex.Matches(retainedRelics, @"(?m)^export class (\w+)\
         .Replace("$name = \"" + name + "\"", "$name = \"" + originalName + "\"")
         .Replace("MegaCrit.Sts2.Core.Models.Relics." + name, "Web.Legacy.Relics." + originalName);
     body = body.Replace("$ctor_CardCreationOptions$3(customCardPool, CardCreationSource.Other, creationOptions.RarityOdds)",
-        "$ctor_CardCreationOptions$4(creationOptions.CardPools, CardCreationSource.Other, creationOptions.RarityOdds, ((c) => Enumerable$.Contains(customCardPool, c)))");
+        "$ctor_CardCreationOptions$4(creationOptions.CardPools, CardCreationSource.Other, creationOptions.RarityOdds, ((c) => Enumerable$.Contains(customCardPool, c)))")
+        // v0.113.1 删除 RelicModel.IsBeforeAct3TreasureChest，并将 IsAllowed 改为模板方法调用 IsAllowedInternal
+        .Replace("IsAllowed(runState): boolean {\n    return RelicModel.IsBeforeAct3TreasureChest(runState);\n  }",
+            "IsAllowedInternal(runState): boolean {\n    return !RelicModel.IsLateInAct3(runState);\n  }");
     sb.Append(body).Append('\n');
     legacyNames.Add(name);
 }

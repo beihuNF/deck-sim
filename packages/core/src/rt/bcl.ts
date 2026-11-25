@@ -165,6 +165,11 @@ provide('System.Char', {
   IsLetter: (c: number) => /\p{L}/u.test(cs(c)),
   IsDigit: (c: number) => c >= 48 && c <= 57,
   IsLetterOrDigit: (c: number) => /[\p{L}\p{N}]/u.test(cs(c)),
+  // 判断字符是否为 ASCII 字母或数字（0-9、A-Z、a-z）
+  IsAsciiLetterOrDigit: (c: number | string) => {
+    const n = typeof c === 'string' ? c.charCodeAt(0) : c;
+    return (n >= 48 && n <= 57) || (n >= 65 && n <= 90) || (n >= 97 && n <= 122);
+  },
   IsUpper: (c: number) => cs(c) !== cs(c).toLowerCase(),
   IsLower: (c: number) => cs(c) !== cs(c).toUpperCase(),
   IsWhiteSpace: (c: number) => /\s/.test(cs(c)),
@@ -454,10 +459,30 @@ export class DateTime {
   static get Today() { const d = new Date(); d.setHours(0, 0, 0, 0); return new DateTime(d.getTime()); }
   static get MinValue() { return new DateTime(-62135596800000); }
   static get MaxValue() { return new DateTime(253402300799999); }
-  static $default() { return DateTime.MinValue; }
+  static $default() { return this.MinValue; }
   static UnixEpoch = new DateTime(0);
   static Parse(s: string) { return new DateTime(Date.parse(s)); }
-  static TryParse(s: string, ...rest: any[]) { const v = Date.parse(s); rest[rest.length - 1].v = new DateTime(v); return !Number.isNaN(v); }
+  static TryParse(s: string, ...rest: any[]) { const v = Date.parse(s); rest[rest.length - 1].v = new this(v); return !Number.isNaN(v); }
+  // 按指定格式字符串精确解析日期时间，校验日历合法性并写入 out 参数
+  static TryParseExact(s: string, fmt: string, _provider: any, _styles: number, out: { v: any }) {
+    out.v = this.MinValue;
+    if (typeof s !== 'string' || typeof fmt !== 'string') return false;
+    const parts: Record<string, number> = { yyyy: 1970, MM: 1, dd: 1, HH: 0, mm: 0, ss: 0, fff: 0 };
+    const tokens: string[] = [];
+    const rxStr = fmt.replace(/yyyy|MM|dd|HH|mm|ss|fff|[.*+?^${}()|[\]\\]/g, (m) => {
+      if (m in parts) { tokens.push(m); return `(\\d{${m.length}})`; }
+      return '\\' + m;
+    });
+    const m = new RegExp(`^${rxStr}$`).exec(s);
+    if (!m) return false;
+    tokens.forEach((t, i) => { parts[t] = Number(m[i + 1]); });
+    const ms = Date.UTC(parts.yyyy, parts.MM - 1, parts.dd, parts.HH, parts.mm, parts.ss, parts.fff);
+    const d = new Date(ms);
+    if (d.getUTCFullYear() !== parts.yyyy || d.getUTCMonth() !== parts.MM - 1 || d.getUTCDate() !== parts.dd
+      || d.getUTCHours() !== parts.HH || d.getUTCMinutes() !== parts.mm || d.getUTCSeconds() !== parts.ss) return false;
+    out.v = new this(ms);
+    return true;
+  }
   get Year() { return new Date(this.ms).getUTCFullYear(); }
   get Month() { return new Date(this.ms).getUTCMonth() + 1; }
   get Day() { return new Date(this.ms).getUTCDate(); }
@@ -945,18 +970,59 @@ provide('System.Text.Encoding', {
     GetByteCount: (s: string) => utf8.encode(s).length,
   },
   ASCII: { GetBytes: (s: string) => Array.from(s, (c) => c.charCodeAt(0) & 127), GetString: (b: number[]) => charsToStr(b) },
+  // ISO-8859-1 (Latin-1) 单字节编码：0x00-0xFF 与 Unicode 码位一一对应，超出范围替换为 '?' (0x3F)
+  Latin1: {
+    GetBytes: (s: any) => {
+      const str = typeof s === 'string' ? s : charsToStr(s);
+      const out = new Array<number>(str.length);
+      for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        out[i] = code <= 255 ? code : 63;
+      }
+      return out;
+    },
+    GetString: (bytes: ArrayLike<number>, a = 0, n = bytes.length - a) => {
+      let out = '';
+      for (let i = a, end = a + n; i < end; i++) out += String.fromCharCode((bytes[i] ?? 0) & 255);
+      return out;
+    },
+    GetByteCount: (s: string) => s.length,
+  },
   Unicode: { GetBytes: (s: string) => Array.from(s).flatMap((c) => [c.charCodeAt(0) & 255, c.charCodeAt(0) >> 8]) },
 });
 const le = (arr: number[], v: number | bigint, n: number, off = 0) => {
   const value = BigInt.asUintN(n * 8, typeof v === 'bigint' ? v : BigInt(Math.trunc(v)));
   for (let i = 0; i < n; i++) arr[off + i] = Number((value >> BigInt(8 * i)) & 255n);
 };
-const rle = (arr: number[], n: number, signed: boolean) => {
+const rle = (arr: ArrayLike<number>, n: number, signed: boolean, off = 0) => {
   let v = 0n;
-  for (let i = n - 1; i >= 0; i--) v = (v << 8n) | BigInt(arr[i] & 255);
+  for (let i = n - 1; i >= 0; i--) v = (v << 8n) | BigInt((arr[off + i] ?? 0) & 255);
   if (signed) v = BigInt.asIntN(n * 8, v);
   return int64(v, !signed);
 };
+// 加密安全随机数生成器：为 Rng.CreateChaoticSeed 等提供随机字节
+provide('System.Security.Cryptography.RandomNumberGenerator', {
+  GetBytes: (count: number) => {
+    const buf = new Uint8Array(count);
+    crypto.getRandomValues(buf);
+    return Array.from(buf);
+  },
+  Fill: (span: number[]) => {
+    const buf = new Uint8Array(span.length);
+    crypto.getRandomValues(buf);
+    for (let i = 0; i < buf.length; i++) span[i] = buf[i];
+  },
+});
+// 小端字节序数值转换器：支持从字节数组指定偏移读取 16/32/64 位整数
+provide('System.BitConverter', {
+  IsLittleEndian: true,
+  ToInt16: (a: ArrayLike<number>, off = 0) => Number(rle(a, 2, true, off)),
+  ToUInt16: (a: ArrayLike<number>, off = 0) => Number(rle(a, 2, false, off)),
+  ToInt32: (a: ArrayLike<number>, off = 0) => Number(rle(a, 4, true, off)),
+  ToUInt32: (a: ArrayLike<number>, off = 0) => Number(rle(a, 4, false, off)),
+  ToInt64: (a: ArrayLike<number>, off = 0) => rle(a, 8, true, off),
+  ToUInt64: (a: ArrayLike<number>, off = 0) => rle(a, 8, false, off),
+});
 provide('System.Buffers.Binary.BinaryPrimitives', {
   WriteInt32LittleEndian: (a: number[], v: number) => le(a, v >>> 0, 4), WriteUInt32LittleEndian: (a: number[], v: number) => le(a, v >>> 0, 4),
   WriteInt16LittleEndian: (a: number[], v: number) => le(a, v & 0xffff, 2), WriteUInt16LittleEndian: (a: number[], v: number) => le(a, v & 0xffff, 2),
