@@ -18,7 +18,7 @@ try {
   const before = await page.evaluate(async () => {
     const G = window.G, me = G.RunManager.Instance.State.Players[0];
     await G.PowerCmd.Apply$PlayerChoiceContext_Creature_Decimal_Creature_CardModel_Boolean_T1(
-      G.AmbergrisPower, new G.ThrowingPlayerChoiceContext().$ctor_ThrowingPlayerChoiceContext(), me.Creature, 1, me.Creature, null, true);
+      G.ExtraTurnPower, new G.ThrowingPlayerChoiceContext().$ctor_ThrowingPlayerChoiceContext(), me.Creature, 1, me.Creature, null, true);
     return { round: me.Creature.CombatState.RoundNumber, turn: me.PlayerCombatState.TurnNumber };
   });
   await page.locator('.end-turn-btn.shown:not(.disabled)').click();

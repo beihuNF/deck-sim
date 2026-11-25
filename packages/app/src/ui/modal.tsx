@@ -114,7 +114,7 @@ export function PopupButton({ yes, text, onClick, disabled, style }: { yes: bool
   const d = st === 'hover' ? 0.25 : st === 'press' ? -0.1 : 0;
   const t = st === 'hover' ? '.05s linear' : `.5s cubic-bezier(0.16, 1, 0.3, 1)`;
   const name = yes ? 'popup_confirm_button' : 'popup_cancel_button';
-  const img = frameByName('ui_atlas', name), out = frameByName('compressed', name + '_outline');
+  const img = frameByName('ui_atlas', name), out = frameByName('compressed_atlas', name + '_outline');
   const fit = (f: any) => { const k = f ? Math.min(196 / (f.sw * 2), 96 / (f.sh * 2)) : 1; return frameStyle(f, f ? f.sw * 2 * k : 196, f ? f.sh * 2 * k : 96); };
   return (
     <div class={'vp-btn ' + (yes ? 'yes' : 'no') + (disabled ? ' disabled' : '')} style={{ ...style, pointerEvents: disabled ? 'none' : undefined, opacity: disabled ? 0.5 : 1, filter: disabled ? 'grayscale(0.6)' : undefined }}

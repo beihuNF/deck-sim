@@ -63,9 +63,9 @@ export function ConfirmButton({ enabled: on, onClick, style, hotkey }: { enabled
       onPointerDown={(e) => { if (enabled && e.button === 0) press(); }}
       onPointerUp={(e) => { if (enabled && e.button === 0) release(); }}>
       <div class="gb-shadow" style={fit('ui_atlas', 'confirm_button', -41, -1, 267, 150)} />
-      <div class="gb-outline" style={{ ...fit('compressed', 'confirm_button_outline', -56, -16, 273, 156), filter: GOLD() }} />
+      <div class="gb-outline" style={{ ...fit('compressed_atlas', 'confirm_button_outline', -56, -16, 273, 156), filter: GOLD() }} />
       <div class="gb-image" style={fit('ui_atlas', 'confirm_button', -53, -13, 267, 150)} />
-      <div class="gb-icon" style={{ ...fit('compressed', 'confirm_button_tick', 35, 15, 80, 80), filter: CREAM() }} />
+      <div class="gb-icon" style={{ ...fit('compressed_atlas', 'confirm_button_tick', 35, 15, 80, 80), filter: CREAM() }} />
       {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint(hotkey ? 'confirm' : 'select').replace('[img ', '[img size=48 ')} /></span>}
     </div>
   );
@@ -83,9 +83,9 @@ export function BackButton({ enabled: on, onClick, style }: { enabled: boolean; 
       onPointerDown={(e) => { if (enabled && e.button === 0) { set('press'); playOneShot('event:/sfx/ui/clicks/ui_back'); } }}
       onPointerUp={(e) => { if (enabled && e.button === 0 && st === 'press') { set('hover'); onClick(); } }}>
       <div class="gb-shadow" style={fit('ui_atlas', 'back_button', -9, -1, 267, 150)} />
-      <div class="gb-outline" style={{ ...fit('compressed', 'back_button_outline', -24, -16, 273, 156), filter: GOLD() }} />
+      <div class="gb-outline" style={{ ...fit('compressed_atlas', 'back_button_outline', -24, -16, 273, 156), filter: GOLD() }} />
       <div class="gb-image" style={fit('ui_atlas', 'back_button', -21, -13, 267, 150)} />
-      <div class="gb-icon" style={{ ...fit('compressed', 'back_button_arrow', 67, 15, 80, 80), filter: CREAM() }} />
+      <div class="gb-icon" style={{ ...fit('compressed_atlas', 'back_button_arrow', 67, 15, 80, 80), filter: CREAM() }} />
       {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint('cancel').replace('[img ', '[img size=48 ')} /></span>}
     </div>
   );
@@ -101,7 +101,7 @@ export function ProceedButton({ enabled, pulse, label, onClick, style }: { enabl
       onPointerDown={(e) => { if (enabled && e.button === 0) set('press'); }}
       onPointerUp={(e) => { if (enabled && e.button === 0 && st === 'press') { set('hover'); onClick(); } }}>
       <div class="gb-shadow" style={fit('ui_atlas', 'proceed_button', 1, -5, 296, 155)} />
-      <div class="gb-outline pb-outline" style={{ ...fit('compressed', 'proceed_button_outline', -11, -17, 296, 155), filter: tint(1, 0.8, 0) }} />
+      <div class="gb-outline pb-outline" style={{ ...fit('compressed_atlas', 'proceed_button_outline', -11, -17, 296, 155), filter: tint(1, 0.8, 0) }} />
       <div class="gb-image" style={fit('ui_atlas', 'proceed_button', -11, -17, 296, 155)} />
       <div class="pb-label"><span>{text}</span></div>
       {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint('select').replace('[img ', '[img size=48 ')} /></span>}
@@ -149,9 +149,9 @@ export function UnreadyButton({ enabled: on, onClick, style }: { enabled: boolea
       onPointerUp={(e) => { if (enabled && e.button === 0 && st === 'press') { set('hover'); onClick(); } }}
     >
       <div class="gb-shadow" style={fit('ui_atlas', 'confirm_button', -41, -1, 267, 150)} />
-      <div class="gb-outline" style={{ ...fit('compressed', 'confirm_button_outline', -56, -16, 273, 156), filter: tint(0.9, 0.25, 0.25) }} />
+      <div class="gb-outline" style={{ ...fit('compressed_atlas', 'confirm_button_outline', -56, -16, 273, 156), filter: tint(0.9, 0.25, 0.25) }} />
       <div class="gb-image" style={fit('ui_atlas', 'confirm_button', -53, -13, 267, 150)} />
-      <div class="gb-icon" style={{ ...fit('compressed', 'back_button_x', 35, 15, 80, 80), filter: tint(1, 0.35, 0.35) }} />
+      <div class="gb-icon" style={{ ...fit('compressed_atlas', 'back_button_x', 35, 15, 80, 80), filter: tint(1, 0.35, 0.35) }} />
       {enabled && getInputDevice() !== 'keyboard' && <span class="input-button-hint"><RichText text={actionHint('cancel').replace('[img ', '[img size=48 ')} /></span>}
     </div>
   );

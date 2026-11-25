@@ -25,8 +25,8 @@ const byTitle = (a: any, b: any) => fmt(a.Title).localeCompare(fmt(b.Title), lan
 const rgba = (c: any, a: number) => tint(c.R, c.G, c.B, a);
 
 // ================================================================== card library
-const CHARS = ['IRONCLAD', 'SILENT', 'REGENT', 'NECROBINDER', 'DEFECT']; // the PoolFilters grid order
-const POOL_CLASS: Record<string, string> = { IRONCLAD: 'IroncladCardPool', SILENT: 'SilentCardPool', REGENT: 'RegentCardPool', NECROBINDER: 'NecrobinderCardPool', DEFECT: 'DefectCardPool', COLORLESS: 'ColorlessCardPool' };
+const CHARS = ['IRONCLAD', 'SILENT', 'REGENT', 'NECROBINDER', 'DEFECT', 'FOOL']; // the PoolFilters grid order
+const POOL_CLASS: Record<string, string> = { IRONCLAD: 'IroncladCardPool', SILENT: 'SilentCardPool', REGENT: 'RegentCardPool', NECROBINDER: 'NecrobinderCardPool', DEFECT: 'DefectCardPool', FOOL: 'FoolCardPool', COLORLESS: 'ColorlessCardPool' };
 /** The NCardLibrary node survives between opens (NSubmenuStack caches it): the sort priority and the rarity boxes' enabled state carry over. */
 const kept = { priority: ['RarityAscending', 'TypeAscending', 'CostAscending', 'AlphabetAscending'], rarityDisabled: false };
 type Filters = { pool: string | null; type: Set<string>; rarity: Set<string>; cost: Set<string>; search: string; mp: boolean; stats: boolean; upgrades: boolean; desc: Record<string, boolean> };
@@ -84,12 +84,22 @@ export function CardLibrary() {
     const unlocked = new Set(list(G.ModelDb.AllCardPools).flatMap((p: any) => safe(() => list(p.GetUnlockedCards(un, G.CardMultiplayerConstraint.None)), [])));
     const seen = ids(progress().DiscoveredCards);
     const all = list(G.ModelDb.AllCards).filter((c: any) => safe(() => c.ShouldShowInCardLibrary, true));
+    // NCardLibraryGrid._Ready: 展示 DingyDagger +3 与 +6 变体
+    const dagger = safe(() => G.ModelDb.Card(G.DingyDagger), null);
+    if (dagger) {
+      for (const lvl of [3, 6]) {
+        const copy = dagger.ToMutable();
+        for (let i = 0; i < lvl; i++) { copy.UpgradeInternal(); copy.FinalizeUpgradeInternal(); }
+        all.push(copy);
+      }
+    }
     const me = ui.screen === 'run' ? safe(() => String(localPlayer(G.RunManager.Instance.State).Character.Id.Entry), null) : null;
-    return { unlockedChars, unlocked, seen, all, me };
+    const isMp = ui.screen !== 'run' || safe(() => list(G.RunManager.Instance.State.Players).length > 1, true);
+    return { unlockedChars, unlocked, seen, all, me, isMp };
   }, []);
   const f = useRef<Filters>({
     pool: data.me && CHARS.includes(data.me) ? data.me : 'IRONCLAD', type: new Set(), rarity: new Set(), cost: new Set(), search: '',
-    mp: true, stats: false, upgrades: false, desc: { Type: true, Rarity: true, Cost: true, Alphabet: true },
+    mp: data.isMp, stats: false, upgrades: false, desc: { Type: true, Rarity: true, Cost: true, Alphabet: true },
   }).current;
   const [, rerender] = useState(0);
   const refresh = () => rerender((n) => n + 1);
@@ -116,7 +126,9 @@ export function CardLibrary() {
   };
   useEffect(() => () => { clearTimeout(debounce.current); setTip(null); }, []);
   const pools = [...CHARS.filter((c) => data.unlockedChars.has(c)), 'COLORLESS', 'ANCIENT', 'MISC'];
-  const dy = pools.length <= 4 ? -64 : 0; // one row of pool buttons: everything under them moves up
+  // 9 个卡池（含 Fool）时改 5 列两行排布，避免 3 行把 Alphabet 按钮挤到左下角 BackButton 下方
+  const cols = pools.length > 8 ? 5 : 4;
+  const dy = pools.length <= 4 ? -64 : 0;
   const sorter = (k: string) => {
     f.desc[k] = !f.desc[k];
     kept.priority = kept.priority.filter((o) => !o.startsWith(k));
@@ -145,7 +157,7 @@ export function CardLibrary() {
         <div class="cl-panel" />
         <SearchBar value={f.search} onInput={(v) => { f.search = v; update(true); }} onSubmit={() => update()} />
         <div class="cl-pools">
-          {pools.map((p, i) => <PoolToggle key={p} pool={p} x={16 + 64 * (i % 4)} y={76 + 64 * Math.floor(i / 4)} selected={f.pool === p}
+          {pools.map((p, i) => <PoolToggle key={p} pool={p} x={(cols === 5 ? 19 + 50 * (i % 5) : 16 + 64 * (i % 4))} y={76 + (cols === 5 ? 60 : 64) * Math.floor(i / cols)} scale={cols === 5 ? 0.85 : 1} selected={f.pool === p}
             onClick={() => pickPool(p)} onTip={p === 'COLORLESS' ? tipAt('POOL_COLORLESS_TIP') : p === 'ANCIENT' ? tipAt('POOL_ANCIENT_TIP') : p === 'MISC' ? tipAt('POOL_MISC_TIP') : undefined} onUntip={noTip} />)}
         </div>
         <div class="cl-lower" style={{ top: `${dy}px` }}>
@@ -274,16 +286,16 @@ function SearchBar({ value, onInput, onSubmit }: { value: string; onInput: (v: s
       <div class="cl-search-clear" onPointerEnter={() => { setHot(true); hoverSfx(); }} onPointerLeave={() => setHot(false)}
         onPointerDown={(e) => { if (e.button === 0) clickSfx(); }}
         onPointerUp={(e) => { if (e.button !== 0) return; input.current?.focus(); if (value.trim()) onInput(''); }}>
-        <div style={{ ...frameStyle(frameByName('compressed', 'back_button_x'), 36, 36), scale: hot ? '1.1' : hot === false ? '1' : '0.9', transition: hot ? 'scale .05s linear' : 'scale .3s linear' }} />
+        <div style={{ ...frameStyle(frameByName('compressed_atlas', 'back_button_x'), 36, 36), scale: hot ? '1.1' : hot === false ? '1' : '0.9', transition: hot ? 'scale .05s linear' : 'scale .3s linear' }} />
       </div>
     </div>
   );
 }
 
 /** NCardPoolFilter: a 56 px icon (hsv s / v 1 selected, 0.3 / 0.55 not) with its shadow; 1.1 selected, 0.95 not. */
-function PoolToggle({ pool, x, y, selected, onClick, onTip, onUntip }: { pool: string; x: number; y: number; selected: boolean; onClick: () => void; onTip?: (e: PointerEvent) => void; onUntip: () => void }) {
+function PoolToggle({ pool, x, y, scale = 1, selected, onClick, onTip, onUntip }: { pool: string; x: number; y: number; scale?: number; selected: boolean; onClick: () => void; onTip?: (e: PointerEvent) => void; onUntip: () => void }) {
   const [st, setSt] = useState<TickState>('');
-  const base = selected ? 1.1 : 0.95;
+  const base = (selected ? 1.1 : 0.95) * scale;
   const k = st === 'hover' ? base * 1.2 : st === 'press' ? base * 0.8 : base;
   const t = st === 'hover' ? '.05s linear' : st === 'press' ? `.3s ${EXPO_OUT}` : selected ? `.2s ${BACK_OUT}` : `.3s ${EXPO_OUT}`;
   const src = CHARS.includes(pool) ? { url: imageUrl(`images/ui/top_panel/character_icon_${pool.toLowerCase()}.png`) }

@@ -356,7 +356,7 @@ function DialogueLine({ ev, l, dim, reached }: { ev: any; l: any; dim: boolean; 
   const me = safe(() => ev.Owner.Character, null);
   const isChar = l.Speaker === G.AncientDialogueSpeaker.Character;
   const color = col(isChar ? safe(() => me.DialogueColor, null) : safe(() => ev.DialogueColor, null));
-  const text = safe(() => { const t = l.LineText; me.AddDetailsTo(t); return t.GetFormattedText(); }, '');
+  const text = safe(() => { const t = l.LineText; me.AddDetailsTo(t, ev.FoolPronounGuess ?? G.FoolPronounGuess?.Neutral ?? 0); return t.GetFormattedText(); }, '');
   const charId = safe(() => String(me.Id.Entry).toLowerCase(), '');
   const ancId = safe(() => String(ev.Id.Entry).toLowerCase(), '');
   const icon = (p: string, o: string) => (
