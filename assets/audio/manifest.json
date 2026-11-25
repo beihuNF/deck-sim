@@ -5,7 +5,7 @@
   "aliases": {},
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 2109984,
+  "bank_bytes": 2110912,
   "wav_bytes": 30768652,
   "bytes": 308831
  },
@@ -15,22 +15,22 @@
   "aliases": {},
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 31078,
+  "bank_bytes": 32986,
   "wav_bytes": 0,
   "bytes": 0
  },
  "act1_a1": {
-  "streams": 107,
-  "unique": 107,
+  "streams": 108,
+  "unique": 108,
   "aliases": {},
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 35504896,
-  "wav_bytes": 524286444,
-  "bytes": 5309616
+  "bank_bytes": 35642720,
+  "wav_bytes": 526389348,
+  "bytes": 5329146
  },
  "act1_a2": {
-  "streams": 103,
+  "streams": 104,
   "unique": 15,
   "aliases": {
    "act1_a2/STS2_A1_Boss_CeremonialBeast_A1_Ringing_v2.ogg": "act1_a1/STS2_A1_Boss_CeremonialBeast_A1_Ringing_v2.ogg",
@@ -120,44 +120,75 @@
    "act1_a2/sts2_A1_boss_vantom_transit_b4-b1_D1_v1.ogg": "act1_a1/sts2_A1_boss_vantom_transit_b4-b1_D1_v1.ogg",
    "act1_a2/sts2_A1_boss_vantom_transit_b4-b1_D2_v1.ogg": "act1_a1/sts2_A1_boss_vantom_transit_b4-b1_D2_v1.ogg",
    "act1_a2/sts2_A1_boss_vantom_transit_b4-b1_E1_v1.ogg": "act1_a1/sts2_A1_boss_vantom_transit_b4-b1_E1_v1.ogg",
-   "act1_a2/sts2_A1_boss_vantom_transit_b4-b1_F1_v1.ogg": "act1_a1/sts2_A1_boss_vantom_transit_b4-b1_F1_v1.ogg"
+   "act1_a2/sts2_A1_boss_vantom_transit_b4-b1_F1_v1.ogg": "act1_a1/sts2_A1_boss_vantom_transit_b4-b1_F1_v1.ogg",
+   "act1_a2/sts2_byrdlett_evolution_music_v1.ogg": "act1_a1/sts2_byrdlett_evolution_music_v1.ogg"
   },
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 34875616,
-  "wav_bytes": 512167604,
+  "bank_bytes": 35013408,
+  "wav_bytes": 514270508,
   "bytes": 1502483
  },
  "act1_b1": {
-  "streams": 35,
+  "streams": 36,
   "unique": 31,
   "aliases": {
    "act1_b1/STS2_Merchant_Act1_v2.ogg": "act1_a1/STS2_Merchant_Act1_v2.ogg",
    "act1_b1/STS2_Merchant_Map_v4.ogg": "act1_a1/STS2_Merchant_Map_v4.ogg",
    "act1_b1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr1.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
-   "act1_b1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg"
+   "act1_b1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
+   "act1_b1/sts2_byrdlett_evolution_music_v1.ogg": "act1_a1/sts2_byrdlett_evolution_music_v1.ogg"
   },
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 39422112,
-  "wav_bytes": 597382456,
+  "bank_bytes": 39559936,
+  "wav_bytes": 599485360,
   "bytes": 5521420
  },
- "act2_a1": {
-  "streams": 48,
-  "unique": 46,
+ "act1_b2": {
+  "streams": 36,
+  "unique": 19,
   "aliases": {
-   "act2_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr1.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
-   "act2_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg"
+   "act1_b2/STS2_Merchant_Act1_v2.ogg": "act1_a1/STS2_Merchant_Act1_v2.ogg",
+   "act1_b2/STS2_Merchant_Map_v4.ogg": "act1_a1/STS2_Merchant_Map_v4.ogg",
+   "act1_b2/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr1.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
+   "act1_b2/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
+   "act1_b2/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer1_base.ogg": "act1_b1/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer1_base.ogg",
+   "act1_b2/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer2_choir.ogg": "act1_b1/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer2_choir.ogg",
+   "act1_b2/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer3.ogg": "act1_b1/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer3.ogg",
+   "act1_b2/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer4.ogg": "act1_b1/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer4.ogg",
+   "act1_b2/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer5.ogg": "act1_b1/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer5.ogg",
+   "act1_b2/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer6.ogg": "act1_b1/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer6.ogg",
+   "act1_b2/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer_ChoirHigh.ogg": "act1_b1/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer_ChoirHigh.ogg",
+   "act1_b2/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer_KO.ogg": "act1_b1/STS2_Underdocks_Boss_WaterfallGiant_v3_Layer_KO.ogg",
+   "act1_b2/STS2_Underdocks_SoulFysh_v4_beckon.ogg": "act1_b1/STS2_Underdocks_SoulFysh_v4_beckon.ogg",
+   "act1_b2/STS2_Underdocks_SoulFysh_v4_full.ogg": "act1_b1/STS2_Underdocks_SoulFysh_v4_full.ogg",
+   "act1_b2/STS2_Underdocks_SoulFysh_v4_intangible.ogg": "act1_b1/STS2_Underdocks_SoulFysh_v4_intangible.ogg",
+   "act1_b2/sts2_1b_elite_v3.ogg": "act1_b1/sts2_1b_elite_v3.ogg",
+   "act1_b2/sts2_byrdlett_evolution_music_v1.ogg": "act1_a1/sts2_byrdlett_evolution_music_v1.ogg"
   },
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 41829984,
-  "wav_bytes": 622445196,
-  "bytes": 6212724
+  "bank_bytes": 40553472,
+  "wav_bytes": 614059380,
+  "bytes": 2034282
+ },
+ "act2_a1": {
+  "streams": 50,
+  "unique": 47,
+  "aliases": {
+   "act2_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr1.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
+   "act2_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
+   "act2_a1/sts2_byrdlett_evolution_music_v1.ogg": "act1_a1/sts2_byrdlett_evolution_music_v1.ogg"
+  },
+  "kbps": 16,
+  "channels": 1,
+  "bank_bytes": 42370016,
+  "wav_bytes": 631801476,
+  "bytes": 6291488
  },
  "act2_a2": {
-  "streams": 45,
+  "streams": 47,
   "unique": 18,
   "aliases": {
    "act2_a2/STS2_A2_Boss_KnowledgeDemon_v2_CombatLayer.ogg": "act2_a1/STS2_A2_Boss_KnowledgeDemon_v2_CombatLayer.ogg",
@@ -186,29 +217,32 @@
    "act2_a2/STS2_Merchant_Act2_Map_v4.ogg": "act2_a1/STS2_Merchant_Act2_Map_v4.ogg",
    "act2_a2/STS2_Merchant_Act2_v2.ogg": "act2_a1/STS2_Merchant_Act2_v2.ogg",
    "act2_a2/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr1.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
-   "act2_a2/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg"
+   "act2_a2/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
+   "act2_a2/sts2_byrdlett_evolution_music_v1.ogg": "act1_a1/sts2_byrdlett_evolution_music_v1.ogg",
+   "act2_a2/sts2_event_welcome_to_wongos_v3.ogg": "act2_a1/sts2_event_welcome_to_wongos_v3.ogg"
   },
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 41946368,
-  "wav_bytes": 621992180,
+  "bank_bytes": 42486432,
+  "wav_bytes": 631348460,
   "bytes": 1660687
  },
  "act3_a1": {
-  "streams": 87,
+  "streams": 88,
   "unique": 85,
   "aliases": {
    "act3_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr1.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
-   "act3_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg"
+   "act3_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
+   "act3_a1/sts2_byrdlett_evolution_music_v1.ogg": "act1_a1/sts2_byrdlett_evolution_music_v1.ogg"
   },
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 29882272,
-  "wav_bytes": 444594204,
+  "bank_bytes": 30020064,
+  "wav_bytes": 446697108,
   "bytes": 4393352
  },
  "act3_a2": {
-  "streams": 87,
+  "streams": 88,
   "unique": 18,
   "aliases": {
    "act3_a2/STS2_A3_Boss_TheQueen_A1_v1.ogg": "act3_a1/STS2_A3_Boss_TheQueen_A1_v1.ogg",
@@ -279,27 +313,28 @@
    "act3_a2/STS2_Merchant_Act3_Map_v3.ogg": "act3_a1/STS2_Merchant_Act3_Map_v3.ogg",
    "act3_a2/STS2_Merchant_Act3_v3.ogg": "act3_a1/STS2_Merchant_Act3_v3.ogg",
    "act3_a2/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr1.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
-   "act3_a2/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg"
+   "act3_a2/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2_rr2.ogg": "act1_a1/STS2_Overgrowth_Boss_Defeat_Stinger_2_v2.ogg",
+   "act3_a2/sts2_byrdlett_evolution_music_v1.ogg": "act1_a1/sts2_byrdlett_evolution_music_v1.ogg"
   },
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 30922176,
-  "wav_bytes": 456522820,
+  "bank_bytes": 31059968,
+  "wav_bytes": 458625724,
   "bytes": 1940447
  },
  "ambience": {
-  "streams": 59,
-  "unique": 59,
+  "streams": 60,
+  "unique": 60,
   "aliases": {},
   "kbps": 16,
   "channels": 1,
-  "bank_bytes": 15309504,
-  "wav_bytes": 254612860,
-  "bytes": 2321787
+  "bank_bytes": 15554912,
+  "wav_bytes": 258452904,
+  "bytes": 2355489
  },
  "sfx": {
-  "streams": 1929,
-  "unique": 1925,
+  "streams": 2027,
+  "unique": 2023,
   "aliases": {
    "sfx/sts2_sfx_act1b_waterfall_giant_loop_rocks_v1.ogg": "ambience/sts2_sfx_act1b_waterfall_giant_loop_rocks_v1.ogg",
    "sfx/sts2_sfx_act1b_waterfall_giant_loop_steam_v1.ogg": "ambience/sts2_sfx_act1b_waterfall_giant_loop_steam_v1.ogg",
@@ -308,9 +343,9 @@
   },
   "kbps": 12,
   "channels": 1,
-  "bank_bytes": 42531488,
-  "wav_bytes": 732498668,
-  "bytes": 5134955
+  "bank_bytes": 45071456,
+  "wav_bytes": 775026248,
+  "bytes": 5438374
  },
  "temp_sfx": {
   "streams": 3,

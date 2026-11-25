@@ -37,7 +37,8 @@ SHOWN_AT_RUNTIME = {'UncommonGlow', 'RareGlow'}
 # shaders the web UI draws itself (not through a converted scene): the Crystal Sphere's ball / fog and item shine
 EXTRA_SHADERS = ['shaders/scry_reveal.gdshader', 'shaders/crystal_sphere_item.gdshader',
                  'shaders/vfx/ui/vfx_ui_epoch_unlock_chains_shader.gdshader',  # the epoch inspect screen's chains
-                 'shaders/radial_blur.gdshader']  # combat_room's RadialBlur (hidden until NRadialBlurVfx.Activate)
+                 'shaders/radial_blur.gdshader',  # combat_room's RadialBlur (hidden until NRadialBlurVfx.Activate)
+                 'shaders/relic.gdshader']  # NRelic (created in C# since v0.113.1, no longer in treasure_relic_holder.tscn)
 VIEW = (1920.0, 1080.0)
 
 sys.path.insert(0, os.path.dirname(__file__))
