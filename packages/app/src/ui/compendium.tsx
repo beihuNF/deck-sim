@@ -81,7 +81,7 @@ export function CardLibrary() {
   const data = useMemo(() => {
     const un = unlocks();
     const unlockedChars = new Set(list(un.Characters).map((c: any) => c.Id.Entry));
-    const unlocked = new Set(list(G.ModelDb.AllCardPools).flatMap((p: any) => safe(() => list(p.GetUnlockedCards(un, G.CardMultiplayerConstraint.None)), [])));
+    const unlocked = new Set(list(G.ModelDb.AllCardPools).flatMap((p: any) => safe(() => list(p.GetUnlockedCards(un, G.CardMultiplayerConstraint.None)).map((c: any) => c.Id.Entry), [])));
     const seen = ids(progress().DiscoveredCards);
     const all = list(G.ModelDb.AllCards).filter((c: any) => safe(() => c.ShouldShowInCardLibrary, true));
     // NCardLibraryGrid._Ready: 展示 DingyDagger +3 与 +6 变体
@@ -103,7 +103,7 @@ export function CardLibrary() {
   }).current;
   const [, rerender] = useState(0);
   const refresh = () => rerender((n) => n + 1);
-  const vis = (c: any): 'visible' | 'notSeen' | 'locked' => (!data.unlocked.has(c) ? 'locked' : data.seen.has(c.Id.Entry) ? 'visible' : 'notSeen');
+  const vis = (c: any): 'visible' | 'notSeen' | 'locked' => (!data.unlocked.has(c.Id.Entry) ? 'locked' : data.seen.has(c.Id.Entry) ? 'visible' : 'notSeen');
   /** UpdateFilter → DisplayCards */
   const compute = () => {
     const rarityOn = !!f.pool && f.pool !== 'ANCIENT' && f.pool !== 'MISC';
