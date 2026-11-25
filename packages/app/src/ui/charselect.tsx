@@ -10,7 +10,7 @@ import { invalidate } from '../store';
 import { imageUrl, atlasFrame, frameByName, frameStyle } from '../assets';
 import { loc } from '../i18n';
 import { startRun } from '../flow';
-import { acceptTutorialsFtue } from './ftue';
+import { acceptTutorialsFtue, showAscensionSingleplayerFtue } from './ftue';
 import { RichText } from './richtext';
 import { setTip } from './tooltip';
 import { BackButton, ConfirmButton, NGoldArrowButton } from './buttons';
@@ -94,6 +94,8 @@ export function CharSelect() {
   // OnSubmenuOpened: the first button is selected, or a newly unlocked character plays its unlock first
   useEffect(() => {
     embarking = false;
+    // 对齐 NCharacterSelectScreen.TryShowAscensionSinglePlayerFtue
+    if (chars.some((x) => maxAscension(x.c) > 0)) showAscensionSingleplayerFtue();
     const pending = safe(() => G.SaveManager.Instance.Progress.PendingCharacterUnlock, null);
     const b = none(pending) ? null : buttons.find((x) => safe(() => x.c.Id.Equals(pending), false));
     if (b) {

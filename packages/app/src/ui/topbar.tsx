@@ -199,7 +199,7 @@ function TopButton({ kind, x, y, w, h, frame, open, onClick, tip, count, disable
 // ------------------------------------------------------------------ potions (NPotionContainer / NPotionHolder / NPotionPopup)
 export function potionActions(p: any) {
   const me = p.Owner, c = me?.Creature, cm = G.CombatManager.Instance;
-  const blocked = !p || p.IsQueued || !c || c.IsDead || !me.CanUseOrRemovePotions;
+  const blocked = !p || p.IsQueued || !c || c.IsDead || !me.CanUseOrRemovePotions || safe(() => G.RunManager.Instance.IsPotionUseLocked, false);
   const U = G.PotionUsage;
   let use = !blocked && p.PassesCustomUsabilityCheck !== false;
   if (use && p.Usage === U.CombatOnly) use = cm.IsInProgress && safe(() => c.CombatState.CurrentSide === c.Side, false) && !cm.PlayerActionsDisabled;
@@ -536,7 +536,7 @@ const timerShown = () => safe(() => G.SaveManager.Instance.PrefsSave.ShowRunTime
 /** static_hover_tips ROOM_* by the current room. */
 function roomTipKey(mpt: number, room: any) {
   const M = G.MapPointType, R = G.RoomType;
-  if (mpt === M.Unknown) return room.RoomType === R.Monster ? 'ROOM_UNKNOWN_ENEMY' : room.RoomType === R.Treasure ? 'ROOM_UNKNOWN_TREASURE' : room.RoomType === R.Shop ? 'ROOM_UNKNOWN_MERCHANT' : 'ROOM_UNKNOWN_EVENT';
+  if (mpt === M.Unknown) return room.RoomType === R.Monster ? 'ROOM_UNKNOWN_ENEMY' : room.RoomType === R.Elite ? 'ROOM_UNKNOWN_ELITE' : room.RoomType === R.Treasure ? 'ROOM_UNKNOWN_TREASURE' : room.RoomType === R.Shop ? 'ROOM_UNKNOWN_MERCHANT' : 'ROOM_UNKNOWN_EVENT';
   return ({ [R.Monster]: 'ROOM_ENEMY', [R.Elite]: 'ROOM_ELITE', [R.Shop]: 'ROOM_MERCHANT', [R.Treasure]: 'ROOM_TREASURE', [R.RestSite]: 'ROOM_REST', [R.Boss]: 'ROOM_BOSS' } as Record<number, string>)[room.RoomType]
     ?? (mpt === M.Ancient ? 'ROOM_ANCIENT' : 'ROOM_MAP');
 }

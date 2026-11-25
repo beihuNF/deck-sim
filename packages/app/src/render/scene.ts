@@ -590,7 +590,7 @@ export function selectionReticle(c: Container, s: SceneData, path: string, onRet
  * the embers and the merchant (MerchantButton's skeleton, handed to `onMerchant` for its hover skin).
  */
 export async function merchantBackdrop(players: any[], onMerchant: (sp: Spine) => void, onReticle?: (r: Reticle) => void): Promise<Container | null> {
-  const s = await loadScene('scenes/rooms/merchant_room.tscn');
+  const s = await loadScene('scenes/rooms/standard_merchant_room.tscn');
   if (!s) return null;
   const m = rootMatrix(s, 1920, 1080);
   const relaxed = (sp: Spine) => { const e = sp.state.setAnimation(0, 'relaxed_loop', true); e.trackTime = e.animationEnd * Math.random(); };

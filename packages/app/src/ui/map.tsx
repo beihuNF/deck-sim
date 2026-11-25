@@ -77,7 +77,11 @@ const marker = { visible: false, Position: new V2(), Scale: new V2(1, 1), tween:
 const nodeAt = (c: any) => (c ? S.byKey.get(keyOf(c)) ?? null : null);
 const playerVotes = new Map<number, any>();
 let mapSync: any = null;
+let runSync: any = null;
+let flavorSync: any = null;
 let coopDrawings: CoopMapDrawings | null = null;
+const mapChanged = (clearDrawings: boolean) => { const r = rs(); if (r?.Map) setMap(r.Map, r.Rng?.Seed ?? 0, clearDrawings); };
+const mapPinged = (player: any, coord: any) => pingMapCoord(coord, player);
 const playVoteTick = () => {
   try { $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('map_split_tick.mp3', 0.15, G.PitchVariance.Small); } catch { /* no audio */ }
 };
@@ -93,6 +97,10 @@ const votesCleared = () => { playerVotes.clear(); invalidate(); };
 export function initializeMap() {
   disposeMapSync();
   const rm = G.RunManager.Instance;
+  runSync = rm;
+  runSync.MapChanged = $.dcombine(runSync.MapChanged, mapChanged);
+  flavorSync = rm.FlavorSynchronizer;
+  if (flavorSync) flavorSync.MapPingReceived = $.dcombine(flavorSync.MapPingReceived, mapPinged);
   mapSync = rm.MapSelectionSynchronizer;
   mapSync.PlayerVoteChanged = $.dcombine(mapSync.PlayerVoteChanged, voteChanged);
   mapSync.PlayerVoteCancelled = $.dcombine(mapSync.PlayerVoteCancelled, voteCancelled);
@@ -100,6 +108,9 @@ export function initializeMap() {
   if (rm.State.Players.length > 1) coopDrawings = new CoopMapDrawings(rm.NetService, list(rm.State.Players), () => drawings.paint());
 }
 function disposeMapSync() {
+  if (runSync) runSync.MapChanged = $.dremove(runSync.MapChanged, mapChanged);
+  if (flavorSync) flavorSync.MapPingReceived = $.dremove(flavorSync.MapPingReceived, mapPinged);
+  runSync = null; flavorSync = null;
   if (mapSync) {
     mapSync.PlayerVoteChanged = $.dremove(mapSync.PlayerVoteChanged, voteChanged);
     mapSync.PlayerVoteCancelled = $.dremove(mapSync.PlayerVoteCancelled, voteCancelled);
@@ -345,6 +356,7 @@ function tryCancelStartOfActAnim() {
 }
 
 // ------------------------------------------------------------------ travel
+export const isMapTravelEnabled = () => S.travelEnabled;
 export function setTravelEnabled(b: boolean) {
   S.travelEnabled = b && safe(() => G.Hook.ShouldProceedToNextMapPoint(rs()), true);
   refreshAllPointVisuals();
@@ -911,7 +923,7 @@ function NormalPoint({ n, act }: { n: MapNode; act: any }) {
       onPointerEnter={() => focus(n)} onPointerLeave={() => unfocus(n)} onPointerDown={(e) => press(n, e)}>
       <div class="mp-ic" ref={(e) => { n.el = e; }}>
         <div class="mp-icon" style={{ transform: `scale(${scale})`, transition: tr('transform', 'scale') }}>
-          <div class="mp-outline" style={{ maskImage: url(plain('compressed', `map/${outline}_outline`)), backgroundColor: css(oc), transition: tr('background-color', 'outline') }} />
+          <div class="mp-outline" style={{ maskImage: url(plain('compressed_atlas', `${outline}_outline`)), backgroundColor: css(oc), transition: tr('background-color', 'outline') }} />
           <div class="mp-img" style={{ backgroundImage: url(recoloured(icon, bg)), opacity: alpha, transition: tr('opacity', 'alpha') }} />
         </div>
         {quest && <div class="mp-quest" style={{ backgroundImage: url(imageUrl('images/packed/map/icons/map_spoils_map_marker.png')), transform: `scale(${scale})` }} />}
@@ -934,7 +946,7 @@ function CircleFrames({ play }: { play: boolean }) {
     const id = setInterval(() => { k++; if (k > 4) clearInterval(id); else set(k); }, 1000 / 24);
     return () => clearInterval(id);
   }, []);
-  return <div class="mp-circle-img" style={{ backgroundImage: url(tinted('compressed', `map/map_circle_${i}`, PATH_DOT_TRAVELED)) }} />;
+  return <div class="mp-circle-img" style={{ backgroundImage: url(tinted('compressed_atlas', `map_circle_${i}`, PATH_DOT_TRAVELED)) }} />;
 }
 function AncientPoint({ n, act }: { n: MapNode; act: any }) {
   const id = safe(() => rs().Act.Ancient.Id.Entry.toLowerCase(), '');
@@ -1077,7 +1089,7 @@ export function MapScreen() {
   if (!S.visible || !S.map || !r) return null;
   const act = r.Act;
   const paper = ['MapTopBgPath', 'MapMidBgPath', 'MapBotBgPath'].map((k) => imageUrl(safe(() => act[k], '')));
-  const dot = (d: Dot) => url(tinted('compressed', 'map/map_dot', d.color));
+  const dot = (d: Dot) => url(tinted('compressed_atlas', 'map_dot', d.color));
   const me = safe(() => localPlayer(r).Character.Id.Entry.toLowerCase(), '');
   return (
     <div class={'map-screen' + (S.mode !== 'none' ? ` drawing-${S.mode}` : '')}

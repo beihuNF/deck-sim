@@ -253,7 +253,7 @@ function RunView({ r, hl, setHl, onTip }: { r: Loaded; hl: Set<number>; setHl: (
   const modeName = $enum(G.GameMode, h.GameMode);
   const mode = rh('GAME_MODE.title', {
     PlayerCount: rh(list(h.Players).length > 1 ? 'PLAYER_COUNT.multiplayer' : 'PLAYER_COUNT.singleplayer'),
-    GameMode: rh(`GAME_MODE.${['Standard', 'Daily', 'Custom'].includes(modeName) ? modeName.toLowerCase() : 'unknown'}`),
+    GameMode: rh(`GAME_MODE.${['Standard', 'Daily', 'Blitz', 'Dread'].includes(modeName) ? modeName.toLowerCase() : 'unknown'}`),
   });
   const date = new Date(Number(h.StartTime) * 1000);
   const quote = safe(() => deathQuote(h, player.Character, false), '');
