@@ -262,7 +262,7 @@ export function CharacterSelectButton({ c, locked, selected, enabled, onSelect }
 /**
  * NAscensionPanel (643, 738)–(1277, 855)，支持标准/闪电/恐惧三种模式的图标、标题说明与箭头显隐
  */
-export function AscensionPanel({ level, max, onChange, readOnly = false, multiplayer = false, gameMode }: { level: number; max: number; onChange: (n: number) => void; readOnly?: boolean; multiplayer?: boolean; gameMode?: number }) {
+export function AscensionPanel({ level, max, onChange, readOnly = false, gameMode }: { level: number; max: number; onChange: (n: number) => void; readOnly?: boolean; gameMode?: number }) {
   const mode = gameMode ?? G.GameMode.Standard;
   const isBlitz = mode === G.GameMode.Blitz;
   const isDread = mode === G.GameMode.Dread;
@@ -289,9 +289,9 @@ export function AscensionPanel({ level, max, onChange, readOnly = false, multipl
       {isBlitz ? (
         <img class="chs-asc-icon-blitz" src={imageUrl('images/packed/character_select/blitz_top_bar_icon.png') ?? ''} />
       ) : (
-        <div class="chs-asc-icon" style={{ ...frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_ascension'), 64, 93), filter: multiplayer ? hsvFilter(0.52, 1, 1.2) : undefined }} />
+        <div class="chs-asc-icon" style={frameStyle(frameByName('ui_atlas', 'top_bar/top_bar_ascension'), 64, 93)} />
       )}
-      <div class="chs-asc-level" ref={numRef} style={multiplayer ? { WebkitTextStrokeColor: '#004759' } : undefined}>{level}</div>
+      <div class="chs-asc-level" ref={numRef}>{level}</div>
       <div class="chs-asc-desc"><RichText text={text} /></div>
       {canAdjust && level < max && <NGoldArrowButton size={64} class="chs-arrow right" onClick={() => onChange(level + 1)} />}
     </div>

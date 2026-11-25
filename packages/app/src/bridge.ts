@@ -20,7 +20,6 @@ import { playCombatVfx, playItemThrow } from './render/cardfx';
 import { screenShake, screenRumble, screenShakeTrauma, hitStop } from './ui/screenshake';
 import { OrbManagerView } from './ui/orbs';
 import { setMap, openMap, closeMap, isMapVisible, isMapTravelEnabled, setTravelEnabled, setDebugTravelEnabled, mapTraveling, initMarker, travelToMapCoord, spawnActBanner, initializeMap, refreshMapVotes, pingMapCoord } from './ui/map';
-import { getActiveCoopDrawings } from './ui/map-coop';
 import { view, fracX } from './view';
 
 const NRun = N('NRun');
@@ -1383,7 +1382,7 @@ export class MapView extends NMapScreen {
     GetSerializableMapDrawings: () => null,
     LoadDrawings() {},
     ClearAllLines() {},
-    GetDrawingMode: (playerId: number) => getActiveCoopDrawings()?.getDrawingMode(playerId) ?? 0,
+    GetDrawingMode: () => 0,
   };
   Initialize() {}
   SetMap(map: any, seed = 0, clearDrawings = false) { setMap(map, seed, clearDrawings); }

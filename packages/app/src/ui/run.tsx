@@ -28,9 +28,6 @@ import { TopBar } from './topbar';
 import { targetManager } from '../cardnodes';
 import { CardLayer } from './cardlayer';
 import { CardFxCanvas } from '../render/cardfx';
-import { MultiplayerStatus } from './multiplayer';
-import { MultiplayerPlayerStates } from './multiplayer-state';
-import { MultiplayerExpandedState } from './multiplayer-expanded';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 
@@ -57,14 +54,12 @@ export function RunScreen() {
       {/* NGlobalUi order: overlays < NMapScreen < capstone (deck / pile views) < relics and top bar */}
       {rs && isMapVisible() && <MapScreen />}
       <CapstoneBackstop />
-      {ui.cardsView && rs && (ui.cardsView.kind === 'player' ? <MultiplayerExpandedState state={ui.cardsView} /> : <CardsView />)}
+      {ui.cardsView && rs && <CardsView />}
       <CapstoneStack />
       {rs && <TopBar rs={rs} />}
-      {rs && <MultiplayerPlayerStates rs={rs} />}
       <HurtVignette />
       <GlobalCards />
       {ftueChecks(rs)}
-      <MultiplayerStatus />
     </div>
   );
 }

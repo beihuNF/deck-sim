@@ -28,8 +28,6 @@ import { CharSelect } from './charselect';
 import { transitionView } from './transition';
 import { showEarlyAccessDisclaimer, showAboutDialog, showQQGroupDialog } from './disclaimer';
 import { openFeedback } from './feedback';
-import { MultiplayerLobby } from './multiplayer';
-import { invitedRoomCode } from '../multiplayer';
 import { loadSteamProfile } from '../steam';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
@@ -66,20 +64,7 @@ let menuGen = 0;
 /** NGame.ReloadMainMenu: a fresh main menu (empty stack, backstop and logo reset, fade-in, buttons refreshed). */
 export function reloadMainMenu() { ui.menuStack = []; menuGen++; invalidate(); }
 export function MainMenu() {
-  const inviteChecked = useRef(false);
   useEffect(() => {
-    if (!inviteChecked.current) {
-      inviteChecked.current = true;
-      const params = new URLSearchParams(location.search);
-      if ((invitedRoomCode() || params.get('menu') === 'multiplayer') && !ui.menuStack.length) {
-        if (params.get('menu') === 'multiplayer') {
-          params.delete('menu');
-          const clean = params.toString();
-          history.replaceState(null, '', location.pathname + (clean ? '?' + clean : ''));
-        }
-        pushMenu('multiplayer');
-      }
-    }
     void loadSteamProfile();
     playMusic('event:/music/menu_update');
     // a menu entered with submenus open (back from a menu-side screen) has its backstop up already
@@ -112,7 +97,6 @@ export function MainMenu() {
       {top === 'daily' && <DailyRun />}
       {top === 'custom' && <CustomRun />}
       {top === 'profile' && <Profiles />}
-      {top === 'multiplayer' && <MultiplayerLobby onBack={popMenu} />}
       {/* NDebugInfoLabelManager's ReleaseInfo: version and today's date */}
       <div class="mm-release">{`v${GAME_VERSION}\n` + netDate('yyyy-MM-dd', new Date())}</div>
     </div>
@@ -146,7 +130,6 @@ function MainMenuTextButtons() {
       // SingleplayerButtonPressed: the first run goes straight to character select
       { key: 'SINGLE_PLAYER', enabled: !forced, onClick: () => pushMenu(safe(() => sm.Progress.NumberOfRuns, 0) > 0 ? 'singleplayer' : 'charselect') },
     ]),
-    { key: 'MULTIPLAYER', enabled: true, onClick: () => pushMenu('multiplayer') },
     ...(timeline !== null ? [{ key: 'TIMELINE', enabled: timeline, dot, onClick: openTimeline }] : []),
     { key: 'SETTINGS', enabled: true, onClick: () => pushMenu('settings') },
     ...(compendium ? [{ key: 'COMPENDIUM', enabled: !forced, onClick: () => pushMenu('compendium') }] : []),
@@ -402,11 +385,7 @@ export function SubmenuButton({ x, keyPrefix, icon, hsv, enabled, onClick, title
     if (enabled) return m(`${keyPrefix}.description`);
     const lockedKey = `${keyPrefix}.LOCKED.description`;
     if (hasM(lockedKey)) return m(lockedKey);
-    // 多人模式回退到单人解锁文案（如 DAILY_MP -> DAILY.LOCKED.description）
-    const baseKey = keyPrefix.replace(/_MP$/, '');
-    const baseLockedKey = `${baseKey}.LOCKED.description`;
-    if (hasM(baseLockedKey)) return m(baseLockedKey);
-    // 若均无锁定文案则回退到原版常规描述
+    // 若无锁定文案则回退到原版常规描述
     if (hasM(`${keyPrefix}.description`)) return m(`${keyPrefix}.description`);
     return '';
   }, [desc, keyPrefix, enabled]);

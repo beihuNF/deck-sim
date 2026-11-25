@@ -14,7 +14,6 @@ import { SettingsScreen } from './settings';
 import { CompendiumSubmenu } from './compendium-menu';
 import { abandonRunPopup } from './modal';
 import { toMenu, quickReloadRun } from '../flow';
-import { leaveMultiplayer, mpText, requestMultiplayerQuickReload, multiplayer } from '../multiplayer';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
 const EXPO_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
@@ -80,13 +79,6 @@ export function closeCardsView() {
   safe(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play('map_close.mp3'), null);
   invalidate();
 }
-/** NMultiplayerPlayerExpandedState takes a read-only snapshot when opened, like the original node. */
-export function openPlayerState(player: any) {
-  capstoneOpen();
-  ui.potionMenu = null;
-  ui.cardsView = { kind: 'player', player, cards: list(player.Deck.Cards), relics: list(player.Relics), potions: list(player.Potions) };
-  invalidate();
-}
 export function pushSubmenu(s: Submenu) { submenus.push(s); invalidate(); }
 /** NSubmenuStack.Pop: the stack closes the capstone once empty. */
 export function popSubmenu() { submenus.pop(); if (!submenus.length) closePauseMenu(); else invalidate(); }
@@ -120,8 +112,7 @@ function PauseMenu() {
   // OnBackOrResumeButtonPressed
   const resume = () => { playOneShot('event:/sfx/ui/map/map_close'); closePauseMenu(); };
   const giveUp = async () => { if (await abandonRunPopup()) { closePauseMenu(); rm.Abandon(); } };
-  const isHost = $.vfs.ephemeral && multiplayer.phase === 'playing' && multiplayer.id === 1;
-  const quickSlEnabled = (!$.vfs.ephemeral && safe(() => localStorage.getItem('sts2web.quickSl') !== 'false', true)) || isHost;
+  const quickSlEnabled = safe(() => localStorage.getItem('sts2web.quickSl') !== 'false', true);
   // Quick SL: 原地快速重开当前房间
   const quickSl = async () => {
     setQuitting(true);
@@ -130,14 +121,10 @@ function PauseMenu() {
       ui.pauseOpen = false;
       capstone.A = 0;
       capstone.fade = false;
-      if (isHost) {
-        await requestMultiplayerQuickReload();
-      } else {
-        const ok = await quickReloadRun();
-        if (!ok) {
-          ui.toast = appText('storageFull');
-          invalidate();
-        }
+      const ok = await quickReloadRun();
+      if (!ok) {
+        ui.toast = appText('storageFull');
+        invalidate();
       }
     } finally {
       setQuitting(false);
@@ -163,8 +150,8 @@ function PauseMenu() {
     [p('SETTINGS'), () => pushSubmenu('settings'), [1, 1, 1], '#25545C', true],
     ...(compendium ? [[p('COMPENDIUM'), () => pushSubmenu('compendium'), [1, 1, 1], '#25545C', true] as [string, () => void, number[], string, boolean]] : []),
     ...(quickSlEnabled ? [[appText('quickSl'), () => void quickSl(), [1, 1, 1], '#25545C', canGiveUp] as [string, () => void, number[], string, boolean]] : []),
-    [$.vfs.ephemeral ? mpText('离开联机', 'Leave co-op') : p('SAVE_AND_QUIT'), $.vfs.ephemeral ? leaveMultiplayer : saveAndQuit, [1, 1, 1], '#25545C', true],
-    ...(!$.vfs.ephemeral ? [[p('GIVE_UP'), () => void giveUp(), [0.5, 1, 1], '#5C3225', canGiveUp] as [string, () => void, number[], string, boolean]] : []),
+    [p('SAVE_AND_QUIT'), saveAndQuit, [1, 1, 1], '#25545C', true],
+    [p('GIVE_UP'), () => void giveUp(), [0.5, 1, 1], '#5C3225', canGiveUp],
   ];
   // 标题高度 64px，标题与第一个按钮之间留出 36px 优雅间距（合计 100px），每个按钮高度 80px
   const titleTop = Math.round((1080 - (100 + 80 * buttons.length)) / 2);

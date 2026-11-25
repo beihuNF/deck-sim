@@ -1,14 +1,22 @@
 import { invalidate } from './store';
 import { fetchCloudSaveMeta, checkCloudSaveSync, cloudSave } from './cloud-save';
-import { getRelayHost } from './multiplayer';
 
 export const steam = { profile: null as { steamId: string; name: string; avatar: string } | null, loading: false, error: false };
+
+const DEFAULT_AUTH_HOST = (import.meta.env.VITE_AUTH_HOST as string | undefined)?.trim() || 'https://120.24.232.60';
+
+function getAuthHost(): string {
+  if (typeof location !== 'undefined' && (location.hostname.endsWith('github.io') || location.hostname === 'sts2.136521.xyz')) {
+    return DEFAULT_AUTH_HOST.replace(/\/+$/, '');
+  }
+  return '';
+}
 
 export async function loadSteamProfile() {
   steam.loading = true;
   try {
-    const isStaticHost = typeof location !== 'undefined' && (location.hostname.endsWith('github.io') || location.hostname === 'sts2.136521.xyz');
-    const endpoint = isStaticHost ? `${getRelayHost()}/api/auth/me` : '/api/auth/me';
+    const host = getAuthHost();
+    const endpoint = host ? `${host}/api/auth/me` : '/api/auth/me';
     const response = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(6_000) }).catch(() => null);
     if (!response || !response.ok) {
       steam.profile = null;
@@ -31,7 +39,7 @@ export async function loadSteamProfile() {
 
 /**
  * Steam 登录认证：
- * - 移动端/触屏设备：直接整页跳转到 Steam 官方认证页，登录后自动重定向回游戏并恢复多人大厅，避免移动浏览器拦截小弹窗及沙盒检测误闪退；
+ * - 移动端/触屏设备：直接整页跳转到 Steam 官方认证页，登录后自动重定向回游戏，避免移动浏览器拦截小弹窗及沙盒检测误闪退；
  * - 桌面端：弹出居中小窗口，登录成功后通过 postMessage 自动同步并无缝关闭弹窗。
  */
 export function loginSteam(onSuccess?: () => void) {
@@ -42,7 +50,6 @@ export function loginSteam(onSuccess?: () => void) {
   );
 
   const returnUrl = new URL(location.href);
-  returnUrl.searchParams.set('menu', 'multiplayer');
   const loginUrl = '/api/auth/steam/login?return=' + encodeURIComponent(returnUrl.pathname + returnUrl.search);
 
   if (isMobile) {

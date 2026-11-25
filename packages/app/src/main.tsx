@@ -41,7 +41,6 @@ import { topBarMapPressed } from './ui/map';
 import { fit, turned } from './view';
 import { getKeyboardBindings } from './input/hints';
 import { initGamepadLoop, VirtualCursor, ControllerOverlay } from './input/gamepad';
-import { RemoteMouseCursors } from './ui/multiplayer-cursors';
 import { steam, loadSteamProfile } from './steam';
 import { checkCloudSaveSync } from './cloud-save';
 import { initGameCursor } from './cursor';
@@ -186,7 +185,6 @@ function App() {
           {ui.screen === 'run' && <RunScreen />}
           <ScreenView s={ui.screen} />
           <VirtualCursor />
-          <RemoteMouseCursors />
         </div>
       </div>
       <TransitionLayer />
