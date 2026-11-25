@@ -85,7 +85,7 @@
   height: 40px;
   background: center / contain no-repeat;
   transform-origin: 20px 20px;
-  transform: scaleY(-1);
+  scale: 1 -1;
   pointer-events: none;
   z-index: 3;
 }

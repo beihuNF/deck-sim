@@ -16,7 +16,7 @@ page.on('dialog', (d) => d.dismiss());
 const shot = async (name) => { await page.waitForTimeout(700); await page.screenshot({ path: `${out}/${name}.png` }); console.log('shot', name); };
 const go = (screen) => page.evaluate((s) => { window.ui.screen = s; window.invalidate(); }, screen);
 // timeline, daily, custom and profile are main-menu submenus (credits: a modal from settings)
-const SUBMENUS = ['timeline', 'daily', 'custom', 'profile'];
+const SUBMENUS = ['timeline', 'daily', 'blitz', 'dread', 'custom', 'profile'];
 const sub = (menu) => page.evaluate((m) => { window.ui.screen = 'menu'; window.ui.menuStack = [m]; window.invalidate(); }, menu);
 const credits = async () => { await sub('settings'); await page.waitForTimeout(500); await page.locator('.st-button').nth(1).click(); }; // after Feedback
 
@@ -42,7 +42,7 @@ if (await page.waitForSelector('.ftue-confirm', { timeout: 1500 }).catch(() => n
   await page.waitForSelector('.modal-viewport.open', { state: 'detached' }).catch(() => {});
 }
 await shot('04-charselect-unlocked');
-const screens = ['timeline', 'daily', 'custom', 'library', 'relics', 'potions', 'stats', 'profile', 'credits'];
+const screens = ['timeline', 'daily', 'blitz', 'dread', 'custom', 'library', 'relics', 'potions', 'stats', 'profile', 'credits'];
 for (const s of screens) {
   if (s === 'credits') await credits();
   else if (SUBMENUS.includes(s)) await sub(s);

@@ -50,8 +50,9 @@ export interface FloorTipData { title: string; player: string; room: string; act
 const playerEntry = (e: any, playerId: any) => list(e.PlayerStats).find((s: any) => sameId(s.PlayerId, playerId)) ?? safe(() => e.GetEntry(playerId), null);
 const title = (f: () => any) => fmt(safe(f, ''));
 /** The tip's sections, in NMapPointHistoryHoverTip._Ready order (room keys ROOM_* / ROOM_UNKNOWN_* / ROOM_EVENT). */
-export function floorTipData(e: any, floor: number, playerId: any): FloorTipData {
+export function floorTipData(e: any, floor: number, playerId: any, gameMode?: number): FloorTipData {
   const M = G.MapPointType, R = G.RoomType;
+  const isBlitz = gameMode === (G.GameMode?.Blitz ?? 4);
   const room = list(e.Rooms)[0];
   let key = ({ [M.Shop]: 'ROOM_MERCHANT', [M.Treasure]: 'ROOM_TREASURE', [M.RestSite]: 'ROOM_REST', [M.Monster]: 'ROOM_ENEMY', [M.Elite]: 'ROOM_ELITE', [M.Boss]: 'ROOM_BOSS', [M.Ancient]: 'ROOM_ANCIENT' } as Record<number, string>)[e.MapPointType];
   if (e.MapPointType === M.Unknown) key = ({ [R.Monster]: 'ROOM_UNKNOWN_ENEMY', [R.Treasure]: 'ROOM_UNKNOWN_TREASURE', [R.Shop]: 'ROOM_UNKNOWN_MERCHANT', [R.Elite]: 'ROOM_UNKNOWN_ELITE', [R.Event]: 'ROOM_EVENT' } as Record<number, string>)[room?.RoomType];
@@ -64,7 +65,9 @@ export function floorTipData(e: any, floor: number, playerId: any): FloorTipData
   };
   const p = playerEntry(e, playerId);
   if (!p) return out;
-  out.player = rh('MAP_POINT_HISTORY.player_stats', { HP: p.CurrentHp, MaxHP: p.MaxHp, Gold: p.CurrentGold });
+  out.player = isBlitz
+    ? rh('MAP_POINT_HISTORY.player_stats_no_gold', { HP: p.CurrentHp, MaxHP: p.MaxHp })
+    : rh('MAP_POINT_HISTORY.player_stats', { HP: p.CurrentHp, MaxHP: p.MaxHp, Gold: p.CurrentGold });
   const lines: string[] = [];
   const tab = (s: string) => lines.push('\t' + s);
   if (e.MapPointType === M.Ancient) {
@@ -95,7 +98,11 @@ export function floorTipData(e: any, floor: number, playerId: any): FloorTipData
   out.actions = lines.join('\n').replace(/^\n+|\n+$/g, '');
   const card = (c: any) => title(() => G.CardModel.FromSerializable(c).Title);
   const got = out.rewards, skip = out.skipped;
-  if (p.GoldGained > 0) got.push(rh('HISTORY_ENTRY.goldGained', { Icon: ICON('gold'), Amount: p.GoldGained }));
+  if (!isBlitz && p.GoldGained > 0) got.push(rh('HISTORY_ENTRY.goldGained', { Icon: ICON('gold'), Amount: p.GoldGained }));
+  for (const b of safe(() => list(p.BlitzMerchantChoices), [])) {
+    const s = rh('HISTORY_ENTRY.obtained', { Icon: ICON('gold'), Title: title(() => G.BlitzMerchantEntry.GetTitleForHistory(b)) });
+    ((b.wasPicked ?? b.WasPicked) ? got : skip).push(s);
+  }
   for (const c of list(p.CardsGained)) got.push(rh('HISTORY_ENTRY.obtained', { Icon: ICON('card'), Title: card(c) }));
   for (const c of list(p.CardChoices)) if (!(c.wasPicked ?? c.WasPicked)) skip.push(rh('HISTORY_ENTRY.obtained', { Icon: ICON('card'), Title: card(c.Card ?? c.card) }));
   for (const [k, T] of [['RelicChoices', 'Relic'], ['PotionChoices', 'Potion']] as const) {
@@ -251,9 +258,15 @@ function RunView({ r, hl, setHl, onTip }: { r: Loaded; hl: Set<number>; setHl: (
   const hp = stats ? `${stats.CurrentHp}/${stats.MaxHp}` : `${ch.StartingHp}/${ch.StartingHp}`;
   const gold = stats ? String(stats.CurrentGold) : String(ch.StartingGold);
   const modeName = $enum(G.GameMode, h.GameMode);
+  const baseModeKey = ['Standard', 'Daily', 'Blitz', 'Dread'].includes(modeName) ? modeName.toLowerCase() : 'unknown';
+  let modeLabel = rh(`GAME_MODE.${baseModeKey}`);
+  if (h.IsCustomGame) {
+    const customLabel = rh('GAME_MODE.custom');
+    modeLabel = baseModeKey !== 'standard' ? `${customLabel} (${modeLabel})` : customLabel;
+  }
   const mode = rh('GAME_MODE.title', {
     PlayerCount: rh(list(h.Players).length > 1 ? 'PLAYER_COUNT.multiplayer' : 'PLAYER_COUNT.singleplayer'),
-    GameMode: rh(`GAME_MODE.${['Standard', 'Daily', 'Blitz', 'Dread'].includes(modeName) ? modeName.toLowerCase() : 'unknown'}`),
+    GameMode: modeLabel,
   });
   const date = new Date(Number(h.StartTime) * 1000);
   const quote = safe(() => deathQuote(h, player.Character, false), '');
@@ -276,7 +289,7 @@ function RunView({ r, hl, setHl, onTip }: { r: Loaded; hl: Set<number>; setHl: (
             return (
               <div class="rhs-act">
                 <div class="rhs-act-title">{fmt(safe(() => G.ModelDb.GetById(G.ActModel, list(h.Acts)[ai]).Title, ''))}</div>
-                {act.map((e: any, i: number) => <MapCell e={e} floor={from + i + 1} playerId={player.Id} tilt={r.tilts[ai]?.[i] ?? 0} lit={hl.has(from + i + 1)} onTip={onTip} />)}
+                {act.map((e: any, i: number) => <MapCell e={e} floor={from + i + 1} playerId={player.Id} gameMode={h.GameMode} tilt={r.tilts[ai]?.[i] ?? 0} lit={hl.has(from + i + 1)} onTip={onTip} />)}
               </div>
             );
           })}
@@ -294,15 +307,18 @@ function TopRow({ r, hp, gold, floors }: { r: Loaded; hp: string; gold: string; 
   const { h, player, ch } = r;
   const tb = (n: string) => frameByName('ui_atlas', `top_bar/${n}`);
   const asc = Number(h.Ascension ?? 0);
+  const isBlitz = h.GameMode === (G.GameMode?.Blitz ?? 4);
+  const isDread = h.GameMode === (G.GameMode?.Dread ?? 3);
+  const locked = safe(() => G.GameModeHelper.AreAchievementsAndEpochsLockedForHistory(h), false);
+  const showAsc = isDread || (isBlitz && asc > 0) || asc > 0;
   const slots = Math.max(0, Number(player.MaxPotionSlotCount ?? r.potions.length));
   const potW = Math.max(140, 18 + 60 * slots + 2 * Math.max(0, slots - 1) + 19);
   const iconTips = (): TipData[] => {
-    const tips: TipData[] = [{ title: '', body: rh('PLAYER_HOVER', { PlayerName: fmt(ch.Title), CharacterName: '' }) }];
-    if (asc > 0) {
-      const t = safe(() => G.AscensionHelper.GetHoverTip(ch, asc), null);
-      if (t) tips.push({ title: fmt(t.Title), body: fmt(t.Description) });
+    if (asc > 0 || locked) {
+      const t = safe(() => G.AscensionHelper.GetHoverTip(ch, asc, h.GameMode, !!h.IsCustomGame), null);
+      if (t) return [{ title: fmt(t.Title), body: fmt(t.Description) }];
     }
-    return tips;
+    return [{ title: '', body: rh('PLAYER_HOVER', { PlayerName: fmt(ch.Title), CharacterName: '' }) }];
   };
   const lblRef = useRef<HTMLDivElement>(null);
   useFit(lblRef, `rha|${asc}`, 20, 12, (el) => el.scrollWidth <= 14 + 8);
@@ -310,10 +326,22 @@ function TopRow({ r, hp, gold, floors }: { r: Loaded; hp: string; gold: string; 
     <div class="rhs-left">
       <div class="rhs-player" onPointerEnter={() => setTips(iconTips(), { kind: 'at', x: 258, y: 135 - view.oy })} onPointerLeave={() => setTip(null)}>
         <img src={imageUrl(`images/ui/top_panel/character_icon_${String(player.Character.Entry).toLowerCase()}.png`) ?? ''} />
-        {asc > 0 && (
+        {locked && (
+          <img
+            style={{ position: 'absolute', left: '-6px', top: '-6px', width: '28px', height: '28px', objectFit: 'contain', pointerEvents: 'none' }}
+            src={imageUrl('images/ui/top_panel/reminder_lock.png') ?? ''}
+          />
+        )}
+        {showAsc && (
           <div class="rhs-asc">
-            <div style={frameStyle(tb('top_bar_ascension'), 34, 49.5)} />
-            <div class="rhs-asc-label" ref={lblRef}>{asc}</div>
+            {isDread ? (
+              <img style={{ width: '34px', height: '49.5px', objectFit: 'contain' }} src={imageUrl('images/packed/character_select/dread_top_bar_icon.png') ?? ''} />
+            ) : isBlitz ? (
+              <img style={{ width: '34px', height: '49.5px', objectFit: 'contain' }} src={imageUrl('images/packed/character_select/blitz_top_bar_icon.png') ?? ''} />
+            ) : (
+              <div style={frameStyle(tb('top_bar_ascension'), 34, 49.5)} />
+            )}
+            {asc > 0 && <div class="rhs-asc-label" ref={lblRef}>{asc}</div>}
           </div>
         )}
       </div>
@@ -321,10 +349,12 @@ function TopRow({ r, hp, gold, floors }: { r: Loaded; hp: string; gold: string; 
         <div style={frameStyle(tb('top_bar_heart'), 46, 36.8)} />
         <div class="rhs-num hp">{hp}</div>
       </div>
-      <div class="rhs-stat">
-        <div style={frameStyle(tb('top_bar_gold'), 44, 37.2)} />
-        <div class="rhs-num gold">{gold}</div>
-      </div>
+      {!isBlitz && (
+        <div class="rhs-stat">
+          <div style={frameStyle(tb('top_bar_gold'), 44, 37.2)} />
+          <div class="rhs-num gold">{gold}</div>
+        </div>
+      )}
       <div class="rhs-potions" style={{ width: `${potW}px` }}>
         <div class="tb-potion-bg" style={{ left: 0, top: '4px', width: `${potW}px`, borderImageSource: `url(${frameUrl(tb('top_bar_char_backdrop'), invalidate) ?? ''})` }} />
         {Array.from({ length: slots }, (_, i) => <HistoryPotion p={r.potions[i] ?? null} x={18 + 62 * i} />)}
@@ -373,7 +403,7 @@ function HistoryPotion({ p, x }: { p: any; x: number }) {
  * NMapPointHistoryEntry (60 × 60): the room icon (64 px at 0.7, tilted 0–5°) over its outline (black 0.18) and the
  * quest marker; hovered or linked it straightens to 1.05 with a white 0.5 outline (0.05 s), back over 1 s.
  */
-function MapCell({ e, floor, playerId, tilt, lit, onTip }: { e: any; floor: number; playerId: any; tilt: number; lit: boolean; onTip: (t: any) => void }) {
+function MapCell({ e, floor, playerId, gameMode, tilt, lit, onTip }: { e: any; floor: number; playerId: any; gameMode: number; tilt: number; lit: boolean; onTip: (t: any) => void }) {
   const [hot, setHot] = useState(false);
   const [touched, setTouched] = useState(false);
   const room = list(e.Rooms)[0];
@@ -389,7 +419,7 @@ function MapCell({ e, floor, playerId, tilt, lit, onTip }: { e: any; floor: numb
       onPointerEnter={(ev) => {
         setHot(true); setTouched(true);
         const r = logicalRect(ev.currentTarget as Element);
-        if (r) onTip({ d: floorTipData(e, floor, playerId), cell: [r[0], r[1]] });
+        if (r) onTip({ d: floorTipData(e, floor, playerId, gameMode), cell: [r[0], r[1]] });
       }}
       onPointerLeave={() => { setHot(false); onTip(null); }}>
       {icon && (

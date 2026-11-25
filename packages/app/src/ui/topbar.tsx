@@ -16,8 +16,11 @@ import { topBarMapPressed } from './map';
 import { inspectRelic } from './inspect';
 import { openPauseMenu, toggleCardsView } from './pause';
 import { inputTip } from './input-tip';
+import { BlitzTopBarMap } from './blitz-topbar';
+import { FloorTipPanel, type FloorTipData } from './history';
 
 const safe = <T,>(f: () => T, d: T) => { try { return f(); } catch { return d; } };
+const fmt = (ls: any) => safe(() => ls?.GetFormattedText?.() ?? String(ls ?? ''), '');
 const tb = (n: string) => frameByName('ui_atlas', 'top_bar/' + n);
 /** atlas frame drawn keep-aspect-centred in a box (original sizes are twice the half-resolution atlas) */
 function fit(f: any, x: number, y: number, w: number, h: number, extra: any = {}) {
@@ -217,8 +220,8 @@ const bounce = (el: Element | null | undefined) => (el as HTMLElement | null)?.a
 const slosh = (volume: number) => safe(() => $.ext('MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager').Instance?.Play(`potion_slosh_${1 + Math.floor(Math.random() * 3)}.mp3`, volume, G.PitchVariance.Large), null);
 const leaving = new Map<any, 'use' | 'discard'>();
 function greyAfterUse(p: any) { setTimeout(() => { if (p.IsQueued !== false) { greyed.add(p); invalidate(); } }, 100); }
-function PotionSlot({ p, i, me }: any) {
-  const x = 503 + 62 * i, y = 9, [gx, gy] = anchored(x, y, 'lt'); // in the bar's left group / on screen
+function PotionSlot({ p, i, me, beltX = 485 }: any) {
+  const x = beltX + 18 + 62 * i, y = 9, [gx, gy] = anchored(x, y, 'lt'); // in the bar's left group / on screen
   const holder = useRef<HTMLDivElement>(null);
   // NPotion.DoFlash → NPotionFlashVfx: the potion image, additive (strength 2), 54 → 96 px over 1 s
   const [flashT, setFlashT] = useState(0);
@@ -418,16 +421,25 @@ function usePotionBelt(me: any) {
 // ------------------------------------------------------------------ the bar
 export function TopBar({ rs }: { rs: any }) {
   useEffect(() => { const h = setInterval(() => { if (timerShown()) invalidate(); }, 1000); return () => clearInterval(h); }, []);
+  const [blitzFloorTip, setBlitzFloorTip] = useState<{ d: FloorTipData; cell: [number, number]; w: number } | null>(null);
   const me = localPlayer(rs);
   const buttons = N('NRun').Instance?.GlobalUi.TopBar;
   const c = me.Creature;
   const gold = useGoldLabel(me);
   const belt = usePotionBelt(me);
   const charId = String(safe(() => me.Character.Id.Entry, 'ironclad')).toLowerCase();
+  const gameMode = safe(() => rs.GameMode, G.GameMode?.Standard ?? 1);
+  const isBlitz = gameMode === (G.GameMode?.Blitz ?? 4);
+  const isDread = gameMode === (G.GameMode?.Dread ?? 3);
   const asc = safe(() => rs.AscensionLevel, 0);
+  const dreadStreak = isDread ? safe(() => G.AscensionHelper.GetDreadStreak$1(rs), 0) : 0;
+  const ascBadgeLabel = isDread ? (dreadStreak > 0 ? String(dreadStreak) : null) : (asc > 0 ? String(asc) : null);
+  const showAscIcon = isDread || isBlitz || asc > 0;
+  const achievementsLocked = safe(() => G.GameModeHelper.AreAchievementsAndEpochsLockedForRun(rs), false);
   const slots = list(me.PotionSlots ?? []);
+  const potLeft = isBlitz ? 323 : 485;
   const potW = Math.max(140, 18 + slots.length * 60 + Math.max(0, slots.length - 1) * 2 + 19);
-  const roomX = 485 + potW + 29, floorX = roomX + 44;
+  const roomX = potLeft + potW + 29, floorX = roomX + 44;
   const floorLabelW = String(rs.TotalFloor).length * 19 + 4;
   // NTopBarRoomIcon / NTopBarBossIcon
   const room = safe(() => rs.BaseRoom ?? rs.CurrentRoom, null);
@@ -436,57 +448,103 @@ export function TopBar({ rs }: { rs: any }) {
     : mpt === G.MapPointType.Ancient ? safe(() => rs.Act.Ancient.Id, null) : null;
   const roomIcon = room ? safe(() => G.ImageHelper.GetRoomIconPath(mpt, room.RoomType, roomModel), null) : null;
   const roomOutline = room ? safe(() => G.ImageHelper.GetRoomIconOutlinePath(mpt, room.RoomType, roomModel), null) : null;
-  const showRoom = !!roomIcon && !safe(() => room.RoomType === G.RoomType.Map || room.IsVictoryRoom, false);
+  const showRoom = !isBlitz && !!roomIcon && !safe(() => room.RoomType === G.RoomType.Map || room.IsVictoryRoom, false);
   const inBoss = safe(() => room.RoomType === G.RoomType.Boss, false);
   const bossId = safe(() => rs.Act.BossEncounter.Id, null);
-  const bossIcon = bossId ? safe(() => G.ImageHelper.GetRoomIconPath(G.MapPointType.Boss, G.RoomType.Boss, bossId), null) : null;
-  const bossOutline = bossId ? safe(() => G.ImageHelper.GetRoomIconOutlinePath(G.MapPointType.Boss, G.RoomType.Boss, bossId), null) : null;
+  const bossIcon = !isBlitz && bossId ? safe(() => G.ImageHelper.GetRoomIconPath(G.MapPointType.Boss, G.RoomType.Boss, bossId), null) : null;
+  const bossOutline = !isBlitz && bossId ? safe(() => G.ImageHelper.GetRoomIconOutlinePath(G.MapPointType.Boss, G.RoomType.Boss, bossId), null) : null;
   const bossX = floorX + 59 + floorLabelW + 6;
   const roomKey = safe(() => roomTipKey(mpt, room), 'ROOM_MAP');
+  const modBaseX = isBlitz ? potLeft + potW + 24 : (bossIcon && !inBoss ? bossX + 48 : bossX - 6) + 24;
+  const ascColor = isDread ? '#87CEEB' : isBlitz ? '#7FFF00' : '#FFF6E2';
+  const ascOutline = isDread ? '6px #06335F' : isBlitz ? '6px #054F22' : '6px #593400';
+
+  const showPortraitTip = () => {
+    const t = safe(() => G.AscensionHelper.GetPortraitHoverTip(rs), null);
+    if (t && (fmt(t.Title) || fmt(t.Description))) {
+      setTip(fmt(t.Title), fmt(t.Description), tipAt(16, 95));
+      return;
+    }
+    if (asc > 0) setTip(loc('ascension', 'PORTRAIT_TITLE'), loc('ascension', 'PORTRAIT_DESCRIPTION'), tipAt(16, 95));
+  };
+
   return (
     <>
       {/* NTopBar.AnimHide / AnimShow: y −100 / 0 over 0.25 s Cubic Out while the capstone stack is open */}
       <div class="top-bar" style={{ translate: `0 ${ui.pauseOpen ? -100 : 0}px`, transition: 'translate .25s cubic-bezier(0.33, 1, 0.68, 1)' }}>
-        <div class="tb-bg" style={frameStyle(tb('top_bar'), 2585.6, 101)} />
+        <div class="tb-bg" style={{ ...frameStyle(tb('top_bar'), 2585.6, 101), filter: isDread ? 'saturate(0.25)' : undefined }} />
         {/* LeftAlignedStuff */}
         <div class="tb-left">
           {/* portrait */}
           <div style={{ ...frameStyle(tb('top_bar_char_backdrop'), 72, 71), position: 'absolute', left: '16px', top: '4px' }} />
           <img class="tb-char" src={imageUrl(`images/ui/top_panel/character_icon_${charId}.png`) ?? ''} />
-          {asc > 0 && (
-            <div class="tb-asc" onPointerEnter={() => setTip(loc('ascension', 'PORTRAIT_TITLE'), loc('ascension', 'PORTRAIT_DESCRIPTION'), tipAt(16, 95))} onPointerLeave={() => setTip(null)}>
-              <div style={fit(tb('top_bar_ascension'), 59, 32, 42, 45)} />
-              <div class="tb-asc-label">{asc}</div>
+          {achievementsLocked && (
+            <img
+              style={{ position: 'absolute', left: '10px', top: '6px', width: '28px', height: '28px', objectFit: 'contain', pointerEvents: 'none' }}
+              src={imageUrl('images/ui/top_panel/reminder_lock.png') ?? ''}
+            />
+          )}
+          {(showAscIcon || achievementsLocked) && (
+            <div class="tb-asc" onPointerEnter={showPortraitTip} onPointerLeave={() => setTip(null)}>
+              {showAscIcon && (
+                isDread ? (
+                  <img style={{ position: 'absolute', left: '59px', top: '32px', width: '42px', height: '45px', objectFit: 'contain', pointerEvents: 'none' }}
+                    src={imageUrl('images/packed/character_select/dread_top_bar_icon.png') ?? ''} />
+                ) : isBlitz ? (
+                  <img style={{ position: 'absolute', left: '59px', top: '32px', width: '42px', height: '45px', objectFit: 'contain', pointerEvents: 'none' }}
+                    src={imageUrl('images/packed/character_select/blitz_top_bar_icon.png') ?? ''} />
+                ) : (
+                  <div style={fit(tb('top_bar_ascension'), 59, 32, 42, 45)} />
+                )
+              )}
+              {ascBadgeLabel != null && (
+                <div class="tb-asc-label" style={{ color: ascColor, WebkitTextStroke: ascOutline }}>{ascBadgeLabel}</div>
+              )}
             </div>
           )}
-          {/* HP, gold */}
+          {/* HP, gold（Blitz 模式隐藏金币） */}
           <div class="tb-hit" style={{ left: '120px', width: '179px' }} onPointerEnter={() => staticTip('HIT_POINTS', 120, 103)} onPointerLeave={() => setTip(null)}>
             <div style={fit(tb('top_bar_heart'), 0, 0, 53, 83)} />
             <div class="tb-label hp" style={{ left: '59px' }}>{hpLerp === null ? c.CurrentHp : roundEven(c.CurrentHp * hpLerp)}/{c.MaxHp}</div>
           </div>
-          <div class="tb-hit" style={{ left: '323px', width: '138px' }} onPointerEnter={() => staticTip('MONEY_POUCH', 323, 103)} onPointerLeave={() => setTip(null)}>
-            <div style={fit(tb('top_bar_gold'), 0, 0, 54, 83)} />
-            <div class="tb-label gold" style={{ left: '58px' }}>{gold}</div>
-          </div>
+          {!isBlitz && (
+            <div class="tb-hit" style={{ left: '323px', width: '138px' }} onPointerEnter={() => staticTip('MONEY_POUCH', 323, 103)} onPointerLeave={() => setTip(null)}>
+              <div style={fit(tb('top_bar_gold'), 0, 0, 54, 83)} />
+              <div class="tb-label gold" style={{ left: '58px' }}>{gold}</div>
+            </div>
+          )}
           {/* potion belt */}
-          <div class="tb-potion-bg" style={{ left: '485px', width: `${potW}px`, borderImageSource: `url(${frameUrl(tb('top_bar_char_backdrop'), invalidate) ?? ''})` }} />
+          <div class="tb-potion-bg" style={{ left: `${potLeft}px`, width: `${potW}px`, borderImageSource: `url(${frameUrl(tb('top_bar_char_backdrop'), invalidate) ?? ''})` }} />
           {/* PotionErrorBg: the backdrop again through hsv (0.463, 3.918, 2), self-modulate alpha 0.553 */}
-          <div class="tb-potion-bg" ref={belt.err} style={{ left: '485px', width: `${potW}px`, borderImageSource: `url(${frameUrl(tb('top_bar_char_backdrop'), invalidate) ?? ''})`, filter: hsvFilter(0.463, 3.918, 2), opacity: 0 }} />
-          <div class="tb-potions" ref={belt.holders}>{slots.map((p: any, i: number) => <PotionSlot p={p} i={i} me={me} />)}</div>
-          {/* room, floor, boss */}
+          <div class="tb-potion-bg" ref={belt.err} style={{ left: `${potLeft}px`, width: `${potW}px`, borderImageSource: `url(${frameUrl(tb('top_bar_char_backdrop'), invalidate) ?? ''})`, filter: hsvFilter(0.463, 3.918, 2), opacity: 0 }} />
+          <div class="tb-potions" ref={belt.holders}>{slots.map((p: any, i: number) => <PotionSlot p={p} i={i} me={me} beltX={potLeft} />)}</div>
+          {/* room, floor, boss（Blitz 模式隐藏，改由顶栏 BlitzMap 展示） */}
           {showRoom && (
             <div class="tb-hit" style={{ left: `${roomX}px`, top: '17.5px', width: '44px', height: '44px' }} onPointerEnter={() => staticTip(roomKey, roomX, 103)} onPointerLeave={() => setTip(null)}>
               {roomOutline && <img class="tb-room outline" src={imageUrl(roomOutline) ?? ''} />}
               <img class="tb-room" src={imageUrl(roomIcon) ?? ''} />
             </div>
           )}
-          <div class="tb-hit" style={{ left: `${floorX}px`, width: `${59 + floorLabelW}px` }} onPointerEnter={() => staticTip('FLOOR', floorX, 103)} onPointerLeave={() => setTip(null)}>
-            <div style={fit(tb('top_bar_floor'), 0, 10, 60, 60)} />
-            <div class="tb-label floor" style={{ left: '59px' }}>{rs.TotalFloor}</div>
-          </div>
+          {!isBlitz && (
+            <div class="tb-hit" style={{ left: `${floorX}px`, width: `${59 + floorLabelW}px` }} onPointerEnter={() => staticTip('FLOOR', floorX, 103)} onPointerLeave={() => setTip(null)}>
+              <div style={fit(tb('top_bar_floor'), 0, 10, 60, 60)} />
+              <div class="tb-label floor" style={{ left: '59px' }}>{rs.TotalFloor}</div>
+            </div>
+          )}
           {bossIcon && !inBoss && (
             <div class="tb-hit" style={{ left: `${bossX}px`, top: '17.5px', width: '44px', height: '44px' }}
               onPointerEnter={() => {
+                if (isDread) {
+                  const enc = safe(() => rs.Act.SecondBossEncounter ?? rs.Act.BossEncounter, null);
+                  const dom = safe(() => enc?.GetDominion(), null);
+                  if (dom) {
+                    const domTitle = locv('ascension', 'DREAD.title', { BossName: fmt(enc.Title) });
+                    const domDesc = fmt(dom.Description);
+                    const extra = hoverTipsOf({ HoverTips: dom.ExtraHoverTips });
+                    setTips([{ title: domTitle, body: domDesc }, ...extra], tipAt(bossX, 103));
+                    return;
+                  }
+                }
                 const bossName = safe(() => rs.Act.BossEncounter.Title.GetFormattedText(), '') ?? '';
                 const title = locv('static_hover_tips', 'BOSS.title', { BossName: bossName });
                 const desc = locv('static_hover_tips', 'BOSS.description', { BossName: bossName });
@@ -499,7 +557,7 @@ export function TopBar({ rs }: { rs: any }) {
           )}
           {/* NTopBarModifier (custom / daily runs): 56 × 80 each after the room icons, a 48 px icon at (4, 13) */}
           {list(safe(() => rs.Modifiers, [])).map((m: any, i: number) => {
-            const mx = (bossIcon && !inBoss ? bossX + 48 : bossX - 6) + 24 + 56 * i;
+            const mx = modBaseX + 56 * i;
             return (
               <div class="tb-hit" style={{ left: `${mx}px`, width: '56px', height: '80px' }}
                 onPointerEnter={() => setTip(safe(() => m.Title.GetFormattedText(), ''), safe(() => m.Description.GetFormattedText(), ''), tipAt(mx, 100))} onPointerLeave={() => setTip(null)}>
@@ -508,6 +566,7 @@ export function TopBar({ rs }: { rs: any }) {
             );
           })}
         </div>
+        {isBlitz && <BlitzTopBarMap rs={rs} onFloorTip={setBlitzFloorTip} />}
         {/* RightAlignedStuff */}
         <div class="tb-right">
           <SaveIndicator x={timerShown() ? 1264 : 1428} />
@@ -518,8 +577,10 @@ export function TopBar({ rs }: { rs: any }) {
               <div class="tb-label timer" style={{ left: '1544px' }}>{safe(() => G.TimeFormatting.Format(G.RunManager.Instance.RunTime), '')}</div>
             </>
           )}
-          <TopButton kind="map" x={1664} y={8} w={80} h={64} frame={tb('top_bar_map')} open={ui.mapOpen} disabled={ui.room?.kind === 'maproom' || buttons?.Map.IsEnabled === false}
-            tip={() => staticTip('MAP', 1744, 100, true)} onClick={topBarMapPressed} />
+          {!isBlitz && (
+            <TopButton kind="map" x={1664} y={8} w={80} h={64} frame={tb('top_bar_map')} open={ui.mapOpen} disabled={ui.room?.kind === 'maproom' || buttons?.Map.IsEnabled === false}
+              tip={() => staticTip('MAP', 1744, 100, true)} onClick={topBarMapPressed} />
+          )}
           <TopButton kind="deck" x={1744} y={0} w={80} h={80} frame={tb('top_bar_deck')} open={ui.cardsView?.kind === 'deck'} disabled={buttons?.Deck.IsEnabled === false}
             tip={() => staticTip('DECK', 1824, 100, true)} onClick={() => toggleCardsView('deck')}
             count={<DeckCount me={me} />} />
@@ -528,6 +589,7 @@ export function TopBar({ rs }: { rs: any }) {
         </div>
       </div>
       <RelicBar me={me} />
+      {isBlitz && blitzFloorTip && <FloorTipPanel d={blitzFloorTip.d} cell={blitzFloorTip.cell} w={blitzFloorTip.w} />}
       {ui.potionMenu && slots.includes(ui.potionMenu) && <PotionPopup p={ui.potionMenu} i={slots.indexOf(ui.potionMenu)} me={me} />}
     </>
   );

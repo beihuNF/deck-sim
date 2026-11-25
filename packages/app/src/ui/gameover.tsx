@@ -29,31 +29,42 @@ const go = (k: string, vars: Record<string, any> = {}) => locv('game_over_screen
 const THRESHOLDS = [200, 500, 750, 1000, 1250, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2500, 2500];
 const threshold = (remaining: number) => THRESHOLDS[18 - remaining] ?? 0;
 
-/** NGameOverScreen.AnimateBadges. */
-function badges(rs: any, sr: any, me: any, win: boolean): string[] {
-  const out: string[] = [go('BADGE.floorsClimbed', { FloorCount: rs.TotalFloor })];
+interface BadgeItem { label: string; icon?: string }
+
+/** NGameOverScreen.AnimateBadges：Blitz 模式跳过金币相关统计，Dread 模式补充恐惧倍率条目 */
+function badges(rs: any, sr: any, me: any, win: boolean): BadgeItem[] {
+  const isBlitz = rs.GameMode === (G.GameMode?.Blitz ?? 4);
+  const isDread = rs.GameMode === (G.GameMode?.Dread ?? 3);
+  const out: BadgeItem[] = [{ label: go('BADGE.floorsClimbed', { FloorCount: rs.TotalFloor }) }];
   const rooms = list(sr.MapPointHistory).flatMap((act: any) => list(act)).flatMap((e: any) => list(e.Rooms));
   let elites = rooms.filter((r: any) => r.RoomType === G.RoomType.Elite).length;
   if (rooms.length && rooms[rooms.length - 1].RoomType === G.RoomType.Elite) elites--;
-  out.push(go('BADGE.elitesKilled', { EliteCount: elites }));
-  const gained = list(sr.MapPointHistory).flatMap((act: any) => list(act)).reduce((a: number, e: any) => a + safe(() => e.GetEntry(me.NetId).GoldGained, 0), 0);
-  out.push(go('BADGE.goldGained', { GoldAmount: gained }));
-  if (me.Relics.Count >= 25) out.push(go('BADGE.iLikeShiny', { RelicCount: me.Relics.Count }));
-  const gold = me.Gold;
-  if (gold >= 3000) out.push(go('BADGE.goldenGod', { GoldAmount: gold }));
-  else if (gold >= 2000) out.push(go('BADGE.scrooge', { GoldAmount: gold }));
-  else if (gold >= 1000) out.push(go('BADGE.miser', { GoldAmount: gold }));
+  out.push({ label: go('BADGE.elitesKilled', { EliteCount: elites }) });
+  if (!isBlitz) {
+    const gained = list(sr.MapPointHistory).flatMap((act: any) => list(act)).reduce((a: number, e: any) => a + safe(() => e.GetEntry(me.NetId).GoldGained, 0), 0);
+    out.push({ label: go('BADGE.goldGained', { GoldAmount: gained }) });
+  }
+  if (isDread) {
+    out.push({ label: `${go('SCORE_LINE.dread')} x3`, icon: 'images/ui/game_over_screen/score_dread.png' });
+  }
+  if (me.Relics.Count >= 25) out.push({ label: go('BADGE.iLikeShiny', { RelicCount: me.Relics.Count }) });
+  if (!isBlitz) {
+    const gold = me.Gold;
+    if (gold >= 3000) out.push({ label: go('BADGE.goldenGod', { GoldAmount: gold }) });
+    else if (gold >= 2000) out.push({ label: go('BADGE.scrooge', { GoldAmount: gold }) });
+    else if (gold >= 1000) out.push({ label: go('BADGE.miser', { GoldAmount: gold }) });
+  }
   if (win) {
     const n = me.Deck.Cards.Count;
-    if (n <= 10) out.push(go('BADGE.tinyDeck', { DeckSize: n }));
-    else if (n <= 20) out.push(go('BADGE.smallDeck', { DeckSize: n }));
-    else if (n >= 60) out.push(go('BADGE.hugeDeck', { DeckSize: n }));
-    else if (n >= 40) out.push(go('BADGE.bigDeck', { DeckSize: n }));
+    if (n <= 10) out.push({ label: go('BADGE.tinyDeck', { DeckSize: n }) });
+    else if (n <= 20) out.push({ label: go('BADGE.smallDeck', { DeckSize: n }) });
+    else if (n >= 60) out.push({ label: go('BADGE.hugeDeck', { DeckSize: n }) });
+    else if (n >= 40) out.push({ label: go('BADGE.bigDeck', { DeckSize: n }) });
     const start = me.Character.StartingHp, max = me.Creature.MaxHp, diff = max - start;
-    if (max / start < 0.50001) out.push(go('BADGE.famished', { HpDiff: diff }));
-    else if (diff >= 50) out.push(go('BADGE.glutton', { HpDiff: diff }));
-    else if (diff >= 30) out.push(go('BADGE.stuffed', { HpDiff: diff }));
-    else if (diff >= 15) out.push(go('BADGE.wellFed', { HpDiff: diff }));
+    if (max / start < 0.50001) out.push({ label: go('BADGE.famished', { HpDiff: diff }) });
+    else if (diff >= 50) out.push({ label: go('BADGE.glutton', { HpDiff: diff }) });
+    else if (diff >= 30) out.push({ label: go('BADGE.stuffed', { HpDiff: diff }) });
+    else if (diff >= 15) out.push({ label: go('BADGE.wellFed', { HpDiff: diff }) });
   }
   return out;
 }
@@ -191,7 +202,7 @@ export function GameOver({ g }: { g: any }) {
       banner: win ? go('BANNER.falseWin') : pick('BANNER.lose'),
       quote: win ? '' : pick('QUOTES'),
       encounterQuote: history ? safe(() => deathQuote(history, me.Character.Id), '') : '',
-      badges: safe(() => badges(rs, sr, me, win), [] as string[]),
+      badges: safe(() => badges(rs, sr, me, win), [] as BadgeItem[]),
       bar: safe(() => scoreBar(score, me, sr), null),
       found: safe(() => discoveries(me), []),
       epochs: safe(() => me.DiscoveredEpochs.Count > 0, false),
@@ -350,10 +361,12 @@ export function GameOver({ g }: { g: any }) {
       {phase !== 'intro' && phase !== 'continue' && (
         <div class="go-summary">
           <div class="go-badges" ref={r.badges} style={{ gridTemplateColumns: `repeat(${cols}, auto)` }}>
-            {v.badges.map((b: string, i: number) => (
+            {v.badges.map((b: BadgeItem, i: number) => (
               <div class="go-badge" style={{ opacity: 0 }}>
-                <div class="go-badge-icon">{i === 0 && <div style={frameStyle(floorIcon, 48, 48)} />}</div>
-                <div class="go-badge-label"><RichText text={b} /></div>
+                <div class="go-badge-icon">
+                  {b.icon ? <img style={{ width: '48px', height: '48px', objectFit: 'contain' }} src={imageUrl(b.icon) ?? ''} /> : i === 0 && <div style={frameStyle(floorIcon, 48, 48)} />}
+                </div>
+                <div class="go-badge-label"><RichText text={b.label} /></div>
               </div>
             ))}
           </div>

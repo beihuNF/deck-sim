@@ -1038,3 +1038,4 @@ provide('System.Collections.Concurrent.ConcurrentStack`1', Stack);
 provide('System.Collections.Concurrent.ConcurrentBag`1', Array);
 provide('System.Collections.Concurrent.BlockingCollection`1', Queue);
 provide('System.Threading.ThreadLocal`1', class ThreadLocal { Value: any; constructor(f?: () => any) { this.Value = f?.(); } Dispose() {} });
+provide('System.Threading.AsyncLocal`1', class AsyncLocal { Value: any; constructor(_f?: (a: any) => void) {} });

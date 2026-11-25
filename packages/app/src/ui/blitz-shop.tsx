@@ -351,7 +351,7 @@ function BlitzMerchantButton({ view }: { view: BlitzShopView }) {
 
   return (
     <div
-      class="shop-merchant-btn"
+      class="merchant-btn shop-merchant-btn"
       style={{
         position: 'absolute',
         left: `${x}px`,
@@ -579,7 +579,7 @@ function BlitzSlot({
 
       {available && (
         <div
-          class="blitz-slot-hit"
+          class="shop-hit blitz-slot-hit"
           onPointerEnter={() => {
             setHot(true);
             showTips();

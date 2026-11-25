@@ -253,7 +253,8 @@ const step = () => page.evaluate(() => {
     const shopped = window.__shopped?.[rs?.TotalFloor];
     if (!view.open) return shopped ? tap('shop', q('.shop > .proceed-btn.shown')) : tap('shop', q('.merchant-btn'));
     if (view.fx.RugY !== 80) return { ...info, screen: 'shop', did: false };
-    if ((shopped ?? 0) < 2) {
+    const canPick = inv.IsBlitzShop ? (inv.BlitzChoicesRemaining ?? 0) > 0 && (shopped ?? 0) < 3 : (shopped ?? 0) < 2;
+    if (canPick) {
       window.__shopped = { ...window.__shopped, [rs?.TotalFloor]: (shopped ?? 0) + 1 };
       // card removal first (its deck picker, an overlay, must open over the rug and take the taps), then one item
       const stocked = Array.from(window.G.$.iter(inv.AllEntries)).filter((x) => x.IsStocked && x.EnoughGold && view.slotEls.get(x)?.querySelector('.shop-hit'));

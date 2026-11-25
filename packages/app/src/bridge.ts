@@ -35,6 +35,7 @@ const NEventRoom = N('Rooms.NEventRoom');
 const NRestSiteRoom = N('Rooms.NRestSiteRoom');
 const NMerchantRoom = N('Rooms.NMerchantRoom');
 const NStandardMerchantRoom = N('Rooms.NStandardMerchantRoom');
+const NBlitzMerchantRoom = N('Rooms.NBlitzMerchantRoom');
 const NTreasureRoom = N('Rooms.NTreasureRoom');
 const NMapRoom = N('Rooms.NMapRoom');
 const NOverlayStack = N('Screens.Overlays.NOverlayStack');
@@ -51,7 +52,24 @@ export class RunView extends NRun {
   /** NGlobalUi: card previews outside combat, the top bar's deck button and trail container. */
   GlobalUi = new GlobalUiView();
   private runEndReported = false;
-  constructor(public runState: any) { super(); }
+  constructor(public runState: any) {
+    super();
+    // Blitz 模式通过 TopBar.BlitzMap.TravelToMapCoord 推进至下一节点
+    (this.GlobalUi.TopBar as any).BlitzMap = Object.assign($.dummy(N('CommonUi.NBlitzTopBarMap')), {
+      async TravelToMapCoord(coord: any) {
+        audio.playOneShot('event:/sfx/ui/map/map_select');
+        audio.playOneShot('event:/sfx/ui/wipe_map');
+        invalidate();
+        await transitionView.RoomFadeOut();
+        try {
+          await G.RunManager.Instance.EnterMapCoord(coord);
+        } finally {
+          void G.RunManager.Instance.FadeIn(true);
+        }
+        invalidate();
+      },
+    });
+  }
   get MerchantRoom() { return ui.room?.kind === 'shop' ? ui.room : null; }
   SetCurrentRoom(node: any) {
     // NCombatRoom.Instance lives as long as a combat room is on screen (combat-layout events embed one)
@@ -507,6 +525,11 @@ export class CombatRoomView extends NCombatRoom {
   }
 }
 creatureViewsRef.get = () => (NCombatRoom.Instance instanceof CombatRoomView ? NCombatRoom.Instance.CreatureNodes : []);
+NCombatRoom.GenerateBackgroundRngForCurrentPoint = (state: any) => {
+  const c = state?.CurrentMapCoord;
+  const off = c ? c.row + c.col * 747 : 0;
+  return new G.Rng().$ctor_Rng$UInt64($.op64('+', state.Rng.Seed, off, true));
+};
 NCombatRoom.Create = (room: any, mode: number) => {
   NCombatRoom.Instance?.dispose?.();
   const v = new CombatRoomView(room, mode);
@@ -1002,8 +1025,12 @@ export const merchantShop = (Base: any) => class extends Base {
     }
     audio.playOneShot('event:/sfx/npcs/merchant/merchant_welcome');
     this.Inventory.open = true;
-    // ShowOnInventoryOpen: OpenInventoryLines (the real merchant has no such loc keys, so he says nothing)
-    this.say(safeGet(() => this.dialogue.OpenInventoryLines, []));
+    // Blitz 商店仅在次数用尽时播放 BlitzFinishedLines，常规商店播放 OpenInventoryLines
+    if (this.inv?.IsBlitzShop) {
+      if ((this.inv.BlitzChoicesRemaining ?? 0) <= 0) this.say(safeGet(() => this.dialogue.BlitzFinishedLines, []));
+    } else {
+      this.say(safeGet(() => this.dialogue.OpenInventoryLines, []));
+    }
     invalidate();
   }
   /** NMerchantInventory.Close (back button / ESC). */
@@ -1062,7 +1089,13 @@ export const merchantShop = (Base: any) => class extends Base {
       this.bought.set(entry, entry.Model);
     }
     audio.playOneShot('event:/sfx/npcs/merchant/merchant_thank_yous');
-    this.say(safeGet(() => this.dialogue.GetPurchaseSuccessLines(status), []));
+    if (entry instanceof G.BlitzMerchantEntry) {
+      if ((this.inv?.BlitzChoicesRemaining ?? 0) <= 0) {
+        this.say(safeGet(() => this.dialogue.BlitzFinishedLines, []));
+      }
+    } else {
+      this.say(safeGet(() => this.dialogue.GetPurchaseSuccessLines(status), []));
+    }
     invalidate();
   }
   /** A slot's GlobalPosition (its origin on the rug). */
@@ -1108,6 +1141,43 @@ export function shopSlotOrigin(inv: any, e: any, slots: ShopSlots = SHOP_SLOTS):
     ?? at(inv.PotionEntries, slots.potions) ?? (e === inv.CardRemovalEntry ? slots.removal : null);
 }
 NStandardMerchantRoom.Create = (players: any) => { const v = new MerchantView(players); NMerchantRoom.Instance = v; NMapScreen.Instance?.SetTravelEnabled(true); return v; };
+
+/** Blitz 闪电模式商人房间（对应 NBlitzMerchantRoom，MerchantButton 位于 (1175, 351), 351 × 463） */
+export class BlitzMerchantView extends merchantShop(NBlitzMerchantRoom) {
+  isBlitz = true as const;
+  constructor(public players: any, public backgroundAssets: any) {
+    super();
+    const inv = G.RunManager.Instance.MerchantSynchronizer.GetLocalInventory();
+    this.initShop(inv, G.MerchantRoom.Dialogue, [1175, 351, 351, 463]);
+    this.MerchantButton.IsLocalPlayerDead = safeGet(() => G.LocalContext.GetMe$IEnumerablePlayer(players).Creature.IsDead, false);
+    this.MerchantButton.PlayerDeadLines = this.dialogue.PlayerDeadLines;
+  }
+  slotOrigin(entry: any): [number, number] | null {
+    const idx = list(this.inv?.BlitzEntries ?? []).indexOf(entry);
+    const BLITZ_COORDS: [number, number][] = [
+      [415, 320], [896, 293], [1291, 355],
+      [437, 679], [831, 637], [1247, 689],
+    ];
+    if (idx < 0 || idx >= BLITZ_COORDS.length) return null;
+    const [lx, ly] = BLITZ_COORDS[idx];
+    return [118 + lx, ly + this.fx.RugY - view.oy];
+  }
+  proceed() {
+    if (!seenFtue('merchant_ftue')) { void showFtue('merchant_ftue', 'MERCHANT_FTUE', () => this.OpenInventory()); return; }
+    G.RunManager.Instance.Proceed();
+  }
+  FoulPotionThrown(_potion: any) {
+    audio.playOneShot('event:/sfx/npcs/merchant/merchant_thank_yous');
+    const l = G.Rng.Chaotic.NextItem(G.LocString, list(this.dialogue.FoulPotionLines));
+    if (l && this.MerchantButton.PlayDialogue(l)) NGame.Instance?.ScreenRumble(3 /* Medium */, 1 /* Short */, 1 /* Rumble */);
+  }
+}
+NBlitzMerchantRoom.Create = (players: any, backgroundAssets: any) => {
+  const v = new BlitzMerchantView(players, backgroundAssets);
+  NMerchantRoom.Instance = v;
+  NMapScreen.Instance?.SetTravelEnabled(true);
+  return v;
+};
 
 /** fake_merchant_inventory.tscn: the six relic slots (Large icons) with the rug open (y 80). */
 const FAKE_SLOTS: ShopSlots = { cards: [], colorless: [], potions: [], removal: null, relics: [[987, 298], [1262, 368], [855, 596], [1128, 663], [1463, 578], [941, 927]] };
