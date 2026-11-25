@@ -1,7 +1,7 @@
 // Pixi stage for combat: creatures as Spine skeletons placed per their creature_visuals scenes.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture, WebGLRenderer } from 'pixi.js';
-import { Spine } from '@esotericsoftware/spine-pixi-v8';
+import { Spine, Skin } from '@esotericsoftware/spine-pixi-v8';
 import { A, skelSrc, spineIndex, imageSourceSize } from '../assets';
 import { loadScene, attachCreatureFx, particleItem, buildScene, sceneTexture } from './scene';
 import { curveAt } from './cardfx';
@@ -300,14 +300,15 @@ interface Actor { root: Container; spine?: Spine; key: string; lastAnimCount: nu
  * MegaSprite / MegaAnimationState / MegaTrackEntry over a Pixi Spine: what CreatureAnimator (the model's
  * GenerateAnimator graph of AnimStates) drives. Started / completed / interrupted reach it as spine listener events.
  */
-function megaSprite(sp: Spine, name: string) {
+export function megaSprite(sp: Spine, name: string) {
   const track = (e: any) => e && {
     SetTimeScale: (v: number) => { e.timeScale = v; },
     GetAnimationEnd: () => e.animationEnd,
-    GetAnimationName: () => e.animation.name,
-    GetAnimationDuration: () => e.animation.duration,
+    GetAnimationName: () => e.animation?.name ?? '',
+    GetAnimationDuration: () => e.animation?.duration ?? 0,
     GetQueuedAnimationNames: () => { const names = []; for (let x = e.next; x; x = x.next) names.push(x.animation.name); return names; },
     SetTrackTime: (v: number) => { e.trackTime = v; },
+    IsComplete: () => (e.trackTime ?? 0) >= (e.animationEnd ?? 0),
     Dispose() {},
   };
   const state = {
@@ -320,15 +321,27 @@ function megaSprite(sp: Spine, name: string) {
     Update: (dt: number) => sp.state.update(dt),
     Apply: () => sp.state.apply(sp.skeleton),
   };
-  const on = (kind: 'start' | 'complete' | 'interrupt') => (cb: any) => sp.state.addListener({ [kind]: () => cb?.Call?.(null, null, null) } as any);
+  const on = (kind: 'start' | 'complete' | 'interrupt' | 'end') => (cb: any) =>
+    sp.state.addListener({ [kind]: (e: any) => cb?.Call?.(null, null, track(e)) } as any);
+  // 包装 MegaSkeleton 与 NewSkin，供规则层 MonsterModel.SetupSkins 组合多套皮肤
+  const skeleton = {
+    GetData: () => ({ FindSkin: (n: string) => sp.skeleton.data.findSkin(n) }),
+    SetSkin: (s: any) => { if (s) sp.skeleton.setSkin(s._raw ?? s); },
+    SetSlotsToSetupPose: () => sp.skeleton.setSlotsToSetupPose(),
+    _raw: sp.skeleton,
+  };
   return {
     get IsValid() { return !sp.destroyed; },
     SetAnimation: state.SetAnimation, AddAnimation: state.AddAnimation, GetCurrentTrack: (t = 0) => state.GetCurrent(t),
     BoundObject: { Name: name },
     HasAnimation: (n: string) => !!sp.skeleton.data.findAnimation(n),
     GetAnimationState: () => state,
-    GetSkeleton: () => sp.skeleton,
-    ConnectAnimationStarted: on('start'), ConnectAnimationCompleted: on('complete'), ConnectAnimationInterrupted: on('interrupt'),
+    GetSkeleton: () => skeleton,
+    NewSkin: (skinName: string) => {
+      const sk = new Skin(skinName);
+      return { AddSkin: (other: any) => { if (other) sk.addSkin(other._raw ?? other); }, _raw: sk };
+    },
+    ConnectAnimationStarted: on('start'), ConnectAnimationCompleted: on('complete'), ConnectAnimationInterrupted: on('interrupt'), ConnectAnimationEnded: on('end'),
   };
 }
 
@@ -416,6 +429,10 @@ export class CombatStage {
     for (const old of this.bgLayer.removeChildren()) old.destroy({ children: true });
     if (this.bgLayer.parent !== this.root) this.root.addChildAt(this.bgLayer, 0);
     if (bg) this.bgLayer.addChild(bg);
+  }
+  /** 返回当前战斗背景记录的 Spine 骨架（用于 KaiserCrab 箭矢挂点）。 */
+  get kaiserCrabSpine(): Spine | null {
+    return (this.bgLayer.children[0] as any)?.$kaiserCrabSpine ?? null;
   }
   sync() {
     const cs = this.view.combatState;
@@ -634,6 +651,9 @@ export class CombatStage {
       const flip = !c.IsPlayer && false;
       sp.scale.set((e.scale?.[0] ?? 1) * (flip ? -1 : 1), e.scale?.[1] ?? 1);
       try { if (e.skin && sp.skeleton.data.findSkin(e.skin)) sp.skeleton.setSkinByName(e.skin); } catch { /* default skin */ }
+      const ms = megaSprite(sp, a.key);
+      // 应用怪物自定义皮肤组合（如 Byrdpip、ByrdineMonster、Toadpole 等）
+      try { c.Monster?.SetupSkins?.(ms, ms.GetSkeleton()); } catch { /* default skin */ }
       sp.state.data.defaultMix = e.spine.mix ?? 0.1;
       const names = sp.skeleton.data.animations.map((x: any) => x.name);
       a.idle = pick(names, ['idle_loop', 'idle', 'Idle', 'loop']) ?? names[0];
@@ -641,11 +661,14 @@ export class CombatStage {
       // NCreature._spineAnimator: the model's own animation graph (MonsterModel / CharacterModel.GenerateAnimator)
       try {
         const model = c.Monster ?? c.Player?.Character;
-        a.animator = model?.GenerateAnimator?.(megaSprite(sp, a.key), c) ?? undefined;
+        a.animator = model?.GenerateAnimator?.(ms, c) ?? undefined;
       } catch (e) { console.warn('animator', a.key, e); a.animator = undefined; }
       a.spine = sp;
       const creatureNode = N('Rooms.NCombatRoom').Instance?.GetCreatureNode(c);
-      if (creatureNode) creatureNode.SpineAnimation = megaSprite(sp, a.key);
+      if (creatureNode) {
+        creatureNode.SpineAnimation = ms;
+        creatureNode.HasSpineArrowSlots = !!sp.skeleton.findSlot('ARROW_HIT_FRONT');
+      }
       a.root.addChild(sp);
       loadScene(a.key).then((s) => { if (s && !sp.destroyed) attachCreatureFx(a.root, s, sp); });
     });

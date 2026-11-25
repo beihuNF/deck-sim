@@ -17,7 +17,7 @@ import { fracX } from '../view';
 const ratio = (a: number, b: number) => fmt(safe(() => G.StringHelper.RatioFormat$Int32_Int32(a, b), `${a}/${b}`));
 const time = (s: number) => safe(() => G.TimeFormatting.Format(s), String(s));
 const s = (k: string, v: Record<string, any>) => locv('stats_screen', k, v);
-const CHARS: [any, string][] = [['Ironclad', '#FF5555'], ['Silent', '#7FFF00'], ['Regent', '#FFA518'], ['Necrobinder', '#EE82EE'], ['Defect', '#87CEEB']];
+const CHARS: [any, string][] = [['Ironclad', '#FF5555'], ['Silent', '#7FFF00'], ['Regent', '#FFA518'], ['Necrobinder', '#EE82EE'], ['Defect', '#87CEEB'], ['Fool', '#FFFA72']];
 
 export function Stats() {
   const [gen, setGen] = useState(0); // the Statistics tab reloads the stats (OpenStatsMenu)
