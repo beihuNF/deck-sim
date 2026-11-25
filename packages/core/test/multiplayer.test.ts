@@ -250,5 +250,46 @@ describe('web multiplayer packets', () => {
     // 清除后恢复
     expect(G.PlatformUtil.GetPlayerNameRaw(G.PlatformType.None, 1)).toBe('Test Host');
   });
+
+  it('validates mode unlocks, clamps ascension, and preserves explicit isCustom and isRotatingDread', async () => {
+    const baseUnlock = G.serializeWebUnlockState(new G.UnlockState().$ctor_UnlockState$3(['NEOW_EPOCH'], [], 1));
+    const blitzUnlock = G.serializeWebUnlockState(new G.UnlockState().$ctor_UnlockState$3(['NEOW_EPOCH', 'BLITZ_EPOCH'], [], 1));
+    const dreadUnlock = G.serializeWebUnlockState(new G.UnlockState().$ctor_UnlockState$3(['NEOW_EPOCH', 'DREAD_EPOCH'], [], 1));
+
+    // 非 Custom 的 Blitz/Dread 校验全员纪元解锁
+    await expect(G.startWebMultiplayerRun([{ id: 1, character: 'IRONCLAD', unlock: baseUnlock }],
+      'BLITZLOCK', new G.WebNetService(1, () => {}, 'blitz'), () => {}, 'blitz', 2)).rejects.toThrow('Locked multiplayer game mode: blitz');
+    await expect(G.startWebMultiplayerRun([{ id: 1, character: 'IRONCLAD', unlock: baseUnlock }],
+      'DREADLOCK', new G.WebNetService(1, () => {}, 'dread'), () => {}, 'dread', 0)).rejects.toThrow('Locked multiplayer game mode: dread');
+
+    // Blitz 进阶钳制为 0..5
+    const blitzState = await G.startWebMultiplayerRun(
+      [{ id: 1, character: 'IRONCLAD', unlock: blitzUnlock }],
+      'BLITZOK', new G.WebNetService(1, () => {}, 'blitz'), () => {}, 'blitz', 10, [], null, false);
+    expect(blitzState.GameMode).toBe(G.GameMode.Blitz);
+    expect(blitzState.IsCustomGame).toBe(false);
+    expect(blitzState.AscensionLevel).toBe(5);
+    G.RunManager.Instance.CleanUp(true);
+
+    // 非 Custom Dread 固定进阶 10 并保留 isRotatingDread
+    const dreadState = await G.startWebMultiplayerRun(
+      [{ id: 1, character: 'IRONCLAD', unlock: dreadUnlock, isRotatingDread: true }],
+      'DREADOK', new G.WebNetService(1, () => {}, 'dread'), () => {}, 'dread', 2, [], null, false);
+    expect(dreadState.GameMode).toBe(G.GameMode.Dread);
+    expect(dreadState.IsCustomGame).toBe(false);
+    expect(dreadState.AscensionLevel).toBe(10);
+    expect(dreadState.Players[0].ExtraFields.IsPlayingRotatingCharacter).toBe(true);
+    G.RunManager.Instance.CleanUp(true);
+
+    // Custom 模式选 Blitz/Dread 且无词缀时保留 isCustom=true，也不锁未解锁玩家或强设轮换标记
+    const customBlitz = await G.startWebMultiplayerRun(
+      [{ id: 1, character: 'IRONCLAD', unlock: baseUnlock, isRotatingDread: true }],
+      'CUSTOMBLITZ', new G.WebNetService(1, () => {}, 'custom-blitz'), () => {}, 'blitz', 8, [], null, true);
+    expect(customBlitz.GameMode).toBe(G.GameMode.Blitz);
+    expect(customBlitz.IsCustomGame).toBe(true);
+    expect(customBlitz.AscensionLevel).toBe(5);
+    expect(customBlitz.Players[0].ExtraFields.IsPlayingRotatingCharacter).toBe(false);
+    G.RunManager.Instance.CleanUp(true);
+  });
 });
 

@@ -1,7 +1,8 @@
 static ctor in MegaCrit.Sts2.Core.Assets.AssetSets
-CombatManager.cs:1293: invocation without symbol: Invalid: Task.WhenAll(global::_003CPrivateImplementationDetails_003E.InlineArrayAsReadOnlySpan<global::_003C_003Ey__InlineArray2<
+CombatManager.cs:1356: invocation without symbol: Invalid: Task.WhenAll(global::_003CPrivateImplementationDetails_003E.InlineArrayAsReadOnlySpan<global::_003C_003Ey__InlineArray2<
+static ctor in MegaCrit.Sts2.Core.Debug.Bootstrapper
 static ctor in MegaCrit.Sts2.Core.Helpers.CommandLineHelper
-LocManager.cs:510: invocation without symbol: Invalid: Path.Combine(global::_003CPrivateImplementationDetails_003E.InlineArrayAsReadOnlySpan<global::_003C_003Ey__InlineArray5<
+LocManager.cs:528: invocation without symbol: Invalid: Path.Combine(global::_003CPrivateImplementationDetails_003E.InlineArrayAsReadOnlySpan<global::_003C_003Ey__InlineArray5<
 static ctor in MegaCrit.Sts2.Core.Logging.Logger
 static ctor in MegaCrit.Sts2.Core.Multiplayer.Serialization.ModelIdSerializationCache
 MegaRandom.cs:78: pointer: &num6
@@ -11,6 +12,7 @@ static ctor in MegaCrit.Sts2.Core.Timeline.EpochModel
 static ctor in MegaCrit.Sts2.Core.Timeline.StoryModel
 DefaultFormatter.cs:51: invocation without symbol: Invalid: formattingInfo.Write(text?.AsSpan() ?? ReadOnlySpan<char>.Empty)
 static ctor in MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.LeaderboardConsoleCmd
+static ctor in MegaCrit.Sts2.Core.Models.Blitz.BlitzRunModel
 static ctor in MegaCrit.Sts2.Core.Models.Events.JungleMazeAdventure
-DoomPower.cs:164: invocation without symbol: Invalid: Task.WhenAll(global::_003CPrivateImplementationDetails_003E.InlineArrayAsReadOnlySpan<global::_003C_003Ey__InlineArray2<
+DoomPower.cs:174: invocation without symbol: Invalid: Task.WhenAll(global::_003CPrivateImplementationDetails_003E.InlineArrayAsReadOnlySpan<global::_003C_003Ey__InlineArray2<
 static ctor in MegaCrit.Sts2.Core.Models.Events.Darv

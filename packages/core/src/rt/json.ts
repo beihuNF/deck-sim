@@ -1,7 +1,7 @@
 // System.Text.Json subset. The game's source-generated JsonSerializerContexts are replaced by name-based descriptors.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { provide, types, iter, ext } from './core';
-import { attrTypeName } from './bcl';
+import { attrTypeName, Exception } from './bcl';
 import { Dictionary, HashSet } from './collections';
 
 export function jsonContext(ctxName: string): any {
@@ -70,8 +70,59 @@ export function retainSaveMember(o: object, name: string) {
   names.add(name);
 }
 /** Hooks run after restoring a DTO; both direct restore() and application reads use this path. */
-export const saveReadCompatibility: Record<string, (o: any, raw: any) => void> = {};
-export const WEB_SAVE_VERSION = 2;
+export const saveReadCompatibility: Record<string, (o: any, raw: any, saveVersion: number) => void> = {};
+export const WEB_SAVE_VERSION = 3;
+
+// 存档枚举迁移表：记录不同 $webSaveVersion 之间枚举值移位或移除的转换规则
+export interface SaveEnumMigration {
+  beforeVersion: number;
+  values: Record<number, number>;
+  renamedMembers?: Record<string, string>;
+}
+
+export const SAVE_ENUM_MIGRATIONS: Record<string, SaveEnumMigration> = {
+  // v0.113.1 删除 GameMode.Custom(3)（3 现为 Dread），自定义对局改为 GameMode.Standard(1) + IsCustomGame=true
+  GameMode: { beforeVersion: 3, values: { 3: 1 }, renamedMembers: { Custom: 'Standard' } },
+  // v0.113.1 在 RewardType 中插入 UpgradeCard(6)，SpecialCard 从 6 移位到 7
+  RewardType: { beforeVersion: 3, values: { 6: 7 } },
+};
+
+// 存档 DTO 中使用上述枚举的字段清单，供 restore() 与 old-saves.test.ts 共用
+const SAVE_ENUM_FIELDS: Record<string, { field: string; enumName: string }[]> = {
+  'MegaCrit.Sts2.Core.Saves.SerializableRun': [{ field: 'GameMode', enumName: 'GameMode' }],
+  'MegaCrit.Sts2.Core.Runs.RunHistory': [{ field: 'GameMode', enumName: 'GameMode' }],
+  'MegaCrit.Sts2.Core.Saves.Runs.SerializableReward': [{ field: 'RewardType', enumName: 'RewardType' }],
+};
+
+// 根据存档版本号将旧枚举值转换为新枚举值
+export function migrateEnumValue(enumName: string, value: number, saveVersion: number): number {
+  const rule = SAVE_ENUM_MIGRATIONS[enumName];
+  if (!rule || saveVersion >= rule.beforeVersion) return value;
+  return rule.values[value] ?? value;
+}
+
+// 对原始 JSON 存档对象应用与 restore() 同源的转换表，供往返测试比对使用
+export function migrateRawSave(raw: any, rootVersion?: number): any {
+  if (raw === null || raw === undefined || typeof raw !== 'object') return raw;
+  const ver = rootVersion ?? (typeof raw.$webSaveVersion === 'number' ? raw.$webSaveVersion : 0);
+  if (Array.isArray(raw)) return raw.map((x) => migrateRawSave(x, ver));
+  const out: any = {};
+  for (const [k, v] of Object.entries(raw)) {
+    out[k] = k === '$webSaveVersion' && rootVersion === undefined ? WEB_SAVE_VERSION : migrateRawSave(v, ver);
+  }
+  const fields = typeof out.$t === 'string' ? SAVE_ENUM_FIELDS[out.$t] : undefined;
+  if (fields) {
+    for (const { field, enumName } of fields) {
+      if (typeof out[field] === 'number') {
+        const oldVal = out[field];
+        const nextVal = migrateEnumValue(enumName, oldVal, ver);
+        out[field] = nextVal;
+        if (enumName === 'GameMode' && ver < 3 && oldVal === 3) out.IsCustomGame = true;
+      }
+    }
+  }
+  return out;
+}
 /** Members System.Text.Json would write ([JsonPropertyName]/[JsonInclude]) and their [JsonConverter]; null when the class declares none. */
 function jsonMembers(C: any): JsonMember[] | null {
   if (typeof C !== 'function') return null;
@@ -169,15 +220,16 @@ function assignMember(o: any, k: string, v: any) {
   }
   o[k] = v;
 }
-export function restore(raw: any): any {
+export function restore(raw: any, rootVersion?: number): any {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== 'object') return raw;
-  if (Array.isArray(raw)) return raw.map(restore);
+  const ver = rootVersion ?? (!Array.isArray(raw) && typeof raw.$webSaveVersion === 'number' ? raw.$webSaveVersion : 0);
+  if (Array.isArray(raw)) return raw.map((x) => restore(x, ver));
   if ('$n' in raw) return Number(raw.$n);
   if ('$i64' in raw) return BigInt(raw.$i64);
   if ('$type' in raw) return types.get(raw.$type) ?? null;
-  if ('$d' in raw) { const d = new Dictionary(); for (const [k, x] of raw.$d) d.set_Item(restore(k), restore(x)); return d; }
-  if ('$h' in raw) return new HashSet(raw.$h.map(restore));
+  if ('$d' in raw) { const d = new Dictionary(); for (const [k, x] of raw.$d) d.set_Item(restore(k, ver), restore(x, ver)); return d; }
+  if ('$h' in raw) return new HashSet(raw.$h.map((x: any) => restore(x, ver)));
   const C = raw.$t ? types.get(raw.$t) : null;
   // Like System.Text.Json: run the parameterless constructor (field initializers), then assign the saved members.
   let o: any = null;
@@ -193,11 +245,23 @@ export function restore(raw: any): any {
   for (const [k, x] of Object.entries(raw)) {
     if (k === '$t' || k === '$webSaveVersion') continue;
     const conv = C && memberConverter(C, k);
-    assignMember(o, k, conv ? conv.read(restore(x)) : restore(x));
+    const restored = restore(x, ver);
+    assignMember(o, k, conv ? conv.read(restored) : restored);
     if (!k.startsWith('$T_') && !jsonMembers(C)?.some((m) => m.k === k)) retainSaveMember(o, k);
   }
   if (raw.$t && !C) o.$t = raw.$t;
-  if (C) saveReadCompatibility[raw.$t]?.(o, raw);
+  const enumFields = typeof raw.$t === 'string' ? SAVE_ENUM_FIELDS[raw.$t] : undefined;
+  if (enumFields) {
+    for (const { field, enumName } of enumFields) {
+      if (typeof raw[field] === 'number') {
+        const oldVal = raw[field];
+        const nextVal = migrateEnumValue(enumName, oldVal, ver);
+        if (nextVal !== oldVal) assignMember(o, field, nextVal);
+        if (enumName === 'GameMode' && ver < 3 && oldVal === 3) assignMember(o, 'IsCustomGame', true);
+      }
+    }
+  }
+  if (C) saveReadCompatibility[raw.$t]?.(o, raw, ver);
   return o;
 }
 
@@ -236,6 +300,14 @@ provide('System.IO.MemoryStream', MemoryStream);
 provide('System.IO.StreamReader', class StreamReader { constructor(private st: any) {} ReadToEnd() { return this.st?.$s ?? ''; } ReadToEndAsync() { return (ext('System.Threading.Tasks.Task') as any).FromResult(this.ReadToEnd()); } Dispose() {} });
 provide('System.Text.Json.JsonNamingPolicy', { SnakeCaseLower: { ConvertName: (n: string) => n.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase() }, CamelCase: { ConvertName: (n: string) => n[0].toLowerCase() + n.slice(1) } });
 provide('System.Text.Json.Nodes.JsonNode', { Parse: (s: string) => JSON.parse(s) });
+class JsonException extends Exception {}
+provide('System.Text.Json.JsonException', JsonException);
+provide('System.Text.Json.JsonDocument', {
+  Parse: (s: string) => {
+    try { return { RootElement: JSON.parse(s), Dispose() {} }; }
+    catch (e: any) { throw new JsonException(e?.message ?? String(e)); }
+  },
+});
 provide('System.Text.Json.Nodes.JsonObject', class JsonObject { constructor(src?: any) { if (src) for (const [k, v] of iter(src)) (this as any)[k] = v; } });
 provide('System.Text.Json.Nodes.JsonArray', Array);
 provide('System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver', { WithAddedModifier: (r: any) => r, Combine: (...r: any[]) => r[0] });

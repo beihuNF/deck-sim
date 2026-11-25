@@ -1,11 +1,12 @@
-    15 System.Activator::CreateInstance
+    16 System.Activator::CreateInstance
      1 System.AppDomain::AssemblyResolve
      1 System.AppDomain::CurrentDomain
     55 System.ArgumentException::.ctor
      1 System.ArgumentException::ThrowIfNullOrEmpty
      2 System.ArgumentNullException::.ctor
-   206 System.ArgumentNullException::ThrowIfNull
-   108 System.ArgumentOutOfRangeException::.ctor
+   251 System.ArgumentNullException::ThrowIfNull
+   112 System.ArgumentOutOfRangeException::.ctor
+     1 System.ArgumentOutOfRangeException::ThrowIfLessThan
     10 System.Array::Clear
      4 System.Array::Copy
      1 System.Array::CreateInstance
@@ -14,6 +15,7 @@
      1 System.Array::SetValue
      7 System.Attribute::.ctor
      1 System.BitConverter::ToInt32
+     1 System.BitConverter::ToUInt64
      1 System.Boolean::Parse
      1 System.Buffers.ArrayPool`1::Create
      1 System.Buffers.ArrayPool`1::Rent
@@ -36,21 +38,22 @@
      1 System.Buffers.Binary.BinaryPrimitives::WriteUInt32LittleEndian
      2 System.Buffers.Binary.BinaryPrimitives::WriteUInt64BigEndian
      1 System.Buffers.Binary.BinaryPrimitives::WriteUInt64LittleEndian
+     1 System.Char::IsAsciiLetterOrDigit
      2 System.Char::IsLetter
      2 System.Char::IsUpper
      1 System.Char::IsWhiteSpace
-     4 System.Char::ToLowerInvariant
+     5 System.Char::ToLowerInvariant
      3 System.Char::ToUpper
      2 System.Char::ToUpperInvariant
     12 System.Collections.Concurrent.ConcurrentDictionary`2::.ctor
      2 System.Collections.Concurrent.ConcurrentDictionary`2::Clear
-     8 System.Collections.Concurrent.ConcurrentDictionary`2::ContainsKey
+     7 System.Collections.Concurrent.ConcurrentDictionary`2::ContainsKey
      1 System.Collections.Concurrent.ConcurrentDictionary`2::GetOrAdd
      4 System.Collections.Concurrent.ConcurrentDictionary`2::Keys
-     1 System.Collections.Concurrent.ConcurrentDictionary`2::TryAdd
+     2 System.Collections.Concurrent.ConcurrentDictionary`2::TryAdd
     15 System.Collections.Concurrent.ConcurrentDictionary`2::TryGetValue
      4 System.Collections.Concurrent.ConcurrentDictionary`2::TryRemove
-    12 System.Collections.Concurrent.ConcurrentDictionary`2::this[]
+    11 System.Collections.Concurrent.ConcurrentDictionary`2::this[]
      1 System.Collections.Concurrent.ConcurrentStack`1::.ctor
      1 System.Collections.Concurrent.ConcurrentStack`1::Clear
      1 System.Collections.Concurrent.ConcurrentStack`1::Count
@@ -64,32 +67,32 @@
      1 System.Collections.Generic.Comparer`1::Compare
      1 System.Collections.Generic.Comparer`1::Default
      1 System.Collections.Generic.Dictionary`2+KeyCollection::Count
-   144 System.Collections.Generic.Dictionary`2::.ctor
-   302 System.Collections.Generic.Dictionary`2::Add
+   148 System.Collections.Generic.Dictionary`2::.ctor
+   304 System.Collections.Generic.Dictionary`2::Add
     16 System.Collections.Generic.Dictionary`2::Clear
-    32 System.Collections.Generic.Dictionary`2::ContainsKey
+    34 System.Collections.Generic.Dictionary`2::ContainsKey
      2 System.Collections.Generic.Dictionary`2::ContainsValue
     13 System.Collections.Generic.Dictionary`2::Count
      1 System.Collections.Generic.Dictionary`2::GetEnumerator
     14 System.Collections.Generic.Dictionary`2::Keys
     19 System.Collections.Generic.Dictionary`2::Remove
     10 System.Collections.Generic.Dictionary`2::TryAdd
-    95 System.Collections.Generic.Dictionary`2::TryGetValue
+    99 System.Collections.Generic.Dictionary`2::TryGetValue
     26 System.Collections.Generic.Dictionary`2::Values
-   276 System.Collections.Generic.Dictionary`2::this[]
+   294 System.Collections.Generic.Dictionary`2::this[]
     15 System.Collections.Generic.EqualityComparer`1::Default
      9 System.Collections.Generic.EqualityComparer`1::Equals
      7 System.Collections.Generic.EqualityComparer`1::GetHashCode
-   131 System.Collections.Generic.HashSet`1::.ctor
-   147 System.Collections.Generic.HashSet`1::Add
-     4 System.Collections.Generic.HashSet`1::Clear
-    53 System.Collections.Generic.HashSet`1::Contains
+   177 System.Collections.Generic.HashSet`1::.ctor
+   259 System.Collections.Generic.HashSet`1::Add
+     5 System.Collections.Generic.HashSet`1::Clear
+    61 System.Collections.Generic.HashSet`1::Contains
     31 System.Collections.Generic.HashSet`1::Count
-     1 System.Collections.Generic.HashSet`1::ExceptWith
+     2 System.Collections.Generic.HashSet`1::ExceptWith
      2 System.Collections.Generic.HashSet`1::IntersectWith
-    11 System.Collections.Generic.HashSet`1::Remove
-     5 System.Collections.Generic.HashSet`1::UnionWith
-    12 System.Collections.Generic.ICollection`1::Add
+    16 System.Collections.Generic.HashSet`1::Remove
+     6 System.Collections.Generic.HashSet`1::UnionWith
+    14 System.Collections.Generic.ICollection`1::Add
      5 System.Collections.Generic.ICollection`1::Clear
      1 System.Collections.Generic.ICollection`1::Count
      2 System.Collections.Generic.ICollection`1::Remove
@@ -103,54 +106,55 @@
      6 System.Collections.Generic.IEnumerable`1::GetEnumerator
      3 System.Collections.Generic.IEnumerator`1::Current
      1 System.Collections.Generic.IList`1::IndexOf
-     4 System.Collections.Generic.IReadOnlyCollection`1::Count
+     2 System.Collections.Generic.IReadOnlyCollection`1::Count
      4 System.Collections.Generic.IReadOnlyDictionary`2::ContainsKey
      1 System.Collections.Generic.IReadOnlyDictionary`2::Keys
      4 System.Collections.Generic.IReadOnlyDictionary`2::TryGetValue
-     5 System.Collections.Generic.IReadOnlyDictionary`2::Values
+     6 System.Collections.Generic.IReadOnlyDictionary`2::Values
      4 System.Collections.Generic.IReadOnlyDictionary`2::this[]
-    45 System.Collections.Generic.IReadOnlySet`1::Contains
-     1 System.Collections.Generic.ISet`1::Add
+    50 System.Collections.Generic.IReadOnlySet`1::Contains
+     2 System.Collections.Generic.ISet`1::Add
      9 System.Collections.Generic.KeyValuePair`2::Deconstruct
      1 System.Collections.Generic.List`1::.ctor
-  1126 System.Collections.Generic.List`1::Add
-   118 System.Collections.Generic.List`1::AddRange
+  1205 System.Collections.Generic.List`1::Add
+   184 System.Collections.Generic.List`1::AddRange
      7 System.Collections.Generic.List`1::AsReadOnly
-    75 System.Collections.Generic.List`1::Clear
-    51 System.Collections.Generic.List`1::Contains
+    78 System.Collections.Generic.List`1::Clear
+    59 System.Collections.Generic.List`1::Contains
      7 System.Collections.Generic.List`1::Count
      5 System.Collections.Generic.List`1::Find
-    26 System.Collections.Generic.List`1::FindIndex
-     4 System.Collections.Generic.List`1::ForEach
-    11 System.Collections.Generic.List`1::IndexOf
+    27 System.Collections.Generic.List`1::FindIndex
+     3 System.Collections.Generic.List`1::ForEach
+    12 System.Collections.Generic.List`1::IndexOf
     21 System.Collections.Generic.List`1::Insert
-    49 System.Collections.Generic.List`1::Remove
-    75 System.Collections.Generic.List`1::RemoveAll
-    42 System.Collections.Generic.List`1::RemoveAt
+    58 System.Collections.Generic.List`1::Remove
+    81 System.Collections.Generic.List`1::RemoveAll
+    43 System.Collections.Generic.List`1::RemoveAt
      1 System.Collections.Generic.List`1::RemoveRange
      1 System.Collections.Generic.List`1::Reverse
      2 System.Collections.Generic.List`1::Slice
     14 System.Collections.Generic.List`1::Sort
-     8 System.Collections.Generic.List`1::ToArray
+    11 System.Collections.Generic.List`1::ToArray
      2 System.Collections.Generic.List`1::TrueForAll
      1 System.Collections.Generic.PriorityQueue`2::.ctor
      1 System.Collections.Generic.PriorityQueue`2::Count
      1 System.Collections.Generic.PriorityQueue`2::Dequeue
      2 System.Collections.Generic.PriorityQueue`2::Enqueue
     18 System.Collections.Generic.Queue`1::.ctor
-     2 System.Collections.Generic.Queue`1::Clear
-    36 System.Collections.Generic.Queue`1::Count
-    11 System.Collections.Generic.Queue`1::Dequeue
+     4 System.Collections.Generic.Queue`1::Clear
+    33 System.Collections.Generic.Queue`1::Count
+     9 System.Collections.Generic.Queue`1::Dequeue
     27 System.Collections.Generic.Queue`1::Enqueue
+     2 System.Collections.Generic.Queue`1::ToArray
      4 System.Collections.Generic.Queue`1::TryDequeue
      1 System.Collections.Generic.SortedDictionary`2::.ctor
-     7 System.Collections.Generic.Stack`1::.ctor
-     4 System.Collections.Generic.Stack`1::Clear
+     6 System.Collections.Generic.Stack`1::.ctor
+     2 System.Collections.Generic.Stack`1::Clear
      1 System.Collections.Generic.Stack`1::Contains
-    14 System.Collections.Generic.Stack`1::Count
-     5 System.Collections.Generic.Stack`1::Peek
-     7 System.Collections.Generic.Stack`1::Pop
-     9 System.Collections.Generic.Stack`1::Push
+     8 System.Collections.Generic.Stack`1::Count
+     4 System.Collections.Generic.Stack`1::Peek
+     6 System.Collections.Generic.Stack`1::Pop
+     8 System.Collections.Generic.Stack`1::Push
      3 System.Collections.Generic.Stack`1::TryPeek
      4 System.Collections.ICollection::Count
      3 System.Collections.IEnumerator::MoveNext
@@ -173,30 +177,31 @@
      2 System.Convert::ToUInt32
      1 System.Convert::ToUInt64
      4 System.DateTime::Date
-     4 System.DateTime::Now
+     5 System.DateTime::Now
      1 System.DateTime::Parse
-     4 System.DateTime::ToString
+     5 System.DateTime::ToString
      4 System.DateTime::ToUniversalTime
-     1 System.DateTime::UnixEpoch
-     2 System.DateTime::UtcNow
+     1 System.DateTime::UtcNow
      2 System.DateTimeOffset::CompareTo
+     4 System.DateTimeOffset::Date
      2 System.DateTimeOffset::Day
      5 System.DateTimeOffset::FromUnixTimeSeconds
      1 System.DateTimeOffset::MaxValue
      1 System.DateTimeOffset::MinValue
      2 System.DateTimeOffset::Month
      5 System.DateTimeOffset::Now
-     2 System.DateTimeOffset::ToString
-    19 System.DateTimeOffset::ToUnixTimeSeconds
+     3 System.DateTimeOffset::ToString
+    18 System.DateTimeOffset::ToUnixTimeSeconds
+     1 System.DateTimeOffset::TryParseExact
      1 System.DateTimeOffset::UnixEpoch
      5 System.DateTimeOffset::UtcDateTime
-    14 System.DateTimeOffset::UtcNow
+    16 System.DateTimeOffset::UtcNow
      2 System.DateTimeOffset::Year
-     3 System.DateTimeOffset::op_Implicit
+     2 System.DateTimeOffset::op_Implicit
      1 System.Decimal::Max
      1 System.Decimal::Parse
-     3 System.Decimal::ToString
-     8 System.Decimal::Truncate
+     1 System.Decimal::ToString
+     9 System.Decimal::Truncate
      1 System.Delegate::DynamicInvoke
      1 System.Delegate::Method
      2 System.Delegate::Target
@@ -226,8 +231,8 @@
      1 System.Double::ToString
      5 System.Enum::GetNames
      3 System.Enum::GetUnderlyingType
-    23 System.Enum::GetValues
-     3 System.Enum::IsDefined
+    26 System.Enum::GetValues
+     4 System.Enum::IsDefined
      2 System.Enum::Parse
      3 System.Enum::ToObject
      3 System.Enum::TryParse
@@ -236,11 +241,11 @@
      3 System.Environment::GetFolderPath
      2 System.EventArgs::.ctor
     27 System.Exception::.ctor
-     5 System.Exception::GetType
+     6 System.Exception::GetType
      2 System.Exception::InnerException
-    56 System.Exception::Message
+    60 System.Exception::Message
      1 System.Exception::StackTrace
-     4 System.Exception::ToString
+     6 System.Exception::ToString
      8 System.FormatException::.ctor
      1 System.Func`2::Invoke
      4 System.GC::Collect
@@ -251,7 +256,7 @@
      5 System.Globalization.CultureInfo::CurrentUICulture
      2 System.Globalization.CultureInfo::Equals
      5 System.Globalization.CultureInfo::GetCultureInfo
-     9 System.Globalization.CultureInfo::InvariantCulture
+    12 System.Globalization.CultureInfo::InvariantCulture
      2 System.Globalization.CultureInfo::Name
      2 System.Globalization.CultureInfo::ThreeLetterISOLanguageName
      2 System.Globalization.CultureInfo::TwoLetterISOLanguageName
@@ -261,14 +266,17 @@
      1 System.IComparable`1::CompareTo
      1 System.IConvertible::ToDecimal
      1 System.ICustomFormatter::Format
+     1 System.IDisposable::Dispose
      2 System.IFormatProvider::GetFormat
      2 System.IFormattable::ToString
      3 System.IO.Compression.GZipStream::.ctor
      2 System.IO.Compression.GZipStream::Write
      2 System.IO.Compression.ZipArchive::.ctor
-     4 System.IO.Compression.ZipArchive::CreateEntry
-     4 System.IO.Compression.ZipArchiveEntry::Open
-     7 System.IO.Directory::CreateDirectory
+     6 System.IO.Compression.ZipArchive::CreateEntry
+     1 System.IO.Compression.ZipArchive::Dispose
+     1 System.IO.Compression.ZipArchiveEntry::LastWriteTime
+     7 System.IO.Compression.ZipArchiveEntry::Open
+     8 System.IO.Directory::CreateDirectory
      2 System.IO.Directory::Delete
      4 System.IO.Directory::EnumerateFiles
     15 System.IO.Directory::Exists
@@ -287,42 +295,45 @@
      1 System.IO.DriveInfo::TotalFreeSpace
      1 System.IO.DriveInfo::TotalSize
      2 System.IO.File::Copy
-     2 System.IO.File::Delete
-     7 System.IO.File::Exists
-     6 System.IO.File::GetLastWriteTime
+     3 System.IO.File::Delete
+     8 System.IO.File::Exists
+     7 System.IO.File::GetLastWriteTime
      1 System.IO.File::Move
      1 System.IO.File::SetLastWriteTimeUtc
-     2 System.IO.FileInfo::.ctor
-     2 System.IO.FileInfo::Length
+     1 System.IO.File::WriteAllBytes
+     3 System.IO.FileInfo::.ctor
+     3 System.IO.FileInfo::Length
      1 System.IO.FileNotFoundException::.ctor
-     5 System.IO.FileStream::.ctor
+     8 System.IO.FileStream::.ctor
      1 System.IO.FileStream::Flush
+     1 System.IO.FileStream::Length
      1 System.IO.Hashing.XxHash32::.ctor
      4 System.IO.Hashing.XxHash32::Append
      1 System.IO.Hashing.XxHash32::GetCurrentHashAsUInt32
      1 System.IO.Hashing.XxHash32::HashToUInt32
      1 System.IO.Hashing.XxHash64::HashToUInt64
-     5 System.IO.IOException::.ctor
-     7 System.IO.MemoryStream::.ctor
+     8 System.IO.IOException::.ctor
+     9 System.IO.MemoryStream::.ctor
      1 System.IO.MemoryStream::Position
      2 System.IO.MemoryStream::Seek
-     6 System.IO.MemoryStream::ToArray
+     8 System.IO.MemoryStream::ToArray
     53 System.IO.Path::Combine
-     3 System.IO.Path::GetDirectoryName
-     4 System.IO.Path::GetExtension
+     4 System.IO.Path::GetDirectoryName
+     2 System.IO.Path::GetExtension
      9 System.IO.Path::GetFileName
      4 System.IO.Path::GetFileNameWithoutExtension
-     5 System.IO.Path::GetRelativePath
+     6 System.IO.Path::GetRelativePath
      1 System.IO.Path::GetTempPath
      1 System.IO.Stream::.ctor
      1 System.IO.Stream::Close
-     2 System.IO.Stream::CopyTo
+     5 System.IO.Stream::CopyTo
      1 System.IO.Stream::CopyToAsync
+     1 System.IO.Stream::Flush
      3 System.IO.Stream::Length
      1 System.IO.Stream::Position
      1 System.IO.Stream::ReadByte
      2 System.IO.Stream::Seek
-     2 System.IO.Stream::Write
+     6 System.IO.Stream::Write
      1 System.IO.Stream::WriteAsync
      2 System.IO.StreamReader::.ctor
      2 System.IO.StreamReader::ReadToEnd
@@ -332,7 +343,7 @@
      3 System.IO.TextWriter::Write
      1 System.IO.TextWriter::WriteLine
      4 System.Index::op_Implicit
-     4 System.IndexOutOfRangeException::.ctor
+     5 System.IndexOutOfRangeException::.ctor
      1 System.Int16::ToString
      1 System.Int32::Max
      1 System.Int32::Min
@@ -342,58 +353,58 @@
      1 System.Int64::TryParse
      2 System.IntPtr::Zero
      3 System.InvalidCastException::.ctor
-   491 System.InvalidOperationException::.ctor
+   522 System.InvalidOperationException::.ctor
      1 System.InvalidProgramException::.ctor
     19 System.Lazy`1::.ctor
     14 System.Lazy`1::IsValueCreated
     34 System.Lazy`1::Value
-    67 System.Linq.Enumerable::All
-   189 System.Linq.Enumerable::Any
+    70 System.Linq.Enumerable::All
+   221 System.Linq.Enumerable::Any
      4 System.Linq.Enumerable::Append
-    80 System.Linq.Enumerable::Concat
-   219 System.Linq.Enumerable::Contains
-   108 System.Linq.Enumerable::Count
+    88 System.Linq.Enumerable::Concat
+   278 System.Linq.Enumerable::Contains
+   123 System.Linq.Enumerable::Count
     27 System.Linq.Enumerable::Distinct
      4 System.Linq.Enumerable::ElementAt
-    22 System.Linq.Enumerable::Except
-    63 System.Linq.Enumerable::First
-   201 System.Linq.Enumerable::FirstOrDefault
+    24 System.Linq.Enumerable::Except
+    66 System.Linq.Enumerable::First
+   226 System.Linq.Enumerable::FirstOrDefault
      2 System.Linq.Enumerable::Intersect
     33 System.Linq.Enumerable::Last
-    20 System.Linq.Enumerable::LastOrDefault
+    22 System.Linq.Enumerable::LastOrDefault
      8 System.Linq.Enumerable::Max
      5 System.Linq.Enumerable::Min
-     1 System.Linq.Enumerable::MinBy
-    61 System.Linq.Enumerable::OfType
-     1 System.Linq.Enumerable::Order
-     8 System.Linq.Enumerable::OrderBy
-     3 System.Linq.Enumerable::OrderByDescending
+     2 System.Linq.Enumerable::MinBy
+    70 System.Linq.Enumerable::OfType
+     2 System.Linq.Enumerable::Order
+     9 System.Linq.Enumerable::OrderBy
+     4 System.Linq.Enumerable::OrderByDescending
      3 System.Linq.Enumerable::Range
-     4 System.Linq.Enumerable::Repeat
-     2 System.Linq.Enumerable::Reverse
-   205 System.Linq.Enumerable::Select
-    77 System.Linq.Enumerable::SelectMany
+     5 System.Linq.Enumerable::Repeat
+     3 System.Linq.Enumerable::Reverse
+   225 System.Linq.Enumerable::Select
+    83 System.Linq.Enumerable::SelectMany
      6 System.Linq.Enumerable::Skip
-    26 System.Linq.Enumerable::Sum
-    33 System.Linq.Enumerable::Take
+    27 System.Linq.Enumerable::Sum
+    36 System.Linq.Enumerable::Take
      1 System.Linq.Enumerable::TakeWhile
-    42 System.Linq.Enumerable::ToArray
+    45 System.Linq.Enumerable::ToArray
      6 System.Linq.Enumerable::ToDictionary
     23 System.Linq.Enumerable::ToHashSet
-   552 System.Linq.Enumerable::ToList
+   596 System.Linq.Enumerable::ToList
      3 System.Linq.Enumerable::Union
-   181 System.Linq.Enumerable::Where
+   199 System.Linq.Enumerable::Where
      3 System.Linq.Enumerable::Zip
-     1 System.Linq.IGrouping`2::Key
-    14 System.Math::Abs
+     2 System.Linq.IGrouping`2::Key
+    15 System.Math::Abs
      4 System.Math::Ceiling
-    12 System.Math::Clamp
+    13 System.Math::Clamp
      1 System.Math::Cos
      3 System.Math::Floor
      2 System.Math::Log
      8 System.Math::Log2
-    80 System.Math::Max
-    46 System.Math::Min
+    86 System.Math::Max
+    50 System.Math::Min
      7 System.Math::Pow
      2 System.Math::Sign
      1 System.Math::Sin
@@ -415,7 +426,7 @@
      2 System.Net.Http.HttpResponseMessage::IsSuccessStatusCode
      2 System.Net.Http.HttpResponseMessage::StatusCode
     41 System.NotImplementedException::.ctor
-    12 System.NotSupportedException::.ctor
+    18 System.NotSupportedException::.ctor
      2 System.NullReferenceException::.ctor
      1 System.Numerics.BigInteger::.ctor
      1 System.Numerics.BigInteger::ToString
@@ -444,7 +455,7 @@
      3 System.Reflection.MemberInfo::DeclaringType
      1 System.Reflection.MemberInfo::GetCustomAttributes
      6 System.Reflection.MemberInfo::MemberType
-    45 System.Reflection.MemberInfo::Name
+    47 System.Reflection.MemberInfo::Name
      1 System.Reflection.MethodBase::GetParameters
      3 System.Reflection.MethodBase::Invoke
     10 System.Reflection.MethodBase::MethodHandle
@@ -465,8 +476,8 @@
      1 System.Runtime.CompilerServices.Unsafe::WriteUnaligned
      1 System.Runtime.ExceptionServices.ExceptionDispatchInfo::Capture
      1 System.Runtime.ExceptionServices.ExceptionDispatchInfo::Throw
-   113 System.Runtime.InteropServices.CollectionsMarshal::AsSpan
-   111 System.Runtime.InteropServices.CollectionsMarshal::SetCount
+   141 System.Runtime.InteropServices.CollectionsMarshal::AsSpan
+   136 System.Runtime.InteropServices.CollectionsMarshal::SetCount
      2 System.Runtime.InteropServices.GCHandle::AddrOfPinnedObject
      2 System.Runtime.InteropServices.GCHandle::Alloc
      2 System.Runtime.InteropServices.GCHandle::Free
@@ -479,48 +490,50 @@
      3 System.Runtime.InteropServices.RuntimeInformation::IsOSPlatform
      1 System.Runtime.Loader.AssemblyLoadContext::GetLoadContext
      1 System.Runtime.Loader.AssemblyLoadContext::LoadFromAssemblyPath
+     1 System.Security.Cryptography.RandomNumberGenerator::GetBytes
      1 System.Security.Cryptography.SHA1::HashData
      1 System.Single::ToString
-     2 System.Span`1::CopyTo
-    15 System.Span`1::Slice
+     5 System.Span`1::CopyTo
+    18 System.Span`1::Slice
      6 System.String::Compare
      7 System.String::CompareOrdinal
      3 System.String::Concat
-    27 System.String::Contains
-    52 System.String::Empty
-    28 System.String::EndsWith
-    17 System.String::Equals
+    28 System.String::Contains
+    56 System.String::Empty
+    29 System.String::EndsWith
+    16 System.String::Equals
      3 System.String::Format
      4 System.String::IndexOf
-    45 System.String::IsNullOrEmpty
+    47 System.String::IsNullOrEmpty
     15 System.String::IsNullOrWhiteSpace
-    75 System.String::Join
+    79 System.String::Join
      5 System.String::LastIndexOf
      1 System.String::PadLeft
      5 System.String::PadRight
-    20 System.String::Replace
+    23 System.String::Replace
     16 System.String::Split
-    33 System.String::StartsWith
-    38 System.String::Substring
+    34 System.String::StartsWith
+    41 System.String::Substring
      4 System.String::ToCharArray
      1 System.String::ToLower
-   118 System.String::ToLowerInvariant
+   124 System.String::ToLowerInvariant
      2 System.String::ToString
      1 System.String::ToUpper
     27 System.String::ToUpperInvariant
-    15 System.String::Trim
-     1 System.String::TrimEnd
-     2 System.String::TrimStart
+    16 System.String::Trim
+     2 System.String::TrimEnd
+     3 System.String::TrimStart
      1 System.StringComparer::Create
-     5 System.StringComparer::Ordinal
-     1 System.StringComparer::OrdinalIgnoreCase
+     6 System.StringComparer::Ordinal
+     2 System.StringComparer::OrdinalIgnoreCase
      1 System.Text.Encoding::ASCII
-     4 System.Text.Encoding::GetByteCount
-    13 System.Text.Encoding::GetBytes
-     8 System.Text.Encoding::GetString
-    24 System.Text.Encoding::UTF8
+     6 System.Text.Encoding::GetByteCount
+    16 System.Text.Encoding::GetBytes
+     9 System.Text.Encoding::GetString
+     2 System.Text.Encoding::Latin1
+    28 System.Text.Encoding::UTF8
      1 System.Text.Encodings.Web.JavaScriptEncoder::UnsafeRelaxedJsonEscaping
-     3 System.Text.Json.JsonDocument::Parse
+     4 System.Text.Json.JsonDocument::Parse
      1 System.Text.Json.JsonDocument::RootElement
      1 System.Text.Json.JsonElement::GetInt64
      1 System.Text.Json.JsonElement::TryGetProperty
@@ -559,7 +572,7 @@
     15 System.Text.Json.Nodes.JsonObject::Remove
     15 System.Text.Json.Nodes.JsonObject::TryGetPropertyValue
      1 System.Text.Json.Nodes.JsonValue::Create
-    17 System.Text.Json.Nodes.JsonValue::TryGetValue
+    18 System.Text.Json.Nodes.JsonValue::TryGetValue
      6 System.Text.Json.Serialization.JsonConverter`1::.ctor
      1 System.Text.Json.Serialization.JsonStringEnumConverter`1::.ctor
      2 System.Text.Json.Serialization.Metadata.JsonPropertyInfo::AttributeProvider
@@ -579,7 +592,7 @@
      1 System.Text.RegularExpressions.Capture::Index
      1 System.Text.RegularExpressions.Capture::Length
      2 System.Text.RegularExpressions.Capture::ToString
-     5 System.Text.RegularExpressions.Capture::Value
+     6 System.Text.RegularExpressions.Capture::Value
      1 System.Text.RegularExpressions.CaptureCollection::Count
      3 System.Text.RegularExpressions.CaptureCollection::this[]
      3 System.Text.RegularExpressions.Group::Captures
@@ -588,24 +601,24 @@
      6 System.Text.RegularExpressions.Match::Groups
      2 System.Text.RegularExpressions.Regex::.ctor
      2 System.Text.RegularExpressions.Regex::Match
-    10 System.Text.RegularExpressions.Regex::Replace
-    90 System.Text.StringBuilder+AppendInterpolatedStringHandler::.ctor
-   138 System.Text.StringBuilder+AppendInterpolatedStringHandler::AppendFormatted
-   141 System.Text.StringBuilder+AppendInterpolatedStringHandler::AppendLiteral
-    21 System.Text.StringBuilder::.ctor
+    11 System.Text.RegularExpressions.Regex::Replace
+    91 System.Text.StringBuilder+AppendInterpolatedStringHandler::.ctor
+   141 System.Text.StringBuilder+AppendInterpolatedStringHandler::AppendFormatted
+   144 System.Text.StringBuilder+AppendInterpolatedStringHandler::AppendLiteral
+    22 System.Text.StringBuilder::.ctor
     37 System.Text.StringBuilder::Append
-    95 System.Text.StringBuilder::AppendLine
+    96 System.Text.StringBuilder::AppendLine
      1 System.Text.StringBuilder::Capacity
      4 System.Text.StringBuilder::Clear
      1 System.Text.StringBuilder::Insert
      2 System.Text.StringBuilder::Length
-    22 System.Text.StringBuilder::ToString
+    23 System.Text.StringBuilder::ToString
      1 System.Threading.AsyncLocal`1::.ctor
      2 System.Threading.AsyncLocal`1::Value
      1 System.Threading.CancellationToken::CanBeCanceled
-    22 System.Threading.CancellationToken::IsCancellationRequested
+    21 System.Threading.CancellationToken::IsCancellationRequested
      3 System.Threading.CancellationToken::Register
-    36 System.Threading.CancellationToken::ThrowIfCancellationRequested
+    38 System.Threading.CancellationToken::ThrowIfCancellationRequested
      3 System.Threading.CancellationTokenRegistration::Dispose
     10 System.Threading.CancellationTokenSource::.ctor
     10 System.Threading.CancellationTokenSource::Cancel
@@ -613,15 +626,16 @@
      8 System.Threading.CancellationTokenSource::IsCancellationRequested
      8 System.Threading.CancellationTokenSource::Token
      3 System.Threading.Interlocked::Increment
-     2 System.Threading.Lock::.ctor
+     1 System.Threading.Lock::.ctor
     18 System.Threading.Lock::EnterScope
-   880 System.Threading.Tasks.Task::CompletedTask
+   959 System.Threading.Tasks.Task::CompletedTask
      2 System.Threading.Tasks.Task::ContinueWith
     17 System.Threading.Tasks.Task::Delay
      1 System.Threading.Tasks.Task::Dispose
-     2 System.Threading.Tasks.Task::Exception
-    19 System.Threading.Tasks.Task::FromResult
-    30 System.Threading.Tasks.Task::IsCompleted
+     3 System.Threading.Tasks.Task::Exception
+    24 System.Threading.Tasks.Task::FromResult
+    28 System.Threading.Tasks.Task::IsCompleted
+     2 System.Threading.Tasks.Task::IsCompletedSuccessfully
      1 System.Threading.Tasks.Task::IsFaulted
      2 System.Threading.Tasks.Task::Run
      1 System.Threading.Tasks.Task::Wait
@@ -639,22 +653,22 @@
      9 System.Threading.Tasks.TaskCompletionSource::TrySetResult
     17 System.Threading.Tasks.TaskCompletionSource`1::.ctor
      5 System.Threading.Tasks.TaskCompletionSource`1::SetCanceled
-     7 System.Threading.Tasks.TaskCompletionSource`1::SetException
+     4 System.Threading.Tasks.TaskCompletionSource`1::SetException
     13 System.Threading.Tasks.TaskCompletionSource`1::SetResult
-    30 System.Threading.Tasks.TaskCompletionSource`1::Task
+    28 System.Threading.Tasks.TaskCompletionSource`1::Task
      3 System.Threading.Tasks.TaskCompletionSource`1::TrySetCanceled
      3 System.Threading.Tasks.TaskCompletionSource`1::TrySetResult
      1 System.Threading.Tasks.Task`1::Result
      4 System.Threading.Thread::Sleep
      1 System.TimeSpan::CompareTo
      2 System.TimeSpan::FromDays
-     6 System.TimeSpan::FromSeconds
+     7 System.TimeSpan::FromSeconds
      1 System.TimeSpan::Minutes
      1 System.TimeSpan::Seconds
      1 System.TimeSpan::TotalHours
      2 System.TimeSpan::TotalSeconds
      2 System.TimeSpan::Zero
-     9 System.Type::Assembly
+    11 System.Type::Assembly
      1 System.Type::AssemblyQualifiedName
      2 System.Type::BaseType
      1 System.Type::EmptyTypes
@@ -679,6 +693,6 @@
      2 System.Type::ToString
      4 System.Type::TypeHandle
      4 System.UInt32::ToString
-     2 System.UInt64::Parse
-     5 System.UInt64::ToString
-     1 System.UInt64::TryParse
+     3 System.UInt64::Parse
+     6 System.UInt64::ToString
+     2 System.UInt64::TryParse

@@ -69,5 +69,7 @@ describe('shipped relic states', () => {
     expect(relic.TryModifyCardRewardOptions(owner, rewards, options)).toBe(true);
     expect(rewards).toHaveLength(4);
     expect(rewards[3].Card.Type).toBe(G.CardType.Power);
+    expect(relic.IsAllowed({ GameMode: G.GameMode.Standard, Players: [owner], TotalFloor: 10 })).toBe(true);
+    expect(relic.IsAllowed({ GameMode: G.GameMode.Standard, Players: [owner], TotalFloor: 41 })).toBe(false);
   });
 });

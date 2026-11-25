@@ -17,6 +17,7 @@ it('picks the first shipped language among the device locales', () => {
     [['es-ES'], 'spa'],
     [['es-419'], 'esp'],
     [['de_DE'], 'deu'],
+    [['ar-SA', 'en'], 'ara'],
     [['en-US', 'zh-CN'], 'eng'],
     [['nl', 'sv'], 'eng'],
     [[], 'eng'],
@@ -24,6 +25,6 @@ it('picks the first shipped language among the device locales', () => {
   for (const [locales, lang] of cases) expect(platformLanguage(locales), locales.join()).toBe(lang);
   // every language it can answer has tables to load
   const shipped: string[] = JSON.parse(fs.readFileSync(path.join(ASSETS, 'i18n/index.json'), 'utf8')).languages;
-  const tags = ['en', 'de', 'fr', 'id', 'it', 'ja', 'ko', 'pl', 'ru', 'th', 'tr', 'zh', 'zh-Hant', 'pt', 'es', 'es-MX'];
+  const tags = ['ar', 'en', 'de', 'fr', 'id', 'it', 'ja', 'ko', 'pl', 'ru', 'th', 'tr', 'zh', 'zh-Hant', 'pt', 'es', 'es-MX'];
   for (const t of tags) expect(shipped, t).toContain(platformLanguage([t]));
 });

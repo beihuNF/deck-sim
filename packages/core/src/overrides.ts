@@ -25,6 +25,8 @@ Object.defineProperty(g.CombatManager.prototype, 'IsPlayPhase', {
 });
 const stringExtensions = ext('Godot.StringExtensions') as any;
 stringExtensions.PathJoin = (base: string, file: string) => base ? base.replace(/\/$/, '') + '/' + file.replace(/^\//, '') : file;
+// 提取路径末尾的文件名（含扩展名），供 GodotFileIo 备份日志等调用
+stringExtensions.GetFile = (path: string) => path ? path.replace(/\\/g, '/').split('/').pop() ?? '' : '';
 
 /** v0.98.3's UTF-16/int32 hash remains necessary for existing RNG streams. New runs use upstream XXH64. */
 g.StringHelper.GetDeterministicHashCodeOld = (s: string): number => {
@@ -54,7 +56,11 @@ class LegacyRandom extends Random {
 }
 const legacySeeds = new Set<number>();
 saveReadCompatibility['MegaCrit.Sts2.Core.Saves.SerializableRun'] = (save: any, raw: any) => {
-  if (!('GameMode' in raw)) save.GameMode = save.DailyTime != null ? g.GameMode.Daily : save.Modifiers.length ? g.GameMode.Custom : g.GameMode.Standard;
+  // v0.98.3 旧存档未写入 GameMode 字段；v0.113.1 删除 GameMode.Custom 后以 GameMode.Standard + IsCustomGame=true 表示自定义对局
+  if (!('GameMode' in raw)) {
+    save.GameMode = save.DailyTime != null ? g.GameMode.Daily : g.GameMode.Standard;
+    if (save.DailyTime == null && save.Modifiers?.length) save.IsCustomGame = true;
+  }
 };
 const legacyRng = (seed: number, counter = 0) => {
   const rng = new g.Rng().$ctor_Rng$UInt64(0);
@@ -72,7 +78,9 @@ for (const [fullName, enumType, run] of [
     save.Rngs = new Dictionary();
     for (const type of (ext('System.Enum') as any).GetValues(enumType)) {
       const name = g.StringHelper.SnakeCase(enumType[type]);
-      const rng = legacyRng((seed + g.StringHelper.GetDeterministicHashCodeOld(name)) >>> 0, save.Counters.get_Item(type));
+      // v0.113.1 新增的 PlayerRngType（如 NonCombatGeneration）在 v0.98.3 旧存档的 Counters 中不存在，缺省计为 0
+      const counter = save.Counters.ContainsKey(type) ? save.Counters.get_Item(type) : 0;
+      const rng = legacyRng((seed + g.StringHelper.GetDeterministicHashCodeOld(name)) >>> 0, counter);
       save.Rngs.set_Item(type, rng.ToSerializable());
     }
   };
@@ -227,21 +235,25 @@ if (godotNode) godotNode.prototype.CreateTween = () => new WebTween();
 if (godotObject) godotObject.IsInstanceValid = (o: any) => o != null && !o.$freed;
 const tweenHelper = stubOf('MegaCrit.Sts2.Core.Nodes.GodotExtensions.TweenHelper');
 if (tweenHelper) tweenHelper.FastForwardToCompletion = (t: any) => t?.CustomStep?.(999);
-if (tweenHelper) tweenHelper.AwaitFinished = (t: any, ownerOrToken: any) => {
-  const token = ownerOrToken?.ThrowIfCancellationRequested ? ownerOrToken : null;
+// 等待 Tween 完成并返回 TweenOutcome 枚举值（0=Finished, 3=OwnerExited, 4=OwnerFreed, 5=Cancelled）
+if (tweenHelper) tweenHelper.AwaitFinished = (t: any, ownerOrToken?: any, maybeToken?: any) => {
+  const isToken = (x: any) => x != null && typeof x.ThrowIfCancellationRequested === 'function';
+  const token = isToken(maybeToken) ? maybeToken : isToken(ownerOrToken) ? ownerOrToken : null;
+  const owner = isToken(ownerOrToken) ? null : ownerOrToken;
+  if (token?.IsCancellationRequested) return Task.FromResult(5 /* TweenOutcome.Cancelled */);
+  if (owner?.$freed) return Task.FromResult(4 /* TweenOutcome.OwnerFreed */);
+  if (!t?.IsValid?.() || !t?.IsRunning?.()) return Task.FromResult(0 /* TweenOutcome.Finished */);
   const task = new Task();
-  const owner = token ? null : ownerOrToken;
   let registration: any;
-  const finish = (ok: boolean) => {
+  const finish = (outcome: number) => {
     registration?.Dispose();
     if (owner) owner.TreeExiting = dremove(owner.TreeExiting, exited);
-    task.$done(1, ok && !owner?.$freed);
+    task.$done(1, owner?.$freed ? 4 /* TweenOutcome.OwnerFreed */ : outcome);
   };
-  const exited = () => finish(false);
-  if (!t?.IsValid?.() || !t?.IsRunning?.()) return Task.FromResult(!owner?.$freed);
+  const exited = () => finish(3 /* TweenOutcome.OwnerExited */);
   if (owner) owner.TreeExiting = dcombine(owner.TreeExiting, exited);
-  registration = token?.Register(() => task.$done(3));
-  t.whenFinished(() => finish(true));
+  registration = token?.Register(() => finish(5 /* TweenOutcome.Cancelled */));
+  t.whenFinished(() => finish(0 /* TweenOutcome.Finished */));
   return task;
 };
 const nodeUtil = ext('MegaCrit.Sts2.Core.Nodes.GodotExtensions.NodeUtil') as any;

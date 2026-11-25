@@ -41,3 +41,40 @@ it('eases and starts from explicit values; a killed tween never finishes', () =>
   expect(t.CustomStep(5)).toBe(false);
   expect(finished).toBe(false);
 });
+
+it('TweenHelper.AwaitFinished returns TweenOutcome values for finished, exited, freed and cancelled', async () => {
+  const { boot } = await import('./helpers');
+  const G: any = boot();
+  const TweenHelper = G.$.ext('MegaCrit.Sts2.Core.Nodes.GodotExtensions.TweenHelper');
+  const CTS = G.$.ext('System.Threading.CancellationTokenSource');
+  const Outcome = G.$.ext('MegaCrit.Sts2.Core.Nodes.GodotExtensions.TweenOutcome');
+
+  // 已无效的 tween 直接返回 Finished
+  expect(await TweenHelper.AwaitFinished(null, {})).toBe(Outcome.Finished);
+
+  // 已释放的节点返回 OwnerFreed
+  expect(await TweenHelper.AwaitFinished(new WebTween(), { $freed: true })).toBe(Outcome.OwnerFreed);
+
+  // 正常完成返回 Finished
+  const t1 = new WebTween();
+  t1.TweenInterval(0.1);
+  const p1 = TweenHelper.AwaitFinished(t1, {});
+  t1.CustomStep(0.2);
+  expect(await p1).toBe(Outcome.Finished);
+
+  // 节点退出树返回 OwnerExited
+  const t2 = new WebTween();
+  t2.TweenInterval(1);
+  const owner2: any = { TreeExiting: null };
+  const p2 = TweenHelper.AwaitFinished(t2, owner2);
+  owner2.TreeExiting?.();
+  expect(await p2).toBe(Outcome.OwnerExited);
+
+  // 取消令牌返回 Cancelled
+  const t3 = new WebTween();
+  t3.TweenInterval(1);
+  const cts = new CTS();
+  const p3 = TweenHelper.AwaitFinished(t3, {}, cts.Token);
+  cts.Cancel();
+  expect(await p3).toBe(Outcome.Cancelled);
+});

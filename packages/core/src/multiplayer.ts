@@ -59,7 +59,7 @@ export class WebNetService {
   Disconnect() { this.IsConnected = false; }
 }
 
-export interface WebRunPlayer { id: number; character: string; unlock: string }
+export interface WebRunPlayer { id: number; character: string; unlock: string; isRotatingDread?: boolean }
 /** NDailyRunScreen.SetupLobbyParams: three independent streams, roster order, and the original modifier picker. */
 export function webDailySetup(date: string, players: { id: number }[]) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date))) throw new Error('Invalid daily date');
@@ -119,25 +119,37 @@ export async function startWebMultiplayerRun(
   ascension = 0,
   modifiers: any[] = [],
   dailyTime: any = null,
+  isCustom?: boolean,
 ) {
   if (mode === 'daily') {
     const daily = webDailySetup(dailyTime, players);
     if (players.some((p, i) => p.character !== daily.characters[i].Id.Entry)) throw new Error('Invalid daily character');
     seed = daily.seed; ascension = daily.ascension; modifiers = daily.modifiers; dailyTime = daily.dailyTime;
   } else dailyTime = null;
+  // v0.113.1 删除 GameMode.Custom，自定义对局由独立的 isCustom 布尔参数标识
+  const custom = isCustom ?? (mode === 'custom' || (mode !== 'daily' && modifiers.length > 0));
+  const gameMode = mode === 'daily' ? G.GameMode.Daily : mode === 'dread' ? G.GameMode.Dread : mode === 'blitz' ? G.GameMode.Blitz : G.GameMode.Standard;
+  ascension = !custom && gameMode === G.GameMode.Dread ? 10 : G.AscensionManager.ClampToMode(gameMode, Math.trunc(ascension || 0));
   const json: any = ext('System.Text.Json.JsonSerializer');
   const roster = players.map(p => {
     const unlock = G.UnlockState.FromSerializable(json.Deserialize(G.SerializableUnlockState, p.unlock));
     const character = Array.from(G.ModelDb.AllCharacters).find((c: any) => c.Id.Entry === p.character);
     if (!character) throw new Error('Unknown multiplayer character: ' + p.character);
     if (mode !== 'daily' && !Array.from(unlock.Characters).includes(character)) throw new Error('Locked multiplayer character: ' + p.character);
-    return G.Player.CreateForNewRun$CharacterModel_UnlockState_UInt64(character, unlock, p.id);
+    if (!custom && gameMode === G.GameMode.Blitz && !unlock.IsEpochRevealed(G.BlitzEpoch)) {
+      throw new Error('Locked multiplayer game mode: blitz');
+    }
+    if (!custom && gameMode === G.GameMode.Dread && !unlock.IsEpochRevealed(G.DreadEpoch)) {
+      throw new Error('Locked multiplayer game mode: dread');
+    }
+    const player = G.Player.CreateForNewRun$CharacterModel_UnlockState_UInt64(character, unlock, p.id);
+    if (!custom && gameMode === G.GameMode.Dread && p.isRotatingDread) player.ExtraFields.IsPlayingRotatingCharacter = true;
+    return player;
   });
   const unlock = new G.UnlockState().$ctor_UnlockState$IEnumerableUnlockState(roster.map((p: any) => p.UnlockState));
   const rng = new G.Rng().$ctor_Rng$2(G.StringHelper.GetDeterministicHashCode(seed), 'act_selection');
   const acts = Array.from(G.ActModel.GetRandomList(rng, unlock, true)).map((a: any) => a.ToMutable());
-  const gameMode = mode === 'daily' ? G.GameMode.Daily : mode === 'custom' ? G.GameMode.Custom : G.GameMode.Standard;
-  const state = G.RunState.CreateForNewRun(roster, acts, modifiers, gameMode, ascension, seed);
+  const state = G.RunState.CreateForNewRun(roster, acts, modifiers, gameMode, custom, ascension, seed);
   const rm = G.RunManager.Instance;
   net.SetPeers(players.map(p => p.id));
   rm.SetUpNewMultiplayer(state, {

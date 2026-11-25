@@ -18,6 +18,19 @@ const filesOf = (dir: string) => (fs.readdirSync(dir, { recursive: true }) as st
   .filter((f) => fs.statSync(path.join(dir, f)).isFile())
   .map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(dir, f), 'utf8')] as const);
 
+/** 读取该版本样本目录落盘时的 $webSaveVersion（无标记的 v0.98.3 旧档为 0） */
+function sampleWebSaveVersion(version: string): number {
+  for (const run of dirs(path.join(ROOT, version))) {
+    for (const point of dirs(path.join(ROOT, version, run))) {
+      for (const [, text] of filesOf(path.join(ROOT, version, run, point))) {
+        const raw = JSON.parse(text);
+        if (typeof raw?.$webSaveVersion === 'number') return raw.$webSaveVersion;
+      }
+    }
+  }
+  return 0;
+}
+
 /** Where `now` (the loaded save, written back) no longer holds what `old` (the file) held. Added members are fine. */
 function lost(old: any, now: any, at: string, out: string[] = []): string[] {
   if (old === null || typeof old !== 'object') { if (old !== now) out.push(`${at}: ${JSON.stringify(old)} → ${JSON.stringify(now)}`); return out; }
@@ -41,11 +54,17 @@ describe.each(VERSIONS)('enums of %s', (version) => {
   it('still have the numbers its saves were written with', () => {
     const G: any = boot();
     const stubs: string[] = G.$.extKeys().stubs;
+    const saveVersion = sampleWebSaveVersion(version);
     const frozen: Record<string, Record<string, number>> = JSON.parse(fs.readFileSync(path.join(ROOT, version, 'enums.json'), 'utf8'));
     const moved = Object.entries(frozen).flatMap(([name, members]) => {
       const stub = stubs.find((k) => k.endsWith(`.${name}`)); // an enum of the untranslated layers (ControllerMappingType)
       const now = G[name] ?? (stub && G.$.ext(stub));
-      return Object.entries(members).filter(([m, n]) => now?.[m] !== n).map(([m, n]) => `${name}.${m}: ${n} → ${now?.[m]}`);
+      const rule = G.$.SAVE_ENUM_MIGRATIONS[name];
+      // 旧编号经转换表映射后，应等于当前规则层同名（或重命名目标）成员的编号
+      return Object.entries(members).filter(([m, n]) => {
+        const targetMember = rule && saveVersion < rule.beforeVersion ? (rule.renamedMembers?.[m] ?? m) : m;
+        return now?.[targetMember] !== G.$.migrateEnumValue(name, n, saveVersion);
+      }).map(([m, n]) => `${name}.${m}: ${n} → ${now?.[m]}`);
     });
     expect(moved).toEqual([]);
   });
@@ -63,7 +82,8 @@ describe.each(POINTS)('web save %s', (point) => {
 
   it('every file comes back whole through the save serializer', () => {
     const G: any = boot();
-    const bad = files.flatMap(([f, text]) => { const raw = JSON.parse(text); return lost(raw, G.$.snapshot(G.$.restore(raw)), f); });
+    // 往返比较前将 restore() 同源转换表作用到旧文件上
+    const bad = files.flatMap(([f, text]) => { const raw = JSON.parse(text); return lost(G.$.migrateRawSave(raw), G.$.snapshot(G.$.restore(raw)), f); });
     expect(bad).toEqual([]);
   });
 
