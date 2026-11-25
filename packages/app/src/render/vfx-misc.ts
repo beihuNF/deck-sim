@@ -242,7 +242,6 @@ for (const form of ['demon', 'echo', 'reaper', 'serpent', 'void']) {
 /** Display matrices include the viewport margin; form effects share the frame-coordinate VFX canvas. */
 const toFrameTransform = (node: Container) => node.worldTransform.clone().translate(-view.ox, -view.oy);
 
-N('Vfx.NGrandFinaleVfx').totalAnticipationDuration = 1.625;
 N('Vfx.NGrandFinaleVfx').Create = (target: any) => {
   if (G.TestMode.IsOn) return null;
   const pos = isVec(target) ? target : room()?.GetCreatureNode(target)?.VfxSpawnPosition;

@@ -353,8 +353,8 @@ export function extract(G: any, lang: Lang, i18n: string): { cats: Category[]; p
       // Choices and character-dependent prose cannot be determined outside a run. Keep readable variable labels
       // rather than dropping them from static pages; numeric event variables still come from the original model.
       const context = lang === 'zhs'
-        ? { AromaPrinciple: '（角色的核心原则）', Monologue: '（角色的独白）', RelicName: '选中的遗物', Potion: '选中的药水', Rarity: '对应稀有度', Type: '对应类型', pronounObject: '自己', pronounSubject: '你的倒影' }
-        : { AromaPrinciple: '(the character’s core principle)', Monologue: '(the character’s monologue)', RelicName: 'the chosen relic', Potion: 'the chosen potion', Rarity: 'matching-rarity', Type: 'matching-type', pronounObject: 'them', pronounSubject: 'your reflection' };
+        ? { AromaPrinciple: '（角色的核心原则）', Monologue: '（角色的独白）', Relic: '展示的遗物', RelicName: '选中的遗物', Potion: '选中的药水', Rarity: '对应稀有度', Type: '对应类型', pronounObject: '自己', pronounSubject: '你的倒影' }
+        : { AromaPrinciple: '(the character’s core principle)', Monologue: '(the character’s monologue)', Relic: 'the offered relic', RelicName: 'the chosen relic', Potion: 'the chosen potion', Rarity: 'matching-rarity', Type: 'matching-type', pronounObject: 'them', pronounSubject: 'your reflection' };
       for (const [name, value] of Object.entries(context)) if (evTable[key]?.includes(`{${name}`)) ls.Add$String_String(name, value);
       return ls;
     }, () => evTable[key]);

@@ -19,7 +19,7 @@ import { openChest, chestSkin, chestGold, playSpriteVfx, extinguishRestFire } fr
 import { playCombatVfx, playItemThrow } from './render/cardfx';
 import { screenShake, screenRumble, screenShakeTrauma, hitStop } from './ui/screenshake';
 import { OrbManagerView } from './ui/orbs';
-import { setMap, openMap, closeMap, isMapVisible, setTravelEnabled, setDebugTravelEnabled, mapTraveling, initMarker, travelToMapCoord, spawnActBanner, initializeMap, refreshMapVotes, pingMapCoord } from './ui/map';
+import { setMap, openMap, closeMap, isMapVisible, isMapTravelEnabled, setTravelEnabled, setDebugTravelEnabled, mapTraveling, initMarker, travelToMapCoord, spawnActBanner, initializeMap, refreshMapVotes, pingMapCoord } from './ui/map';
 import { getActiveCoopDrawings } from './ui/map-coop';
 import { view, fracX } from './view';
 
@@ -34,6 +34,7 @@ const NChooseABundleSelectionScreen = N('Screens.CardSelection.NChooseABundleSel
 const NEventRoom = N('Rooms.NEventRoom');
 const NRestSiteRoom = N('Rooms.NRestSiteRoom');
 const NMerchantRoom = N('Rooms.NMerchantRoom');
+const NStandardMerchantRoom = N('Rooms.NStandardMerchantRoom');
 const NTreasureRoom = N('Rooms.NTreasureRoom');
 const NMapRoom = N('Rooms.NMapRoom');
 const NOverlayStack = N('Screens.Overlays.NOverlayStack');
@@ -67,15 +68,16 @@ export class RunView extends NRun {
     ui.live = node?.kind === 'combat';
     invalidate();
   }
-  /** NRun.ShowGameOverScreen: the capstone and the map close; NGameOverScreen goes on the overlay stack. */
-  ShowGameOverScreen(serializableRun: any) {
+  /** NRun.ShowGameOverScreen: receives PostRunProgressUpdateResult in v0.113.1. */
+  ShowGameOverScreen(result: any) {
     if (!this.runEndReported) {
       this.runEndReported = true;
       reportEvent('run_end', { result: this.runState.CurrentRoom?.IsVictoryRoom ? 'victory' : 'defeat' });
     }
     closePauseMenu();
     safeGet(() => NMapScreen.Instance?.Close(false), undefined);
-    ui.gameOver = { serializableRun, runState: this.runState, victory: false };
+    const serializableRun = result?.run ?? result;
+    ui.gameOver = { result, serializableRun, runState: this.runState, victory: false };
     pushOverlay({ kind: 'gameover', g: ui.gameOver, UseSharedBackstop: false });
     invalidate();
   }
@@ -245,7 +247,7 @@ export class CreatureView extends NCreature {
   /** NCreature.OrbManager: players only (ui/orbs.tsx). */
   private orbView: OrbManagerView | null = null;
   get OrbManager() { return this.creature.IsPlayer ? (this.orbView ??= new OrbManagerView(this.creature)) : null; }
-  /** NCreature.IsInteractable (ToggleIsInteractable: e.g. a dead Osty). */
+  /** NCreature.IsInteractable (SetIsInteractable: e.g. a dead Osty). */
   IsInteractable = true;
   /** Hitbox.MouseFilter: Stop, or Ignore once AnimDie starts / while not interactable (a mouse over it then leaves). */
   HitboxOn = true;
@@ -254,7 +256,9 @@ export class CreatureView extends NCreature {
     if (!on && this.IsFocused) this.OnUnfocus();
     invalidate();
   }
-  ToggleIsInteractable(on: boolean) { this.IsInteractable = !!on; this.setHitbox(!!on); }
+  SetIsInteractable(on: boolean, _changeVisibilityImmediately = true) { this.IsInteractable = !!on; this.setHitbox(!!on); }
+  AnimateOutStateDisplay() { this.setHitbox(false); return null; }
+  get HasSpineArrowSlots() { return (activeStage as any)?.hasArrowSlots?.(this.creature) ?? false; }
   /** NHealthBar._blockTrackingCreature (OstyCmd: Osty's bar shows its summoner's block as its own). */
   blockTracking: any = null;
   TrackBlockStatus(c: any) { this.blockTracking = c; invalidate(); }
@@ -391,7 +395,7 @@ export class CreatureView extends NCreature {
     this.ScaleTo(this.tempScale, duration);
   }
   /** Osty.ScaleRange (1, 2) by health / 150; the local player's Osty also moves to its owner + GetOstyOffsetFromPlayer. */
-  OstyScaleToSize(ostyHealth: number, duration: number) {
+  ScaleAndPositionOsty(ostyHealth: number, duration: number) {
     const k = (v: number) => Math.min(Math.max(v / 150, 0), 1);
     const t = (this.scaleTween = this.tween());
     t.TweenProperty(this, 'vis_scale', (1 + k(ostyHealth)) * this.DefaultScale, duration).SetEase(2).SetTrans(1);
@@ -468,7 +472,7 @@ export class CombatRoomView extends NCombatRoom {
     if (!v) {
       this.creatures.set(c, (v = new CreatureView(c)));
       // AddCreature: the local player's Osty takes its size and place at once
-      if (G.TestMode.IsOff && c.Monster instanceof G.Osty && safeGet(() => G.LocalContext.IsMe$Player(c.PetOwner), false)) v.OstyScaleToSize(c.MaxHp, 0);
+      if (G.TestMode.IsOff && c.Monster instanceof G.Osty && safeGet(() => G.LocalContext.IsMe$Player(c.PetOwner), false)) v.ScaleAndPositionOsty(c.MaxHp, 0);
     }
     return v;
   }
@@ -609,7 +613,7 @@ export class EventRoomView extends NEventRoom {
     const ev = this.event;
     const d = ev.Description ?? new G.LocString().$ctor_LocString('events', 'ERROR.description');
     if (!safeGet(() => d.Exists(), true)) return;
-    safeGet(() => { ev.Owner.Character.AddDetailsTo(d); d.Add$String_Boolean('IsMultiplayer', ev.Owner.RunState.Players.length > 1); ev.DynamicVars.AddTo(d); }, undefined);
+    safeGet(() => { ev.Owner.Character.AddDetailsTo(d, ev.FoolPronounGuess ?? G.FoolPronounGuess?.Neutral ?? 0); d.Add$String_Boolean('IsMultiplayer', ev.Owner.RunState.Players.length > 1); ev.DynamicVars.AddTo(d); }, undefined);
     this.description = safeGet(() => d.GetFormattedText(), '');
     this.descGen++;
   }
@@ -739,8 +743,8 @@ export class EventRoomView extends NEventRoom {
   proceed() { NEventRoom.Proceed(); }
 }
 NEventRoom.Create = (ev: any, rs: any, pre: boolean) => { const v = new EventRoomView(ev, rs, pre); NEventRoom.Instance = v; void v.setup(); return v; };
-// NEventRoom.Proceed: enable travel, open the map
-NEventRoom.Proceed = () => { NMapScreen.Instance?.SetTravelEnabled(true); NMapScreen.Instance?.Open(); return $.Task.CompletedTask; };
+// NEventRoom.Proceed: 交由 RunManager.Proceed() 兼容 Blitz 与标准地图
+NEventRoom.Proceed = () => { G.RunManager.Instance.Proceed(); return $.Task.CompletedTask; };
 
 /**
  * NRestSiteRoom (ui/rest.tsx draws it): the options fade in; a pick disables them and runs the option through the
@@ -772,7 +776,13 @@ export class RestSiteView extends NRestSiteRoom {
   }
   get Options() { return this.room.Options; }
   get Characters() { return this.characterAnims; }
-  get ProceedButton() { return { IsEnabled: this.proceedOn }; }
+  get ProceedButton() {
+    return {
+      IsEnabled: this.proceedOn,
+      Enable: () => { this.proceedOn = true; invalidate(); },
+      Disable: () => { this.proceedOn = false; invalidate(); },
+    };
+  }
   private updateOptions() { this.options = list(this.room.Options); this.optionsGen++; invalidate(); }
   private async showFtueIfNeeded() {
     if (seenFtue('rest_site_ftue')) return;
@@ -824,7 +834,7 @@ export class RestSiteView extends NRestSiteRoom {
   }
   /** ShowProceedButton: only after an option (or with none left) — travel is enabled with it. */
   showProceed() { if (!this.proceedOn) { this.proceedOn = true; NMapScreen.Instance?.SetTravelEnabled(true); invalidate(); } }
-  proceed() { NMapScreen.Instance?.Open(); }
+  proceed() { G.RunManager.Instance.Proceed(); }
 }
 NRestSiteRoom.Create = (room: any, rs: any) => {
   const v = new RestSiteView(room, rs);
@@ -834,10 +844,9 @@ NRestSiteRoom.Create = (room: any, rs: any) => {
   return v;
 };
 
-/** NMerchantSlot purchase: card removal has its own (cancelable) overload, which C# picks for that entry type. */
-export async function purchase(entry: any, inventory: any) {
-  const buy = entry.OnTryPurchaseWrapper$3 ?? entry.OnTryPurchaseWrapper$2;
-  await buy.call(entry, inventory, false);
+/** NMerchantSlot purchase: 统一经 MerchantSynchronizer.PurchaseLocalEntry(entry) 走联机/本地同步购买 */
+export async function purchase(entry: any, _inventory?: any) {
+  await G.RunManager.Instance.MerchantSynchronizer.PurchaseLocalEntry(entry);
   invalidate();
 }
 /**
@@ -922,7 +931,7 @@ export class MerchantButtonView {
  * back button closes it and proceed then pulses). Slots react to their entry's events: a failed purchase wiggles the
  * slot, a bought card flies to the deck, the merchant's hand points at the slot, and the rug dialogue says a line.
  */
-const merchantShop = (Base: any) => class extends Base {
+export const merchantShop = (Base: any) => class extends Base {
   kind = 'shop';
   pulse = false;
   blocked = false;
@@ -957,7 +966,7 @@ const merchantShop = (Base: any) => class extends Base {
     this.dialogue = dialogue;
     this.MerchantButton = new MerchantButtonView(button, new SceneContainerView(), () => this.OpenInventory());
     const me = inv?.Player;
-    this.Inventory = { open: false, get IsOpen() { return this.open; }, Open: () => this.openRug(), OnCardRemovalUsed: () => { this.removalUsed = true; invalidate(); }, Player: me };
+    this.Inventory = { open: false, get IsOpen() { return this.open; }, Open: () => this.openRug(), Close: () => this.close(), OnCardRemovalUsed: () => { this.removalUsed = true; invalidate(); }, Player: me };
     for (const e of list(inv?.AllEntries ?? [])) {
       this.shown.set(e, safeGet(() => e.CreationResult?.Card ?? null, null));
       if (e instanceof G.MerchantRelicEntry || e instanceof G.MerchantPotionEntry) this.bought.set(e, e.Model);
@@ -1063,18 +1072,19 @@ const merchantShop = (Base: any) => class extends Base {
   }
   buy(entry: any) { return purchase(entry, this.inv); }
 };
-/** NMerchantRoom (MerchantButton at (1206, 468), 270 × 330). */
-export class MerchantView extends merchantShop(NMerchantRoom) {
-  constructor(public Room: any, public players: any) {
+/** NStandardMerchantRoom (MerchantButton at (1206, 468), 270 × 330). */
+export class MerchantView extends merchantShop(NStandardMerchantRoom) {
+  constructor(public players: any) {
     super();
-    this.initShop(Room.GetLocalInventory(), G.MerchantRoom.Dialogue, [1206, 468, 270, 330]);
+    const inv = G.RunManager.Instance.MerchantSynchronizer.GetLocalInventory();
+    this.initShop(inv, G.MerchantRoom.Dialogue, [1206, 468, 270, 330]);
     this.MerchantButton.IsLocalPlayerDead = safeGet(() => G.LocalContext.GetMe$IEnumerablePlayer(players).Creature.IsDead, false);
     this.MerchantButton.PlayerDeadLines = this.dialogue.PlayerDeadLines;
   }
-  /** HideScreen: the merchant tip the first time (when the rug was never opened), else the map. */
+  /** HideScreen: the merchant tip the first time (when the rug was never opened), else RunManager.Proceed(). */
   proceed() {
     if (!seenFtue('merchant_ftue')) { void showFtue('merchant_ftue', 'MERCHANT_FTUE', () => this.OpenInventory()); return; }
-    NMapScreen.Instance?.Open();
+    G.RunManager.Instance.Proceed();
   }
   /** NMerchantRoom.FoulPotionThrown: thanks, a FoulPotionLines line and a rumble. */
   FoulPotionThrown(_potion: any) {
@@ -1097,7 +1107,7 @@ export function shopSlotOrigin(inv: any, e: any, slots: ShopSlots = SHOP_SLOTS):
   return at(inv.CharacterCardEntries, slots.cards) ?? at(inv.ColorlessCardEntries, slots.colorless) ?? at(inv.RelicEntries, slots.relics)
     ?? at(inv.PotionEntries, slots.potions) ?? (e === inv.CardRemovalEntry ? slots.removal : null);
 }
-NMerchantRoom.Create = (room: any, players: any) => { const v = new MerchantView(room, players); NMerchantRoom.Instance = v; NMapScreen.Instance?.SetTravelEnabled(true); return v; };
+NStandardMerchantRoom.Create = (players: any) => { const v = new MerchantView(players); NMerchantRoom.Instance = v; NMapScreen.Instance?.SetTravelEnabled(true); return v; };
 
 /** fake_merchant_inventory.tscn: the six relic slots (Large icons) with the rug open (y 80). */
 const FAKE_SLOTS: ShopSlots = { cards: [], colorless: [], potions: [], removal: null, relics: [[987, 298], [1262, 368], [855, 596], [1128, 663], [1463, 578], [941, 927]] };
@@ -1149,7 +1159,7 @@ export class FakeMerchantView extends merchantShop(NFakeMerchant) {
     this.MerchantButton.PlayDialogue(line, 4);
   }
   /** HideScreen. */
-  proceed() { NMapScreen.Instance?.Open(); }
+  proceed() { G.RunManager.Instance.Proceed(); }
   /** FoulPotionThrown: a FoulPotionLines line, held until a second before it goes. */
   async FoulPotionThrown(_potion: any) {
     const l = G.Rng.Chaotic.NextItem(G.LocString, list(this.dialogue.FoulPotionLines));
@@ -1284,7 +1294,7 @@ export class TreasureView extends NTreasureRoom {
     this.done?.TrySetResult();
     invalidate();
   }
-  proceed() { G.TaskHelper.RunSafely(G.RunManager.Instance.ProceedFromTerminalRewardsScreen()); }
+  proceed() { G.RunManager.Instance.ProceedFromTerminalRewardsScreen(); }
 }
 NTreasureRoom.Create = (room: any, rs: any) => new TreasureView(room, rs);
 
@@ -1312,6 +1322,7 @@ export class MapView extends NMapScreen {
   get IsOpen() { return ui.mapOpen; }
   get Visible() { return isMapVisible(); }
   IsVisibleInTree() { return isMapVisible(); }
+  get IsTravelEnabled() { return isMapTravelEnabled(); }
   SetTravelEnabled(b: boolean) { setTravelEnabled(b); }
   SetDebugTravelEnabled(b: boolean) { this.IsDebugTravelEnabled = b; setDebugTravelEnabled(b); } // TravelConsoleCmd toggles on the property
   get IsTraveling() { return mapTraveling.get(); }
@@ -1417,24 +1428,22 @@ export class RewardsView extends NRewardsScreen {
   private skippedFrom(b: any) { this.skipped.add(b); if (!this.buttons.some((x) => !this.skipped.has(x))) this.pulse = true; }
   /** NRewardsScreen.OnProceedButtonPressed. */
   proceed() {
+    if (!this.proceedOn) return;
     const rs = this.runState, room = rs.CurrentRoom;
-    if (this.isTerminal && (room?.RoomType === G.RoomType.Boss || room?.IsVictoryRoom)) {
-      if (rs.Map.SecondBossMapPoint != null && rs.CurrentMapCoord && G.MapCoord.op_Equality?.(rs.CurrentMapCoord, rs.Map.BossMapPoint.coord)) {
-        G.TaskHelper.RunSafely(G.RunManager.Instance.ProceedFromTerminalRewardsScreen());
-        return;
-      }
+    const finalBoss = rs.Map.SecondBossMapPoint ?? rs.Map.BossMapPoint;
+    if (this.isTerminal && (room?.RoomType === G.RoomType.Boss || room?.IsVictoryRoom) && rs.CurrentMapCoord && finalBoss?.coord && G.MapCoord.op_Equality?.(rs.CurrentMapCoord, finalBoss.coord)) {
       this.proceedOn = false; invalidate();
       G.RunManager.Instance.ActChangeSynchronizer.SetLocalPlayerReady();
       return;
     }
     if (this.isTerminal) {
       if (this.skipLabel) {
-        if (seenFtue('combat_reward_ftue')) G.TaskHelper.RunSafely(G.RunManager.Instance.ProceedFromTerminalRewardsScreen());
+        if (seenFtue('combat_reward_ftue')) G.RunManager.Instance.ProceedFromTerminalRewardsScreen();
         else { this.proceedHidden = true; invalidate(); void showFtue('combat_reward_ftue', 'REWARDS_FTUE').then(() => { this.proceedHidden = false; invalidate(); }); }
         return;
       }
       if (rs.ActFloor > 4) G.SaveManager.Instance.MarkFtueAsComplete('combat_reward_ftue');
-      G.TaskHelper.RunSafely(G.RunManager.Instance.ProceedFromTerminalRewardsScreen());
+      G.RunManager.Instance.ProceedFromTerminalRewardsScreen();
       return;
     }
     G.RunManager.Instance.RewardsSetSynchronizer.SkipLocalRewardsSet();
@@ -1593,11 +1602,12 @@ export class BundleView {
   visible = true;
   paint?: () => void;
   private done = tcs();
-  constructor(public bundles: any[][]) {}
+  constructor(public bundles: any[][], public canSkip = false) {}
   get UseSharedBackstop() { return true; }
   CardsSelected() { return this.done.Task.ContinueWith((t: any) => { popOverlay(this); return t.Result; }); }
   pick(i: number) { this.picked = i; invalidate(); }
   cancel() { this.picked = -1; invalidate(); }
+  skip() { if (this.canSkip) this.done.TrySetResult([]); }
   /** ConfirmSelection: every card of the bundle flies to the deck from where it is shown. */
   confirm(els: (Element | null)[]) {
     const b = this.bundles[this.picked];
@@ -1614,7 +1624,7 @@ export class BundleView {
   AfterOverlayShown() { this.visible = true; invalidate(); }
   AfterOverlayHidden() { this.visible = false; invalidate(); }
 }
-NChooseABundleSelectionScreen.ShowScreen = (bundles: any) => { const v = new BundleView(list(bundles).map((b: any) => list(b))); pushOverlay(v); return v; };
+NChooseABundleSelectionScreen.ShowScreen = (bundles: any, canSkip = false) => { const v = new BundleView(list(bundles).map((b: any) => list(b)), canSkip); pushOverlay(v); return v; };
 
 /**
  * NCardGridSelectionScreen and its screens: NSimpleCardSelectScreen (simple), NDeckCardSelectScreen (deck),
@@ -1773,7 +1783,7 @@ NGame.IsMainThread = () => true;
 
 // ------------------------------------------------------------------ install
 export const mapView = new MapView();
-const ROOM_SINGLETONS = new Set(['Rooms.NCombatRoom', 'Rooms.NEventRoom', 'Rooms.NRestSiteRoom', 'Rooms.NMerchantRoom', 'Rooms.NTreasureRoom']);
+const ROOM_SINGLETONS = new Set(['Rooms.NCombatRoom', 'Rooms.NEventRoom', 'Rooms.NRestSiteRoom', 'Rooms.NMerchantRoom', 'Rooms.NStandardMerchantRoom', 'Rooms.NBlitzMerchantRoom', 'Rooms.NTreasureRoom']);
 /** Web mode: every scene singleton the rule layer reaches for exists (inert unless implemented here). */
 function fillSingletons() {
   const pre = 'MegaCrit.Sts2.Core.Nodes.';
@@ -1871,7 +1881,7 @@ export class CrystalSphereView {
     this.say('END', 2);
     safeGet(() => NMapScreen.Instance.SetTravelEnabled(true), undefined);
   }
-  proceed() { G.TaskHelper.RunSafely(G.RunManager.Instance.ProceedFromTerminalRewardsScreen()); }
+  proceed() { G.RunManager.Instance.Proceed(); }
   /** NOverlayStack.Remove (tools/e2e/coverage dismisses a finished board without leaving the room). */
   close() { if (this.done) popOverlay(this); }
   /** AfterOverlayOpened: fade in over 0.5 s, then the opening line and the items. */
@@ -1982,7 +1992,10 @@ NSpeechBubbleVfx.Create = function (text: string, a: any, b: any, c?: any) {
   const side = bySpeaker ? (a.Side === G.CombatSide.Player ? 1 : 2) : Number(a);
   // VfxColor presets on the bubble's hsv shader (h, s, v)
   const vc = bySpeaker ? c : arguments[4];
-  const color = ({ 0: [0.48, 2, 0.5], 1: [0.8, 1.5, 0.6], 2: [0.05, 1.3, 0.55], 3: [0.3, 0.6, 0.5], 4: [1, 0.25, 0.3] } as Record<number, number[]>)[vc] ?? [1, 0.9, 0.5];
+  const color = ({
+    0: [0.49, 2.5, 0.38], 1: [0.8, 1.5, 0.6], 2: [0.05, 1.3, 0.55], 3: [0.3, 0.6, 0.5],
+    4: [1, 0.25, 0.3], 8: [0.6, 4, 0.5], 9: [0.72, 1.7, 0.5], 10: [0.093, 0.2, 0.4], 11: [0.58, 1.1, 0.5],
+  } as Record<number, number[]>)[vc] ?? [1, 0.9, 0.5];
   bubbles.push({ id, c: bySpeaker ? a : null, pos: bySpeaker ? speechPosition(a) : [b?.X ?? 960, b?.Y ?? 400], text: String(text ?? ''), secs, color, side });
   invalidate();
   const remove = () => { const i = bubbles.findIndex((x) => x.id === id); if (i >= 0) { bubbles.splice(i, 1); invalidate(); } };
@@ -2057,7 +2070,7 @@ NDamageNumVfx.Create = (a: any, b: any, requireInteractable = true): any => {
     floatText(a.X, a.Y, String(Math.trunc(Number(b))), 'dmg');
     return $.dummy(NDamageNumVfx);
   }
-  const damage = typeof b === 'object' && b ? b.UnblockedDamage + (a.Monster instanceof G.Osty ? 0 : b.OverkillDamage) : Number(b);
+  const damage = typeof b === 'object' && b ? b.UnblockedDamage + ((a.Monster instanceof G.Osty || a.Monster instanceof G.Wuppy_Monsters) ? 0 : b.OverkillDamage) : Number(b);
   const node = creatureNode(a);
   let pos = new $.Vector2(0, 0);
   if (requireInteractable && (!node || !node.IsInteractable)) {
@@ -2187,7 +2200,7 @@ export function installBridge() {
   G.CombatManager.Instance.CombatWon = $.dcombine(G.CombatManager.Instance.CombatWon, (room: any) => {
     (NCombatRoom.Instance?.Ui as any)?.PostCombatCleanUp?.();
     const run = async () => {
-      if (!room.Encounter.ShouldGiveRewards) { await G.Cmd.Wait$2(1); await G.RunManager.Instance.ProceedFromTerminalRewardsScreen(); return; }
+      if (!room.Encounter.ShouldGiveRewards) { await G.Cmd.Wait$2(1); await G.RunManager.Instance.ProceedFromTerminalRewardsScreenAsync(); return; }
       const num = deathAnimRemaining();
       if (room.RoomType === G.RoomType.Boss) await G.Cmd.CustomScaledWait(num * 0.5, num + 1);
       else await G.Cmd.CustomScaledWait(0.5, num + 1);

@@ -36,6 +36,11 @@ await shot('03-menu-unlocked');
 await sub('singleplayer'); // Singleplayer only opens the submenu once a run exists (NumberOfRuns > 0)
 await shot('01-single-sub');
 await page.click('.submenu-btn >> nth=0');
+await page.waitForSelector('.charselect');
+if (await page.waitForSelector('.ftue-confirm', { timeout: 1500 }).catch(() => null)) {
+  await page.click('.ftue-confirm');
+  await page.waitForSelector('.modal-viewport.open', { state: 'detached' }).catch(() => {});
+}
 await shot('04-charselect-unlocked');
 const screens = ['timeline', 'daily', 'custom', 'library', 'relics', 'potions', 'stats', 'profile', 'credits'];
 for (const s of screens) {

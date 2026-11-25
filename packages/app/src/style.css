@@ -25,6 +25,12 @@
 :root[data-lang='zht'] b, :root[data-lang='zht'] b * { font-family: 'StsZhtBold', var(--font) !important; }
 :root[data-lang='zht'] i, :root[data-lang='zht'] i * { font-family: 'StsZhtItalic', var(--font) !important; }
 
+/* 阿拉伯语字体回退：仅加载字体保证 ?lang=ara 可正常渲染 */
+@font-face { font-family: 'StsArRegular'; src: url('/assets/fonts/alyamama_regular.woff2') format('woff2'); font-weight: 1 1000; }
+@font-face { font-family: 'StsArBold'; src: url('/assets/fonts/alyamama_bold.woff2') format('woff2'); font-weight: 1 1000; }
+:root[data-lang='ara'] * { font-family: 'StsArRegular', var(--font) !important; letter-spacing: 0 !important; }
+:root[data-lang='ara'] b, :root[data-lang='ara'] b * { font-family: 'StsArBold', var(--font) !important; }
+
 :root {
   --scale: 1;
   --turn: 0deg;

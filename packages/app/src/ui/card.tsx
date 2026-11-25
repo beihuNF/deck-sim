@@ -170,10 +170,10 @@ export function Card({ card, pile, width = 300, target = null, mode, preview, vi
         <div style={img(frameByName('ui_atlas', 'card/card_frame_attack_s'), -137.5, -199, 299, 422, { filter: 'brightness(0)', opacity: 0.251 })} />
         {ancient ? (
           <>
-            <div style={img(portrait, -153, -215, 299, 421, { filter: blur, ...maskFor(frameByName('compressed', 'card_template/ancient_portrait_mask_large')) })} />
-            <div style={img(frameByName('compressed', 'card_template/card_highlight_ancient'), -156, -218, 310, 433, { mixBlendMode: 'overlay', opacity: 0.753 })} />
-            <div style={img(frameByName('compressed', 'card_template/ancient_card_border'), -154, -216.5, 306, 427)} />
-            <div style={img(frameByName('compressed', `card_template/ancient_card_text_bg_${frameKind === 'quest' ? 'skill' : frameKind}`), -131.5, -20, 263, 203)} />
+            <div style={img(portrait, -153, -215, 299, 421, { filter: blur, ...maskFor(frameByName('compressed_atlas', 'ancient_portrait_mask_large')) })} />
+            <div style={img(frameByName('compressed_atlas', 'card_highlight_ancient'), -156, -218, 310, 433, { mixBlendMode: 'overlay', opacity: 0.753 })} />
+            <div style={img(frameByName('compressed_atlas', 'ancient_card_border'), -154, -216.5, 306, 427)} />
+            <div style={img(frameByName('compressed_atlas', `ancient_text_bg_${frameKind === 'quest' ? 'skill' : frameKind}`), -131.5, -20, 263, 203)} />
           </>
         ) : <div style={img(portrait, -125, -168, 250, 190, { filter: blur })} />}
         {visibility === 'locked' && <img class="card-part" src={imageUrl('images/packed/common_ui/locked_card.png') ?? ''} style={at(-125, -175, 250, 190)} />}
@@ -215,12 +215,12 @@ function maskFor(fr: any) {
 }
 /** AncientBanner with its looping flame (ancient_card_flame_0..9 at 10 fps). */
 function AncientBanner() {
-  const frames = Array.from({ length: 10 }, (_, i) => frameStyle(frameByName('compressed', `card_template/ancient_flame/ancient_card_flame_${i}`), 29, 41))
+  const frames = Array.from({ length: 10 }, (_, i) => frameStyle(frameByName('compressed_atlas', `ancient_card_flame_${i}`), 29, 41))
     .map((f) => ({ padding: f.padding, backgroundImage: f.backgroundImage, backgroundSize: f.backgroundSize, backgroundPosition: f.backgroundPosition }));
   return (
     <>
       <div style={{ ...img(frameByName('ui_atlas', 'card/ancient_banner'), -163, -209.85, 327, 88.69), clipPath: 'inset(2.85px 0 2.85px 0)' }} />
-      <div style={{ ...img(frameByName('compressed', 'card_template/ancient_flame/ancient_card_flame_0'), 1 - 14.5, -217 - 20.5, 29, 41), ...flipbook('ancient-flame', frames, 10) }} />
+      <div style={{ ...img(frameByName('compressed_atlas', 'ancient_card_flame_0'), 1 - 14.5, -217 - 20.5, 29, 41), ...flipbook('ancient-flame', frames, 10) }} />
     </>
   );
 }

@@ -380,6 +380,7 @@ function BundleScreen({ v }: { v: BundleView }) {
           </div>
         );
       })}
+      {v.canSkip && !picked && <div class="cc-skip"><AltButton text={loc('gameplay_ui', 'CHOOSE_CARD_SKIP_BUTTON')} onClick={() => v.skip()} /></div>}
       {picked && (
         <div class="bundle-preview">
           {picked.map((c, i) => (
